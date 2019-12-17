@@ -1,0 +1,9 @@
+{
+    "physx_objs": "/home/fabi/GIT/students/SyntheticRenderingArnold/bodies_physx",
+    "textured_objs": "/home/fabi/GIT/students/SyntheticRenderingArnold/bodies_textured",
+    "3RScan_path": "/home/fabi/GIT/students/SyntheticRenderingArnold/3RScan",
+    "objects_per_sim": 50,
+    "iter_per_scene": 50,
+    "final_imgs_path": "/media/fabi/HardDrive/REAL_SIM_DATA",
+    "temp_files_path": "/media/fabi/HardDrive/REAL_SIM_DATA/temp"
+}

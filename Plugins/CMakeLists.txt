@@ -1,0 +1,1 @@
+add_library(Plugins SHARED src/nodeLoader.cpp src/blendShader.cpp src/depthShader.cpp src/labelShader.cpp src/nullFilter.cpp)
