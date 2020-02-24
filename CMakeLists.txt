@@ -52,11 +52,11 @@ endif()
 # Find OpenCV
 find_package(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
 # Link if found
-if(NOT ${OPENCV_FOUND})
+if(NOT ${OPENCV2_FOUND})
     message("OpenCV (min. 4.2) not found!")
 else()
-    target_link_libraries (PRRendering ${OPENCV_LIBRARIES})
-    include_directories(${OPENCV_INCLUDE_DIRS})
+    target_link_libraries (PRRendering ${OPENCV2_LIBRARIES})
+    include_directories(${OPENCV2_INCLUDE_DIRS})
 endif()
 
 # Find RapidJSON
