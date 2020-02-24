@@ -1,30 +1,41 @@
-# Locates the ai library and include directories.
+# - Find Arnold SDK
+# Find the Arnold SDK includes and library
+#
+#  AI_INCLUDE_DIRS - Where to find Arnold SDK includes
+#  AI_LIBRARIES    - List of libraries when using Arnold SDK
+#  AI_FOUND        - True if Arnold SDK was found
 
-include(FindPackageHandleStandardArgs)
-unset(AI_FOUND)
+IF(AI_INCLUDE_DIR)
+  SET(AI_FIND_QUIETLY TRUE)
+ENDIF(AI_INCLUDE_DIR)
 
-find_path(ai_INCLUDE_DIR
-        NAMES
-        ai.h
-        HINTS
-        # /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/include)
-        /usr/include/
-        /usr/local/include/ai/
-        /usr/local/include/)
+FIND_PATH(AI_INCLUDE_DIR
+    NAMES
+    ai.h
+    HINTS
+    /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/include
+    /usr/include/
+    /usr/local/include/ai/
+    /usr/local/include/
+    ${CMAKE_SOURCE_DIR}/dependencies/arnold/include/
+)
 
-find_library(ai_LIBRARY NAMES ai
-        HINTS
-        # /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/bin)
-        /usr/local/lib/
-        /usr/lib/)
+FIND_LIBRARY(AI_LIBRARY
+    NAMES
+    ai
+    HINTS
+    /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/bin
+    /usr/local/lib/
+    /usr/lib/
+    ${CMAKE_SOURCE_DIR}/dependencies/arnold/lib/
+)
 
-find_package_handle_standard_args(ai DEFAULT_MSG ai_INCLUDE_DIR ai_LIBRARY)
+INCLUDE(FindPackageHandleStandardArgs)
 
-# set external variables for usage in CMakeLists.txt
-if(AI_FOUND)
-    set(ai_LIBRARIES ${ai_LIBRARY})
-    set(ai_INCLUDE_DIRS ${ai_INCLUDE_DIR})
-endif()
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(ai DEFAULT_MSG AI_INCLUDE_DIR AI_LIBRARY)
+MARK_AS_ADVANCED(AI_INCLUDE_DIR AI_LIBRARY)
 
-# hide locals from GUI
-mark_as_advanced(ai_INCLUDE_DIR ai_LIBRARY)
+IF(AI_FOUND)
+    SET(AI_LIBRARIES ${AI_LIBRARY})
+    SET(AI_INCLUDE_DIRS ${AI_INCLUDE_DIR})
+ENDIF(AI_FOUND)

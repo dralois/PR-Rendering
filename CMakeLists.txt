@@ -1,47 +1,85 @@
+# CMake version
 cmake_minimum_required (VERSION 3.11)
-project (PRRendering)
+# Project name
+project (PRRendering CXX)
 
 ###########################################################################################
-# Find modules
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
+# CMake paths
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
+
+# C++ 14 standards
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Headers
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
+# Source files
 add_executable(PRRendering src/main src/mesh_managers.cpp src/scene_manager.cpp src/sim_manager.cpp)
+# Shader library
 add_library(Plugins SHARED Plugins/src/nodeLoader.cpp Plugins/src/blendShader.cpp Plugins/src/depthShader.cpp Plugins/src/labelShader.cpp Plugins/src/nullFilter.cpp)
 
-find_package(assimp REQUIRED)
-target_link_libraries(PRRendering assimp)
-
-find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
-
-find_package (ai REQUIRED)
-target_link_libraries (PRRendering ${ai_LIBRARIES})
-include_directories(${ai_INCLUDE_DIRS})
-
-find_package(OpenCV 3.0 REQUIRED)
-target_link_libraries (PRRendering ${OpenCV_LIBS})
-include_directories(${OpenCV_INCLUDE_DIRS})
-
-find_package(RapidJSON REQUIRED)
-
-if(NOT DEFINED ENV{PHYSX_ROOT_DIR})
-    message("Could not find PhysX")
-    set(ENV{PHYSX_ROOT_DIR} "/home/fabi/Documents/PhysX-4.0.0/physx")
+# Find Assimp
+find_package(assimp 4.1 REQUIRED)
+# Link if found
+if(NOT ${ASSIMP_FOUND})
+    message("Assimp (min. 4.1) not found!")
+else()
+    target_link_libraries(PRRendering ${ASSIMP_LIBRARIES})
+    include_directories(${ASSIMP_INCLUDE_DIRS})
 endif()
 
-message("phyx: $ENV{PHYSX_ROOT_DIR}")
+# Find Eigen
+find_package(Eigen3 3.3 REQUIRED)
+# Link if found
+if(NOT ${EIGEN3_FOUND})
+    message("Eigen3 (min. 3.3) not found!")
+else()
+    include_directories(${EIGEN3_INCLUDE_DIRS})
+endif()
 
-set(PHYSX_BIN "$ENV{PHYSX_ROOT_DIR}/bin/linux.clang/release")
+# Find Arnold SDK
+find_package(ai 5.4 REQUIRED)
+# Link if found
+if(NOT ${AI_FOUND})
+    message("Arnold SDK (min. 5.4) not found!")
+else()
+    target_link_libraries (PRRendering ${AI_LIBRARIES})
+    include_directories(${AI_INCLUDE_DIRS})
+endif()
 
-set(PHYSX_LIBRARIES ${PHYSX_BIN}/libPhysX_static_64.a ${PHYSX_BIN}/libPhysXPvdSDK_static_64.a ${PHYSX_BIN}/libPhysXExtensions_static_64.a ${PHYSX_BIN}/libPhysXCooking_static_64.a ${PHYSX_BIN}/libPhysXCommon_static_64.a ${PHYSX_BIN}/libPhysXFoundation_static_64.a)
-include_directories("$ENV{PHYSX_ROOT_DIR}/install/linux/PhysX/include")
-include_directories("$ENV{PHYSX_ROOT_DIR}/install/linux/PxShared/include")
-include_directories("$ENV{PHYSX_ROOT_DIR}/include/")
+# Find OpenCV
+find_package(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
+# Link if found
+if(NOT ${OPENCV_FOUND})
+    message("OpenCV (min. 4.2) not found!")
+else()
+    target_link_libraries (PRRendering ${OPENCV_LIBRARIES})
+    include_directories(${OPENCV_INCLUDE_DIRS})
+endif()
 
-link_directories("$ENV{PHYSX_ROOT_DIR}/bin/linux.clang/release")
-target_link_libraries (PRRendering  ${PHYSX_LIBRARIES} ${Plugins} pthread dl -Wl,-rpath='${ORIGIN}')
+# Find RapidJSON
+find_package(RapidJSON 1.1 REQUIRED)
+# Link if found
+if(NOT ${RAPIDJSON_FOUND})
+    message("RapidJSON (min 1.1) not found!")
+else()
+    include_directories(${RAPIDJSON_INCLUDE_DIRS})
+endif()
+
+# Find PhysX
+find_package(PhysX 4.1 REQUIRED Common Cooking Extensions Foundation PvdSDK)
+# Link if found
+if(NOT ${PHYSX_FOUND})
+    message("PhysX (min. 4.1) not found!")
+else()
+    target_link_libraries (PRRendering ${PhysX_LIBRARIES})
+    #target_link_libraries (PRRendering ${PhysX_LIBRARIES} ${Plugins} pthread dl -Wl,-rpath='${ORIGIN}')
+    include_directories(${PhysX_INCLUDE_DIRS})
+endif()
+
+get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+foreach(dir ${dirs})
+    message(STATUS "dir='${dir}'")
+endforeach()
