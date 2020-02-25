@@ -1,85 +1,91 @@
 # CMake version
-cmake_minimum_required (VERSION 3.11)
+CMAKE_MINIMUM_REQUIRED (VERSION 3.11)
 # Project name
-project (PRRendering CXX)
+PROJECT (PRRendering CXX)
 
 ###########################################################################################
 
 # CMake paths
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
 
 # C++ 14 standards
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Headers
-include_directories("${PROJECT_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
+
+# Dirent.h for windows
+IF(MSVC)
+    INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/dependencies/dirent/include)
+ENDIF()
 
 # Source files
-add_executable(PRRendering src/main src/mesh_managers.cpp src/scene_manager.cpp src/sim_manager.cpp)
+ADD_EXECUTABLE(PRRendering src/main src/mesh_managers.cpp src/scene_manager.cpp src/sim_manager.cpp)
 # Shader library
-add_library(Plugins SHARED Plugins/src/nodeLoader.cpp Plugins/src/blendShader.cpp Plugins/src/depthShader.cpp Plugins/src/labelShader.cpp Plugins/src/nullFilter.cpp)
+ADD_LIBRARY(Plugins SHARED Plugins/src/nodeLoader.cpp Plugins/src/blendShader.cpp Plugins/src/depthShader.cpp Plugins/src/labelShader.cpp Plugins/src/nullFilter.cpp)
 
 # Find Assimp
-find_package(assimp 4.1 REQUIRED)
+FIND_PACKAGE(assimp 4.1 REQUIRED)
 # Link if found
-if(NOT ${ASSIMP_FOUND})
-    message("Assimp (min. 4.1) not found!")
-else()
-    target_link_libraries(PRRendering ${ASSIMP_LIBRARIES})
-    include_directories(${ASSIMP_INCLUDE_DIRS})
-endif()
+IF(NOT ${ASSIMP_FOUND})
+    MESSAGE("Assimp (min. 4.1) not found!")
+ELSE()
+    TARGET_LINK_LIBRARIES(PRRendering ${ASSIMP_LIBRARIES})
+    INCLUDE_DIRECTORIES(${ASSIMP_INCLUDE_DIRS})
+ENDIF()
 
 # Find Eigen
-find_package(Eigen3 3.3 REQUIRED)
+FIND_PACKAGE(Eigen3 3.3 REQUIRED)
 # Link if found
-if(NOT ${EIGEN3_FOUND})
-    message("Eigen3 (min. 3.3) not found!")
-else()
-    include_directories(${EIGEN3_INCLUDE_DIRS})
-endif()
+IF(NOT ${EIGEN3_FOUND})
+    MESSAGE("Eigen3 (min. 3.3) not found!")
+ELSE()
+    INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIRS})
+ENDIF()
 
 # Find Arnold SDK
-find_package(ai 5.4 REQUIRED)
+FIND_PACKAGE(ai 5.4 REQUIRED)
 # Link if found
-if(NOT ${AI_FOUND})
-    message("Arnold SDK (min. 5.4) not found!")
-else()
-    target_link_libraries (PRRendering ${AI_LIBRARIES})
-    include_directories(${AI_INCLUDE_DIRS})
-endif()
+IF(NOT ${AI_FOUND})
+    MESSAGE("Arnold SDK (min. 5.4) not found!")
+ELSE()
+    TARGET_LINK_LIBRARIES(PRRendering ${AI_LIBRARIES})
+    INCLUDE_DIRECTORIES(${AI_INCLUDE_DIRS})
+ENDIF()
 
 # Find OpenCV
-find_package(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
+FIND_PACKAGE(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
 # Link if found
-if(NOT ${OPENCV2_FOUND})
-    message("OpenCV (min. 4.2) not found!")
-else()
-    target_link_libraries (PRRendering ${OPENCV2_LIBRARIES})
-    include_directories(${OPENCV2_INCLUDE_DIRS})
-endif()
+IF(NOT ${OPENCV2_FOUND})
+    MESSAGE("OpenCV (min. 4.2) not found!")
+ELSE()
+    TARGET_LINK_LIBRARIES(PRRendering ${OPENCV2_LIBRARIES})
+    INCLUDE_DIRECTORIES(${OPENCV2_INCLUDE_DIRS})
+ENDIF()
 
 # Find RapidJSON
-find_package(RapidJSON 1.1 REQUIRED)
+FIND_PACKAGE(RapidJSON 1.1 REQUIRED)
 # Link if found
-if(NOT ${RAPIDJSON_FOUND})
-    message("RapidJSON (min 1.1) not found!")
-else()
-    include_directories(${RAPIDJSON_INCLUDE_DIRS})
-endif()
+IF(NOT ${RAPIDJSON_FOUND})
+    MESSAGE("RapidJSON (min 1.1) not found!")
+ELSE()
+    INCLUDE_DIRECTORIES(${RAPIDJSON_INCLUDE_DIRS})
+ENDIF()
 
 # Find PhysX
-find_package(PhysX 4.1 REQUIRED Common Cooking Extensions Foundation PvdSDK)
+FIND_PACKAGE(PhysX 4.1 REQUIRED Common Cooking Extensions Foundation PvdSDK)
 # Link if found
-if(NOT ${PHYSX_FOUND})
-    message("PhysX (min. 4.1) not found!")
-else()
-    target_link_libraries (PRRendering ${PhysX_LIBRARIES})
-    #target_link_libraries (PRRendering ${PhysX_LIBRARIES} ${Plugins} pthread dl -Wl,-rpath='${ORIGIN}')
-    include_directories(${PhysX_INCLUDE_DIRS})
-endif()
+IF(NOT ${PHYSX_FOUND})
+    MESSAGE("PhysX (min. 4.1) not found!")
+ELSE()
+    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES})
+    #TARGET_LINK_LIBRARIES (PRRendering ${PhysX_LIBRARIES} ${Plugins} pthread dl -Wl,-rpath='${ORIGIN}')
+    INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
+ENDIF()
 
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-    message(STATUS "dir='${dir}'")
-endforeach()
+# Print included directories
+GET_PROPERTY(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+FOREACH(dir ${dirs})
+    MESSAGE(STATUS "dir='${dir}'")
+ENDFOREACH()
