@@ -58,7 +58,7 @@ shader_evaluate
     // Always true, not in use?
     if (!AiShaderEvalParamBool(p_force_scene))
     {
-        // Find average (luminance?) in 9 pixel radius
+        // Find average luminance in 9 pixel radius
         for (int i = -3; i < 4; i++)
         {
             for (int j = -3; j < 4; j++)
@@ -67,7 +67,7 @@ shader_evaluate
                 avg += curr[0] + curr[1] + curr[2];
             }
         }
-        // ?
+        // Average it
         avg = avg / (1.2f * 49.f * 255);
     }
 
@@ -77,7 +77,7 @@ shader_evaluate
     if (avg < 0.35)
         avg = 0.35;
 
-    // Find average mask in 2 pixel radius (?)
+    // Find object coverage in 2 pixel radius
     float mask_sum = mask.at<uchar>(2 * y, 2 * x);
     mask_sum += mask.at<uchar>(2 * y + 1, 2 * x);
     mask_sum += mask.at<uchar>(2 * y, 2 * x + 1);
@@ -108,15 +108,15 @@ shader_evaluate
         body_ratio = 0;
     }
 
-    // How much scene is visible? (?)
+    // How much scene is visible?
     float scene_ratio = 1.0 - body_ratio;
 
-    // ?
+    // Factor in object color
     rgba.r = bodyC.r * body_ratio * 1.5 * avg;
     rgba.g = bodyC.g * body_ratio * 1.5 * avg;
     rgba.b = bodyC.b * body_ratio * 1.5 * avg;
 
-    // ?
+    // Factor in image color
     rgba.r += (((float)p[2]) / 255.0) * scene_ratio;
     rgba.g += (((float)p[1]) / 255.0) * scene_ratio;
     rgba.b += (((float)p[0]) / 255.0) * scene_ratio;

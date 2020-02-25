@@ -867,11 +867,11 @@ void SceneManager::run(int iter)
 
                 // Read scene color image
                 cvScene = cv::imread(camImages.at(scene_count), cv::IMREAD_COLOR);
-                // Load camera intrinsics
+                // Load camera intrinsics (fox, distortion coeffs, etc.)
                 cv::Mat intrinsic = (cv::Mat1d(3, 3) << intrinsic_vals[0], 0, intrinsic_vals[2], 0, intrinsic_vals[1], intrinsic_vals[3], 0, 0, 1);
                 cv::Mat distCoeffs = (cv::Mat1d(1, 5) << intrinsic_vals[4], intrinsic_vals[5], 0, 0, intrinsic_vals[6]);
                 cv::Mat temp = cvScene.clone();
-                // Undistort the color image (?)
+                // Remove lens distortion
                 cv::undistort(cvScene, temp, intrinsic, distCoeffs);
                 cvScene = temp;
 
