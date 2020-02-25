@@ -14,6 +14,10 @@
 using namespace cv;
 using namespace Eigen;
 
+/*
+* Annotation struct for objects.
+* Used to write out information about objects.
+*/
 struct BodyAnnotation
 {
     int id;
@@ -109,6 +113,10 @@ public:
     void run(int iter);
 };
 
+/*
+* Transform struct for objects.
+* Saves rotation and position as well as mesh IDs.
+*/
 class SceneManager::ObjectInfo
 {
 private:

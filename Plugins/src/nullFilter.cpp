@@ -46,13 +46,18 @@ filter_pixel
    float aweight = 0.0f;
    float avalue = 0.0f;
 
+   // While samples available
    while (AiAOVSampleIteratorGetNext(iterator))
    {
+      // Add red value to total sum
       avalue += AiAOVSampleIteratorGetRGBA(iterator).r;
       aweight += 1;
    }
 
+   // Average sum
    if (aweight != 0.0f)
       avalue /= aweight;
+
+   // Return the average
    *((int *)data_out) = avalue;
 }

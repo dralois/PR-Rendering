@@ -28,7 +28,7 @@ FIND_PATH(PXShared_INCLUDE_DIR
     PATH_SUFFIXES
     include
     Include
-    PATHS
+    HINTS
     ${PHYSX_HOME}
     $ENV{PHYSX_HOME}
     ${CMAKE_SOURCE_DIR}/dependencies/pxshared/
