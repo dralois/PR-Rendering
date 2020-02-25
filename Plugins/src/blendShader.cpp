@@ -67,7 +67,7 @@ shader_evaluate
                 avg += curr[0] + curr[1] + curr[2];
             }
         }
-        // ??
+        // ?
         avg = avg / (1.2f * 49.f * 255);
     }
 
@@ -111,12 +111,12 @@ shader_evaluate
     // How much scene is visible? (?)
     float scene_ratio = 1.0 - body_ratio;
 
-    // ??
+    // ?
     rgba.r = bodyC.r * body_ratio * 1.5 * avg;
     rgba.g = bodyC.g * body_ratio * 1.5 * avg;
     rgba.b = bodyC.b * body_ratio * 1.5 * avg;
 
-    // ??
+    // ?
     rgba.r += (((float)p[2]) / 255.0) * scene_ratio;
     rgba.g += (((float)p[1]) / 255.0) * scene_ratio;
     rgba.b += (((float)p[0]) / 255.0) * scene_ratio;

@@ -1,28 +1,28 @@
 #include "sim_manager.h"
 #include <dirent.h>
 
-// ??
+// ?
 namespace d
 {
 #include "../Plugins/src/depthShader.cpp"
 extern AtNodeMethods *DepthMethods;
 } // namespace d
 
-// ??
+// ?
 namespace l
 {
 #include "../Plugins/src/labelShader.cpp"
 extern AtNodeMethods *LabelMethods;
 } // namespace l
 
-// ??
+// ?
 namespace b
 {
 #include "../Plugins/src/blendShader.cpp"
 extern AtNodeMethods *BlendMethods;
 } // namespace b
 
-// ??
+// ?
 namespace n
 {
 #include "../Plugins/src/nullFilter.cpp"
@@ -96,7 +96,7 @@ void SimManager::init_arnold()
     AiNodeSetInt(options, "AA_samples", 4);
     AiNodeSetInt(options, "GI_diffuse_depth", 6);
     AiNodeSetPtr(options, "camera", camera);
-    // ??
+    // ?
     driver = AiNode("driver_png");
     AiNodeSetStr(driver, "name", "mydriver");
     outputs_array = AiArrayAllocate(1, 1, AI_TYPE_STRING);

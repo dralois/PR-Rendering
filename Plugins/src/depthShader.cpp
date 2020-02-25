@@ -44,11 +44,11 @@ shader_evaluate
     if (AiShaderEvalParamBool(p_is_body))
         x = sqrt(pow(sg->Ro.x - sg->P.x, 2) + pow(sg->Ro.y - sg->P.y, 2) + pow(sg->Ro.z - sg->P.z, 2))*10;
 
-    // ??
+    // ?
     if(AiShaderEvalParamFlt(p_force_val)>1){
     } 
 
-    // ??
+    // ?
     sg->out.FLT = 20.f;
     sg->out.INT = 30;
     sg->out.UINT = 40;

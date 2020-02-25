@@ -152,11 +152,10 @@ void SceneManager::render_scene_depth_imgs()
     AiNodeSetFlt(shader_bck_depth, "force_val", 20000);
     AiNodeSetPtr(options, "background", shader_bck_depth);
 
-    // ??
+    // Destroy old filter
     AtNode *myfilter = AiNodeLookUpByName("myfilter");
     AiNodeDestroy(myfilter);
-
-    // ??
+    // Create new null filter
     myfilter = AiNode("null_filter");
     AiNodeSetFlt(myfilter, "width", 1);
     AiNodeSetStr(myfilter, "name", "myfilter");
@@ -210,20 +209,20 @@ std::vector<std::string> split(std::string str, char delimiter)
     return internal;
 }
 
-// Calculate bounding box
+// Calculate 2D bounding box
 void setBBox(BodyAnnotation *ann, cv::Mat mask)
 {
     Rect Min_Rect = cv::boundingRect(mask);
     Min_Rect.x += Min_Rect.width / 2.f;
     Min_Rect.y += Min_Rect.height / 2.f;
-    // Save bounding box in a vector
+    // Save 2D bounding box in a vector
     ann->bbox.push_back(Min_Rect.x);
     ann->bbox.push_back(Min_Rect.y);
     ann->bbox.push_back(Min_Rect.width);
     ann->bbox.push_back(Min_Rect.height);
 }
 
-// Transform pose from camera to world space
+// Transform pose into camera space
 void SceneManager::setAnnPose(BodyAnnotation *ann, Vector3f *pos, Quaterniond *q)
 {
     using namespace Eigen;
@@ -247,7 +246,7 @@ void SceneManager::setAnnPose(BodyAnnotation *ann, Vector3f *pos, Quaterniond *q
     ann->quat.push_back(qr.z());
 }
 
-// Write out annotation file for rendered objects (?)
+// Write out annotation file for rendered objects
 void SceneManager::set_annotations(Mat seg, Mat segMasked)
 {
     // For each mesh
@@ -255,13 +254,13 @@ void SceneManager::set_annotations(Mat seg, Mat segMasked)
     {
         // Determine label sum unmasked
         float segBodySum = cv::sum(seg == (currBody->object_sim_id + 1) * 10)[0];
-        // Not rendered (?)
+        // Stop if object completely covered
         if (segBodySum == 0)
             continue;
         // Determine label sum masked
         float segBodySumMasked = cv::sum(segMasked == (currBody->object_sim_id + 1) * 10)[0];
         float percent = segBodySumMasked / segBodySum;
-        // Too much covered (?)
+        // Stop if less then 30% coverage
         if (percent <= 0.3 || segBodySumMasked / 255 < 2000)
             continue;
 
@@ -337,17 +336,18 @@ bool SceneManager::checkIfCenterOnImage(ObjectInfo *body)
     bRotMat(1, 3) = pos->y();
     bRotMat(2, 3) = pos->z();
 
-    // Camera to world transform?
+    // Transform pose into camera space
     bRotMat = camMat.transpose().inverse() * bRotMat;
 
-    // Weird center of image calculations
+    // Some kind of camera to screen space transform
     int width = 960;
     int height = 540;
     float x = width / 2.f + bRotMat(0, 3) * 756 / bRotMat(2, 3);
     float y = height / 2.f + bRotMat(1, 3) * 756 / bRotMat(2, 3);
     x += 20;
     y += 20;
-    // ??
+
+    // Determine if object center at least 20 pixels from the egde
     return (x > 40 && x < width && y > 40 && y < height);
 }
 
@@ -362,7 +362,7 @@ bool SceneManager::render_bodies_depth()
 
         // Too close to camera?
         bool closeToCamera = sqrt(pow(body->get_pos()->x() - camMat(3, 0), 2) + pow(body->get_pos()->y() - camMat(3, 1), 2) + pow(body->get_pos()->z() - camMat(3, 2), 2)) > 150;
-        // Determine if rendering possible (?)
+        // Determine if rendering possible: Must be far enough away and visible
         if (closeToCamera || !checkIfCenterOnImage(body))
         {
             AiNodeSetPtr(curr, "shader", shader_bck_depth);
@@ -423,7 +423,7 @@ bool SceneManager::calculate_mask()
     // Read depth images
     cvSceneD = cv::imread(sbuf, cv::IMREAD_ANYDEPTH);
     cvBodiesD = cv::imread(bbuf, cv::IMREAD_ANYDEPTH);
-    // ??
+    // ?
     if (false)
     {
         cv::imshow("scene depth", cvSceneD);
@@ -554,7 +554,7 @@ void SceneManager::blend_seg()
 // Final image blend
 void SceneManager::blend_rgb()
 {
-    // ??
+    // ?
     std::vector<float> map_obj_ks = {0.01, 0.05, 0.05, 0.05, 0.03, 0.01, 0.03, 0.02, 0.03, 0.02, 0.02, 0.03, 0.03};
     // For each mesh
     for (auto body : curr_objects)
@@ -598,7 +598,7 @@ void SceneManager::blend_rgb()
         AiNodeSetPtr(curr, "shader", shader_blend);
     }
 
-    // ??
+    // ?
     if (false)
     {
         cv::imshow("mask", cvMask);
@@ -614,7 +614,7 @@ void SceneManager::blend_rgb()
     // Destroy old null filter
     AtNode *myfilter = AiNodeLookUpByName("myfilter");
     AiNodeDestroy(myfilter);
-    // Create new gauss (blur?) filter
+    // Create new gauss (blur?) filter?
     myfilter = AiNode("gaussian_filter");
     AiNodeSetFlt(myfilter, "width", 1);
     AiNodeSetStr(myfilter, "name", "myfilter");
@@ -679,13 +679,13 @@ void SceneManager::load_cam_mat()
     Matrix4f switchAxisMat;
     Matrix4f switchAxisMat2;
 
-    // ??
+    // ?
     switchAxisMat << -1, 0, 0, 0,
         0, 0, -1, 0,
         0, -1, 0, 0,
         0, 0, 0, 1;
 
-    // ??
+    // ?
     switchAxisMat2 << -1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
@@ -714,18 +714,18 @@ void SceneManager::load_cam_mat()
     AiNodeSetArray(camera, "fov", fovArr);
     // TODO: 0.95 and 0.9 shifts shouldn't be fixed
 
-    // ??
+    // ?
     float min_x = ((intrinsic_vals[2] * 0.95) - (960 / 2)) / (960 / 2) - 1;
     float max_x = ((intrinsic_vals[2] * 0.95) - (960 / 2)) / (960 / 2) + 1;
     float min_y = (intrinsic_vals[3] * 0.9 - (540 / 2)) / (540 / 2) - 1;
     float max_y = (intrinsic_vals[3] * 0.9 - (540 / 2)) / (540 / 2) + 1;
 
-    // ??
+    // ?
     AiNodeSetPnt2(camera, "screen_window_min", min_x, min_y);
     AiNodeSetPnt2(camera, "screen_window_max", max_x, max_y);
 }
 
-// ??
+// ?
 void SceneManager::load_intrinsics()
 {
     std::ifstream inFile;
@@ -827,7 +827,7 @@ void SceneManager::getFilesInAdirectory(string path, int type)
 // Runs the simulation
 void SceneManager::run(int iter)
 {
-    // ??
+    // ?
     load_intrinsics();
 
     // Load poses and images
@@ -867,11 +867,11 @@ void SceneManager::run(int iter)
 
                 // Read scene color image
                 cvScene = cv::imread(camImages.at(scene_count), cv::IMREAD_COLOR);
-                // ??
+                // Load camera intrinsics
                 cv::Mat intrinsic = (cv::Mat1d(3, 3) << intrinsic_vals[0], 0, intrinsic_vals[2], 0, intrinsic_vals[1], intrinsic_vals[3], 0, 0, 1);
                 cv::Mat distCoeffs = (cv::Mat1d(1, 5) << intrinsic_vals[4], intrinsic_vals[5], 0, 0, intrinsic_vals[6]);
                 cv::Mat temp = cvScene.clone();
-                // ??
+                // Undistort the color image (?)
                 cv::undistort(cvScene, temp, intrinsic, distCoeffs);
                 cvScene = temp;
 

@@ -79,7 +79,7 @@ bool MeshManager::load_file()
         }
     }
 
-    // ??
+    // ?
     xmax -= 0.5;
     xmin += 0.5;
     ymax -= 0.5;
