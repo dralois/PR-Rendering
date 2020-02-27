@@ -17,9 +17,7 @@ FIND_PATH(OPENCV2_INCLUDE_DIR
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/dependencies/opencv2/include
-    ${PROJECT_SOURCE_DIR}/dependencies/opencv2/include
+    ${PROJECT_SOURCE_DIR}/dependencies/include/opencv2
 )
 
 INCLUDE(FindPackageHandleStandardArgs)
@@ -39,10 +37,7 @@ FIND_LIBRARY(OPENCV2_${_uppercomponent}_LIBRARY
     /usr/lib
     /usr/local/lib
     /opt/local/lib
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/lib/release
-    ${CMAKE_SOURCE_DIR}/dependencies/opencv2/lib/release
-    ${PROJECT_SOURCE_DIR}/dependencies/opencv2/lib/release
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/release
     PATH_SUFFIXES
     lib
     lib64
@@ -51,7 +46,6 @@ FIND_LIBRARY(OPENCV2_${_uppercomponent}_LIBRARY
 )
 
 IF(MSVC)
-    # VisualStudio needs a debug version
     FIND_LIBRARY(OPENCV2_${_uppercomponent}_LIBRARY_DEBUG
         NAMES
         ${OPENCV2_DBG_NAMES}
@@ -60,9 +54,7 @@ IF(MSVC)
         /usr/lib
         /usr/local/lib
         /opt/local/lib
-        ${CMAKE_SOURCE_DIR}/lib/debug
-        ${CMAKE_SOURCE_DIR}/dependencies/opencv2/lib/debug
-        ${PROJECT_SOURCE_DIR}/dependencies/opencv2/lib/debug
+        ${PROJECT_SOURCE_DIR}/dependencies/lib/debug
         PATH_SUFFIXES
         lib
         lib64
@@ -89,7 +81,6 @@ ELSE(MSVC)
         /usr/lib
         /usr/local/lib
         /opt/local/lib
-        ${CMAKE_SOURCE_DIR}/lib
     )
 
     SET(OPENCV2_LIBRARIES ${OPENCV2_LIBRARIES} ${OPENCV2_${_uppercomponent}_LIBRARY})

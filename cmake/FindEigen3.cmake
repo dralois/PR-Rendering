@@ -20,9 +20,7 @@ FIND_PATH(EIGEN3_INCLUDE_DIR
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/dependencies/eigen/include
-    ${PROJECT_SOURCE_DIR}/dependencies/eigen/include
+    ${PROJECT_SOURCE_DIR}/dependencies/include/eigen3/Eigen
 )
 
 INCLUDE(FindPackageHandleStandardArgs)

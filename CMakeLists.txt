@@ -6,24 +6,40 @@ PROJECT (PRRendering CXX)
 ###########################################################################################
 
 # CMake paths
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
 
 # C++ 14 standards
 SET(CMAKE_CXX_STANDARD 14)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Headers
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("include")
 
-# Dirent.h for windows
+# Visual Studio: Change include directory
 IF(MSVC)
-    INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/dependencies/dirent/include)
+    INCLUDE_DIRECTORIES(dependencies/include/dirent)
+    SET(CMAKE_VS_SDK_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/dependencies/include;${PROJECT_SOURCE_DIR}/dependencies/extra/physx;${PROJECT_SOURCE_DIR}/dependencies/extra/pxshared;${PROJECT_SOURCE_DIR}/dependencies/extra/arnold;$(VC_IncludePath);$(WindowsSDK_IncludePath);)
 ENDIF()
 
 # Source files
-ADD_EXECUTABLE(PRRendering src/main src/mesh_managers.cpp src/scene_manager.cpp src/sim_manager.cpp)
+ADD_EXECUTABLE(PRRendering
+                main
+                src/mesh_managers.cpp
+                src/scene_manager.cpp
+                src/sim_manager.cpp
+                include/mesh_managers.h
+                include/scene_manager.h
+                include/sim_manager.h
+)
+
 # Shader library
-ADD_LIBRARY(Plugins SHARED Plugins/src/nodeLoader.cpp Plugins/src/blendShader.cpp Plugins/src/depthShader.cpp Plugins/src/labelShader.cpp Plugins/src/nullFilter.cpp)
+ADD_LIBRARY(Plugins SHARED
+            plugins/src/nodeLoader.cpp
+            plugins/src/blendShader.cpp
+            plugins/src/depthShader.cpp
+            plugins/src/labelShader.cpp
+            plugins/src/nullFilter.cpp
+)
 
 # Find Assimp
 FIND_PACKAGE(assimp 4.1 REQUIRED)
@@ -73,6 +89,34 @@ ELSE()
     INCLUDE_DIRECTORIES(${RAPIDJSON_INCLUDE_DIRS})
 ENDIF()
 
+
+
+# FIND_PACKAGE(GLFW3 REQUIRED)
+# INCLUDE_DIRECTORIES(${GLFW_INCLUDE_DIRS})
+# TARGET_LINK_LIBRARIES(PRRendering ${GLFW_LIBRARIES})
+
+# FIND_PACKAGE(GLEW REQUIRED)
+# INCLUDE_DIRECTORIES(${GLEW_INCLUDE_PATH})
+# TARGET_LINK_LIBRARIES(PRRendering ${GLEW_LIBRARY})
+
+# FIND_PACKAGE(Boost REQUIRED)
+# INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+# TARGET_LINK_LIBRARIES (PRRendering ${Boost_LIBRARIES})
+
+# ADD_LIBRARY(OpenGLLib SHARED
+#             render/include/model.h
+#             render/include/data.h
+#             render/include/render.h
+#             render/include/shader.h
+#             render/include/util.h
+#             render/src/data.cc
+#             render/src/render.cc
+# )
+
+# TARGET_LINK_LIBRARIES(OpenGLLib ${OpenCV_LIBS} ${OPENGL_LIBRARIES} ${GLFW_LIBRARIES} ${GLEW_LIBRARY} ${assimp_LIBRARIES})
+
+
+
 # Find PhysX
 FIND_PACKAGE(PhysX 4.1 REQUIRED Common Cooking Extensions Foundation PvdSDK)
 # Link if found
@@ -80,7 +124,7 @@ IF(NOT ${PHYSX_FOUND})
     MESSAGE("PhysX (min. 4.1) not found!")
 ELSE()
     TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES})
-    #TARGET_LINK_LIBRARIES (PRRendering ${PhysX_LIBRARIES} ${Plugins} pthread dl -Wl,-rpath='${ORIGIN}')
+    #TARGET_LINK_LIBRARIES(PRRendering ${PHYSX_LIBRARIES} ${Plugins} ${OpenCV_LIBS} OpenGLLib pthread dl -lboost_system -lboost_thread -lboost_filesystem -Wl,-rpath='${ORIGIN}')
     INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
 ENDIF()
 

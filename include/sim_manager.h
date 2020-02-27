@@ -40,10 +40,14 @@ private:
     rapidjson::Document CONFIG_FILE;
 
 public:
+    ~SimManager();
 
     void init_physx();
     void init_arnold();
     void load_config(string config_path);
     void load_meshes();
     int run_sim();
+
+    string get_final_path();
+    string get_temp_path();
 };

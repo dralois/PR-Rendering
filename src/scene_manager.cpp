@@ -22,8 +22,23 @@ SceneManager::SceneManager(PxPhysics *gPhysics, PxScene *gScene, PxCooking *gCoo
 {
     // Fetch path to output location and meshes
     FILE_TEMP_PATH = (*CONFIG_FILE)["temp_files_path"].GetString();
-    FILE_OBJ_PATH = (*CONFIG_FILE)["textured_objs"].GetString();
+    FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
     FILE_FINAL_PATH = (*CONFIG_FILE)["final_imgs_path"].GetString();
+
+    // Load intrinsics
+    intrinsics_render_out.fx = (*CONFIG_FILE)["fx"].GetFloat();
+    intrinsics_render_out.fy = (*CONFIG_FILE)["fy"].GetFloat();
+    intrinsics_render_out.ox = (*CONFIG_FILE)["ox"].GetFloat();
+    intrinsics_render_out.oy = (*CONFIG_FILE)["oy"].GetFloat();
+
+    render = new Render("/home/fabi/Documents/PRRendering/render/shaders");
+}
+
+SceneManager::~SceneManager(){
+    delete render;
+    if(sceneMeshManager != nullptr){
+        delete sceneMeshManager;
+    }
 }
 
 // Set path
@@ -56,10 +71,9 @@ void SceneManager::generate_objects()
     {
         // Fetch random object
         int objManagerPos = rand() % physx_objs.size();
-        PxConvManager *objManager = physx_objs.at(objManagerPos);
-
-        // Random position, always the same rotation
-        float y = - (rand() % 100);
+        PxConvManager *objManager = physx_objs.at(objManagerPos);        
+        // Random position, same rotation
+        float y = (rand() % 10) + 1;
         float x = (rand() % ((int)(sceneMeshManager->xmax * 100 - sceneMeshManager->xmin * 100))) + sceneMeshManager->xmin * 100;
         float z = (rand() % ((int)(sceneMeshManager->ymax * 100 - sceneMeshManager->ymin * 100))) + sceneMeshManager->ymin * 100;
         vector<float> pos{x, y, z};
@@ -76,8 +90,8 @@ void SceneManager::destroy_meshes()
 {
     // Cleanup scene mesh
     if (sceneMeshManager != nullptr)
-        free(sceneMeshManager);
-    // Cleanup random physx meshes
+        delete sceneMeshManager;
+    // Cleanup random objects    
     for (auto obj : sim_objects)
     {
         PxMeshManager::destroyObject(obj.second);
@@ -88,23 +102,17 @@ void SceneManager::destroy_meshes()
 // Run physx simulation
 void SceneManager::run_physx_sim()
 {
-    // 2000 steps
-    for (PxU32 i = 0; i < 2000; i++)
+    // 10000 steps
+    for (PxU32 i = 0; i < 10000; i++)
     {
-        // Simulate
-        gScene->simulate(3.0f / 60.0f);
-        // Probably not needed anymore?
+        // PxTransform tempTrans = sim_objects[0].second->getGlobalPose();
+        // PxVec3 pxPos = tempTrans.p;
+        gScene->simulate(2.f / 60.0f);
         gScene->fetchResults(true);
-        PxTransform tempTrans;
-        tempTrans = sim_objects[0].second->getGlobalPose();
-        if (i % 10 == 0)
-        {
-            // cout << tempTrans.p.x << "c " << tempTrans.p.y << "c " << tempTrans.p.z  << "c " << endl;
-        }
+
     }
-    // Save results and cleanup physx simulation
+    // Save results
     fetch_results();
-    destroy_meshes();
 }
 
 // Fetch and save simulation results
@@ -131,7 +139,71 @@ void SceneManager::fetch_results()
     }
 }
 
-// Render depth images
+// TODO
+vector<tuple<cv::Mat, cv::Mat> > SceneManager::render_scenes_gl(){
+
+    vector<tuple<cv::Mat, cv::Mat> > renderings = render->render_scenes(scene_path, cameraPoses,
+                                                                        intrinsic_scene.fx, intrinsic_scene.fy,
+                                                                        intrinsic_scene.ox, intrinsic_scene.oy);
+
+    for (int render_count = 0; render_count < renderings.size(); render_count++)
+    {
+        ostringstream out;
+        out << std::internal << std::setfill('0') << std::setw(6) << render_count;
+
+        string tmp_depth_path = FILE_TEMP_PATH + "/scene_depth/img_" + out.str() + ".png";
+        string tmp_rgb_path = FILE_TEMP_PATH + "/rgb/img_" + out.str() + ".png";
+
+        // For Debugging
+        if(false){
+            cv::Mat dep_2 = cv::imread(tmp_depth_path, cv::IMREAD_ANYDEPTH);
+            cv::Mat dep_1 = get<1>(renderings[render_count]);
+
+            double min;
+            double max;
+            cv::minMaxIdx(dep_1, &min, &max);
+            cv::convertScaleAbs(dep_1, dep_1, 255 / max);
+            cv::convertScaleAbs(dep_2, dep_2, 255 / max);
+
+
+            cv::resize(dep_1, dep_1, cv::Size(960, 480));
+            cv::resize(dep_2, dep_2, cv::Size(960, 480));
+
+            cv::Mat diff = cv::abs(dep_1 - dep_2);
+
+            cv::imshow("Arnold Dep", dep_2);
+            cv::imshow("OpenGL Dep", dep_1);
+            cv::imshow("diff Dep", diff);
+            cv::waitKey();
+        }
+
+        // For Debugging
+        if(false){
+            cv::Mat col_2 = cv::imread(tmp_rgb_path);
+            cv::Mat col_1 = get<0>(renderings[render_count]);
+
+            cv::resize(col_1, col_1, cv::Size(960, 480));
+            cv::resize(col_2, col_2, cv::Size(960, 480));
+
+            cv::Mat diff = cv::abs(col_1 - col_2);
+
+            cv::imshow("Arnold RGB", col_2);
+            cv::imshow("OpenGL RGB", col_1);
+            cv::imshow("diff RGB", diff);
+            cv::waitKey();
+        }
+        cv::imwrite(tmp_rgb_path, get<0>(renderings[render_count]));
+        cv::imwrite(tmp_depth_path, get<1>(renderings[render_count]));
+
+        // cv::imshow("render", get<0>(renderings[render_count]));
+        cv::waitKey(10);
+    }
+    scene_count = 0;
+
+    return renderings;
+}
+
+
 void SceneManager::render_scene_depth_imgs()
 {
     // Load scan
@@ -171,8 +243,8 @@ void SceneManager::render_scene_depth_imgs()
     // For each scene
     for (scene_count = 0; scene_count < cameraPoses.size(); scene_count++)
     {
-        // Load camera matrices
-        load_cam_mat();
+        // Load camera matrix
+        load_cam_mat(intrinsic_scene.fx, intrinsic_scene.fy, intrinsic_scene.ox, intrinsic_scene.oy);
 
         ostringstream out;
         out << std::internal << std::setfill('0') << std::setw(6) << scene_count;
@@ -209,23 +281,29 @@ std::vector<std::string> split(std::string str, char delimiter)
     return internal;
 }
 
-// Calculate 2D bounding box
-void setBBox(BodyAnnotation *ann, cv::Mat mask)
+// TODO
+void setBBox(BodyAnnotation &ann, cv::Mat mask)
 {
     Rect Min_Rect = cv::boundingRect(mask);
     Min_Rect.x += Min_Rect.width / 2.f;
     Min_Rect.y += Min_Rect.height / 2.f;
-    // Save 2D bounding box in a vector
-    ann->bbox.push_back(Min_Rect.x);
-    ann->bbox.push_back(Min_Rect.y);
-    ann->bbox.push_back(Min_Rect.width);
-    ann->bbox.push_back(Min_Rect.height);
+    ann.bbox.push_back(Min_Rect.x);
+    ann.bbox.push_back(Min_Rect.y);
+    ann.bbox.push_back(Min_Rect.width);
+    ann.bbox.push_back(Min_Rect.height);
 }
 
-// Transform pose into camera space
-void SceneManager::setAnnPose(BodyAnnotation *ann, Vector3f *pos, Quaterniond *q)
+// TODO
+void SceneManager::setAnnPose(BodyAnnotation &ann, Vector3f *pos, Quaterniond *q)
 {
-    using namespace Eigen;
+    // use camPos and camRot
+    // using namespace Eigen;
+    // Vector3f bPos;
+    // bPos << pos->x, pos->y, pos->z;
+
+    // Matrix<float, 3, 3> camMat3 = Eigen::Matrix3f::Identity();
+    // camMat3 = camRot.block(0, 0, 3, 3);
+    // bPos = camMat3.inverse() * (bPos - camPos);
 
     // Camera to world matrix
     Matrix<float, 4, 4> bRotMat = Eigen::Matrix4f::Identity();
@@ -236,16 +314,16 @@ void SceneManager::setAnnPose(BodyAnnotation *ann, Vector3f *pos, Quaterniond *q
     Matrix3f temp = bRotMat.block(0, 0, 3, 3);
     Quaternionf qr = Quaternionf(temp).normalized();
 
-    // Save both position and rotation in vector
-    ann->trans.push_back(bRotMat(0, 3) * 10);
-    ann->trans.push_back(bRotMat(1, 3) * 10);
-    ann->trans.push_back(bRotMat(2, 3) * 10);
-    ann->quat.push_back(qr.w());
-    ann->quat.push_back(qr.x());
-    ann->quat.push_back(qr.y());
-    ann->quat.push_back(qr.z());
+    ann.trans.push_back(bRotMat(0, 3) * 10);
+    ann.trans.push_back(bRotMat(1, 3) * 10);
+    ann.trans.push_back(bRotMat(2, 3) * 10);
+    ann.quat.push_back(qr.w());
+    ann.quat.push_back(qr.x());
+    ann.quat.push_back(qr.y());
+    ann.quat.push_back(qr.z());
 }
 
+// TODO
 // Write out annotation file for rendered objects
 void SceneManager::set_annotations(Mat seg, Mat segMasked)
 {
@@ -264,30 +342,31 @@ void SceneManager::set_annotations(Mat seg, Mat segMasked)
         if (percent <= 0.3 || segBodySumMasked / 255 < 2000)
             continue;
 
-        // Create annotation
-        BodyAnnotation *currAnn = new BodyAnnotation();
-        currAnn->trans = std::vector<float>();
-        currAnn->quat = std::vector<float>();
-        // Save bounding box and convert pose to world space
-        currAnn->bbox = std::vector<float>();
-        currAnn->id = currBody->shape_id;
-        currAnn->sim_id = (currBody->object_sim_id + 1) * 10;
+        BodyAnnotation currAnn;
+        currAnn.trans = std::vector<float>();
+        currAnn.quat = std::vector<float>();
+
+        currAnn.bbox = std::vector<float>();
+        currAnn.id = currBody->shape_id;
+        currAnn.sim_id = (currBody->object_sim_id + 1) * 10;
         setBBox(currAnn, seg == (currBody->object_sim_id + 1) * 10);
         setAnnPose(currAnn, currBody->get_pos(), currBody->get_rot());
 
         ostringstream out;
-        out << std::internal << std::setfill('0') << std::setw(2) << currAnn->id;
+        out << std::internal << std::setfill('0') << std::setw(2) << currAnn.id;
         string buf = "obj_" + out.str();
 
-        // Save in annotation file
-        ANNOTATIONS_FILE << start_count << ", " << currAnn->bbox[0] << ", " << currAnn->bbox[1] << ", "
-                         << currAnn->bbox[2] << ", " << currAnn->bbox[3] << ", " << buf << ", " << currAnn->quat[0] << ", "
-                         << currAnn->quat[1] << ", " << currAnn->quat[2] << ", " << currAnn->quat[3] << ", "
+        ANNOTATIONS_FILE << start_count << ", " << currAnn.bbox[0] << ", " << currAnn.bbox[1] << ", "
+                         << currAnn.bbox[2] << ", " << currAnn.bbox[3] << ", " << buf << ", " << currAnn.quat[0] << ", "
+                         << currAnn.quat[1] << ", " << currAnn.quat[2] << ", " << currAnn.quat[3] << ", "
                          << "0"
                          << ", "
                          << "0"
-                         << ", " << currAnn->trans[0] << ", " << currAnn->trans[1] << ", " << currAnn->trans[2] << ", "
-                         << currAnn->sim_id << "\n";
+                         << ", " << currAnn.trans[0] << ", " << currAnn.trans[1] << ", " << currAnn.trans[2] << ", "
+                         << currAnn.sim_id
+                         << " [" << intrinsics_render_out.fx << ", " << intrinsics_render_out.fy << ", " << intrinsic_scene.ox << ", " << intrinsic_scene.oy << "]" << "\n";
+
+        //delete[] buf;
     }
 }
 
@@ -295,7 +374,7 @@ void SceneManager::set_annotations(Mat seg, Mat segMasked)
 void SceneManager::draw_bodies()
 {
     sim_objs = {};
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < physx_objs.size() + 1; i++)
         sim_objs.push_back(NULL);
     // For each created object
     for (auto body : curr_objects)
@@ -351,6 +430,7 @@ bool SceneManager::checkIfCenterOnImage(ObjectInfo *body)
     return (x > 40 && x < width && y > 40 && y < height);
 }
 
+// TODO
 // Render objects depth
 bool SceneManager::render_bodies_depth()
 {
@@ -362,19 +442,29 @@ bool SceneManager::render_bodies_depth()
 
         // Too close to camera?
         bool closeToCamera = sqrt(pow(body->get_pos()->x() - camMat(3, 0), 2) + pow(body->get_pos()->y() - camMat(3, 1), 2) + pow(body->get_pos()->z() - camMat(3, 2), 2)) > 150;
-        // Determine if rendering possible: Must be far enough away and visible
-        if (closeToCamera || !checkIfCenterOnImage(body))
+        // cout << sqrt(pow(body->get_pos()->x() - camMat(3, 0), 2) + pow(body->get_pos()->y() - camMat(3, 1), 2) + pow(body->get_pos()->z() - camMat(3, 2), 2)) << endl;
+        // cout << checkIfCenterOnImage(body) << endl;
+        /*
+        if (!checkIfCenterOnImage(body))//(closeToCamera || !checkIfCenterOnImage(body))
         {
             AiNodeSetPtr(curr, "shader", shader_bck_depth);
+            AiNodeSetByte(curr, "visibility", (char)0);
         }
         else
         {
             AiNodeSetPtr(curr, "shader", shader_obj_depth);
             valid = true;
-        }
+        }*/
+        AiNodeSetPtr(curr, "shader", shader_obj_depth);
+        valid = true;
     }
 
-    // Set shader values
+    /*AiNodeSetBool(shader_obj_depth, "is_body", true);
+    AiNodeSetPtr(sceneNode, "shader", shader_obj_depth);
+    // AiNodeSetInt();
+    AiNodeSetFlt(shader_bck_depth, "force_val", 20000);
+    AiNodeSetPtr(options, "background", shader_bck_depth);
+*/
     AiNodeSetBool(shader_obj_depth, "is_body", true);
     AiNodeSetFlt(shader_bck_depth, "force_val", 30000);
     AiNodeSetPtr(options, "background", shader_bck_depth);
@@ -401,15 +491,15 @@ bool SceneManager::render_bodies_depth()
     AiNodeSetInt(options, "AA_samples", 1);
     AiNodeSetInt(options, "GI_glossy_samples", 1);
 
-    // Load camera matrix
-    load_cam_mat();
-
-    // Render
     AiArraySetStr(outputs_array, 0, "RGBA RGBA myfilter mydriver");
     AiNodeSetArray(options, "outputs", outputs_array);
     if (valid)
         AiRender(AI_RENDER_MODE_CAMERA);
-
+    // for (auto body : curr_objects)
+    // {
+    //     AtNode *curr = AiNodeLookUpByName(body->get_name().c_str());
+    //     AiNodeSetByte(curr, "visibility", (unsigned char)244);
+    // }
     return valid;
 }
 
@@ -426,13 +516,19 @@ bool SceneManager::calculate_mask()
     // ?
     if (false)
     {
+        double min;
+        double max;
+        cv::minMaxIdx(cvSceneD, &min, &max);
+        cv::convertScaleAbs(cvSceneD, cvSceneD, 255 / max);
+        cv::convertScaleAbs(cvBodiesD, cvBodiesD, 255 / max);
+
         cv::imshow("scene depth", cvSceneD);
         cv::imshow("bodies depth", cvBodiesD);
+        cv::imshow("mask", cvBodiesD <= (cvSceneD + 0.025));
         cv::waitKey();
     }
-    // Combine scene and objects depth
-    cvMask = cvBodiesD < cvSceneD;
-    // Determine if anything visible
+    cvMask = cvBodiesD <= cvSceneD; // 2,5cm buffer
+
     Scalar maskMean = cv::mean(cvMask);
     return maskMean[0] >= 1.f;
 }
@@ -493,10 +589,7 @@ void SceneManager::render_bodies_seg()
     AiNodeSetInt(options, "AA_samples", 1);
     AiNodeSetInt(options, "GI_glossy_samples", 1);
 
-    // Load camera matrix
-    load_cam_mat();
-
-    // Render objects
+    // Render image
     AiArraySetStr(outputs_array, 0, "RGBA RGBA myfilter mydriver");
     AiNodeSetArray(options, "outputs", outputs_array);
     AiRender(AI_RENDER_MODE_CAMERA);
@@ -521,8 +614,8 @@ void SceneManager::blend_depth()
     ostringstream out_start;
     out_start << std::internal << std::setfill('0') << std::setw(6) << start_count;
 
-    // Write the combined image out
-    string obuf = FILE_FINAL_PATH + "/final_imgs/img_" + out_start.str() + "_depth.png";
+    // Write out blended image
+    string obuf = FILE_FINAL_PATH + "/depth/img_" + out_start.str() + ".png";
     cv::imwrite(obuf, cvOut);
 }
 
@@ -538,7 +631,7 @@ void SceneManager::blend_seg()
     out_start << std::internal << std::setfill('0') << std::setw(6) << start_count;
 
     string bbuf = FILE_TEMP_PATH + "/body_label/img_" + out.str() + ".png";
-    string obuf = FILE_FINAL_PATH + "/final_imgs/img_" + out_start.str() + "_seg.png";
+    string obuf = FILE_FINAL_PATH + "/segs/img_" + out_start.str() + ".png";
 
     // Read label image
     cvBodiesS = cv::imread(bbuf, cv::IMREAD_ANYDEPTH);
@@ -554,13 +647,13 @@ void SceneManager::blend_seg()
 // Final image blend
 void SceneManager::blend_rgb()
 {
-    // ?
-    std::vector<float> map_obj_ks = {0.01, 0.05, 0.05, 0.05, 0.03, 0.01, 0.03, 0.02, 0.03, 0.02, 0.02, 0.03, 0.03};
-    // For each mesh
+
     for (auto body : curr_objects)
     {
         // Try to find mesh node
         string buffer = "blend_" + std::to_string(body->shape_id);
+        float ks = physx_objs[body->shape_id - 1]->getMetallic();
+
         AtNode *curr = AiNodeLookUpByName(body->get_name().c_str());
         AtNode *blendTemp = AiNodeLookUpByName(buffer.c_str());
         // If not found create
@@ -569,6 +662,7 @@ void SceneManager::blend_rgb()
             AiNodeSetPtr(curr, "shader", blendTemp);
             AiNodeSetPtr(blendTemp, "mask", (void *)&cvMask);
             AiNodeSetPtr(blendTemp, "blend_image", (void *)&cvScene);
+            AiNodeSetPtr(blendTemp, "rend_image", (void *)&cvRend);
             continue;
         }
 
@@ -590,10 +684,11 @@ void SceneManager::blend_rgb()
         AiNodeSetStr(shader_blend, "name", buffer.c_str());
         AiNodeSetPtr(shader_blend, "mask", (void *)&cvMask);
         AiNodeSetPtr(shader_blend, "blend_image", (void *)&cvScene);
+        AiNodeSetPtr(shader_blend, "rend_image", (void *)&cvRend);
         AiNodeSetBool(shader_blend, "force_scene", false);
         // Setup object material
         AiNodeSetFlt(shaderMaterial, "diffuse_roughness", 0.5);
-        AiNodeSetFlt(shaderMaterial, "Ks", map_obj_ks[body->shape_id]);
+        AiNodeSetFlt(shaderMaterial, "Ks", ks);
         AiNodeLink(shaderMaterial, "Kd_bcolor", shader_blend);
         AiNodeSetPtr(curr, "shader", shader_blend);
     }
@@ -609,6 +704,7 @@ void SceneManager::blend_rgb()
     // Setup background image and mask
     AiNodeSetPtr(shader_blendBG, "mask", (void *)&cvMask);
     AiNodeSetPtr(shader_blendBG, "blend_image", (void *)&cvScene);
+    AiNodeSetPtr(shader_blendBG, "rend_image", (void *)&cvRend);
     AiNodeSetPtr(options, "background", shader_blendBG);
 
     // Destroy old null filter
@@ -622,7 +718,7 @@ void SceneManager::blend_rgb()
     ostringstream out;
     out << std::internal << std::setfill('0') << std::setw(6) << start_count;
 
-    string buf = FILE_FINAL_PATH + "/final_imgs/img_" + out.str() + ".png";
+    string buf = FILE_FINAL_PATH + "/rgb/img_" + out.str() + ".png";
 
     // Setup render settings
     AiNodeSetStr(driver, "filename", buf.c_str());
@@ -634,8 +730,7 @@ void SceneManager::blend_rgb()
     AiNodeSetInt(options, "GI_diffuse_depth", 6);
     AiNodeSetInt(options, "GI_glossy_samples", 6);
 
-    // Load camera matrix
-    load_cam_mat();
+    load_cam_mat(intrinsics_render_out.fx, intrinsics_render_out.fy, intrinsics_render_out.ox, intrinsics_render_out.oy);
 
     // Render final image/object blend
     AiArraySetStr(outputs_array, 0, "RGBA RGBA myfilter mydriver");
@@ -643,10 +738,11 @@ void SceneManager::blend_rgb()
     AiRender(AI_RENDER_MODE_CAMERA);
 }
 
-// Load camera matrices
-void SceneManager::load_cam_mat()
+// TODO
+void SceneManager::load_cam_mat(float fx, float fy, float ox, float oy)
 {
-    // Arnold camera
+
+    //if(AiNodeLookUpByName("mycamera") == NULL)
     AiNodeSetStr(camera, "name", "mycamera");
 
     std::ifstream inFile;
@@ -654,9 +750,8 @@ void SceneManager::load_cam_mat()
     // Open camera pose file
     inFile.open(cameraPoses.at(scene_count));
 
-    int i = 0;
     std::string line;
-    // Load camera matrices
+    int i = 0;
     while (std::getline(inFile, line))
     {
         std::vector<std::string> entries = split(line, ' ');
@@ -666,8 +761,7 @@ void SceneManager::load_cam_mat()
         }
         i++;
     }
-
-    // Save scaled position
+    // Vector3f posMat;
     float pos0 = camMat(0, 3) * 100;
     float pos1 = camMat(1, 3) * 100;
     float pos2 = camMat(2, 3) * 100;
@@ -677,9 +771,7 @@ void SceneManager::load_cam_mat()
     camMat(2, 3) = 0;
 
     Matrix4f switchAxisMat;
-    Matrix4f switchAxisMat2;
-
-    // ?
+    Matrix4f switchAxisMat2; //free(&temp);
     switchAxisMat << -1, 0, 0, 0,
         0, 0, -1, 0,
         0, -1, 0, 0,
@@ -706,67 +798,45 @@ void SceneManager::load_cam_mat()
                           {camMat(2, 0), camMat(2, 1), camMat(2, 2), camMat(2, 3)},
                           {camMat(3, 0), camMat(3, 1), camMat(3, 2), 1}};
 
-    // Set FOV and camera to world matrix
-    double fovx = 2 * atan(960 / (2 * intrinsic_vals[0]));
-    double fovy = 2 * atan(540 / (2 * intrinsic_vals[1]));
+    double fovx = 2 * atan(960 / (2 * fx));
+    double fovy = 2 * atan(540 / (2 * fy));
     AiNodeSetMatrix(camera, "matrix", camMatArn);
     AtArray *fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx * 180.f / 3.14f, fovy * 180.f / 3.14f);
     AiNodeSetArray(camera, "fov", fovArr);
-    // TODO: 0.95 and 0.9 shifts shouldn't be fixed
 
-    // ?
-    float min_x = ((intrinsic_vals[2] * 0.95) - (960 / 2)) / (960 / 2) - 1;
-    float max_x = ((intrinsic_vals[2] * 0.95) - (960 / 2)) / (960 / 2) + 1;
-    float min_y = (intrinsic_vals[3] * 0.9 - (540 / 2)) / (540 / 2) - 1;
-    float max_y = (intrinsic_vals[3] * 0.9 - (540 / 2)) / (540 / 2) + 1;
+    float min_x = (ox - (960 / 2)) / (960 / 2) - 1;
+    float max_x = (ox - (960 / 2)) / (960 / 2) + 1;
+    float min_y = (oy - (540 / 2)) / (540 / 2) - 1;
+    float max_y = (oy - (540 / 2)) / (540 / 2) + 1;
 
-    // ?
     AiNodeSetPnt2(camera, "screen_window_min", min_x, min_y);
     AiNodeSetPnt2(camera, "screen_window_max", max_x, max_y);
 }
 
-// ?
+// TODO
 void SceneManager::load_intrinsics()
 {
     std::ifstream inFile;
 
-    string buf = scene_path + "/rgbd/intrinsic/intrinsic_color.txt";
+    string buf = scene_path + "/rgbd/_info.txt";
 
-    cout << "sp " << scene_path << endl;
     inFile.open(buf);
+    if(!inFile.is_open())
+        return;
 
     std::string line;
-    int i = 0;
-    std::vector<std::string> total;
-    std::cout << buf << "\tbuffed" << std::endl;
     while (std::getline(inFile, line))
     {
-        std::vector<std::string> entries = split(line, ' ');
-        for (int i = 0; i < entries.size(); i++)
-        {
-            total.push_back(entries[i]);
+        if(line.find("m_calibrationColorIntrinsic") != std::string::npos){
+            std::vector<std::string> entries = split(line, ' ');
+
+            intrinsic_scene.fx = std::stof(entries[2]);  // fx
+            intrinsic_scene.fy = std::stof(entries[7]);  // fy
+            intrinsic_scene.ox = std::stof(entries[4]);  // ox
+            intrinsic_scene.oy = std::stof(entries[8]);  // oy
+            break;
         }
     }
-
-    intrinsic_vals[0] = std::stof(total[0]);
-    intrinsic_vals[1] = std::stof(total[5]);
-    intrinsic_vals[2] = std::stof(total[2]);
-    intrinsic_vals[3] = std::stof(total[6]);
-    inFile.close();
-    using namespace rapidxml;
-    buf = scene_path + "/calibration.xml";
-    file<> xmlFile(buf.c_str());
-    xml_document<> doc;
-    doc.parse<0>(xmlFile.data());
-    xml_node<> *node = doc.first_node()->first_node()->next_sibling();
-    node = node->first_node("camera_model")->first_node("params");
-
-    vector<string> attrs = split(node->value(), ']');
-    attrs = split(attrs.at(0), ';');
-
-    intrinsic_vals[4] = std::stof(attrs.at(4));
-    intrinsic_vals[5] = std::stof(attrs.at(5));
-    intrinsic_vals[6] = std::stof(attrs.at(6));
 }
 
 // Cleanup arnold meshes
@@ -778,18 +848,25 @@ void SceneManager::remove_bodies_ai()
     }
 }
 
-// Saves image and pose files
-void SceneManager::getFilesInAdirectory(string path, int type)
+// TODO
+/*
+ * This function checks the variance of an image in order to filter out blurry images.
+*/
+float SceneManager::computeVarianceOfLaplacian(const cv::Mat& image) {
+    cv::Mat gray;
+    cv::cvtColor(image, gray, CV_BGR2GRAY);
+    cv::Mat laplacianImage;
+    cv::Laplacian(gray, laplacianImage, CV_64F);
+    cv::Scalar mean, stddev; // 0:1st channel, 1:2nd channel and 2:3rd channel
+    cv::meanStdDev(laplacianImage, mean, stddev, cv::Mat());
+    return stddev.val[0] * stddev.val[0];
+}
+
+// TODO
+void SceneManager::getFilesInAdirectory(string path, float variance_threshold)
 {
-    // Poses or images?
-    if (type == 1)
-    {
-        cameraPoses = std::vector<std::string>();
-    }
-    else
-    {
-        camImages = std::vector<std::string>();
-    }
+    cameraPoses = std::vector<std::string>();
+    camImages = std::vector<std::string>();
 
     DIR *dir;
     struct dirent *ent;
@@ -800,21 +877,19 @@ void SceneManager::getFilesInAdirectory(string path, int type)
         // For each file
         while ((ent = readdir(dir)) != NULL)
         {
-            std::string eName = ent->d_name;
-
             string buf = path + "/" + ent->d_name;
 
-            if (ent->d_name[0] == '.')
-                continue;
+            if(buf.find("color") != std::string::npos){
+                Mat image = cv::imread(buf);
+                float variance = computeVarianceOfLaplacian(image);
+                // skip blurry images
+                if(variance > variance_threshold){
+                    camImages.push_back(buf);
 
-            // Save in vector
-            if (type == 0)
-            {
-                camImages.push_back((std::string)buf);
-            }
-            else
-            {
-                cameraPoses.push_back((std::string)buf);
+                    string cam_file = buf;
+                    cam_file.replace(cam_file.find("color.jpg"), sizeof("color.jpg") - 1, "pose.txt");
+                    cameraPoses.push_back(cam_file);
+                }
             }
         }
         // Finally sort vectors and close dir
@@ -824,21 +899,20 @@ void SceneManager::getFilesInAdirectory(string path, int type)
     }
 }
 
-// Runs the simulation
-void SceneManager::run(int iter)
+// TODO
+bool SceneManager::run(int iter, int max_count)
 {
     // ?
     load_intrinsics();
 
-    // Load poses and images
-    getFilesInAdirectory(scene_path + "/rgbd/pose", 1);
-    getFilesInAdirectory(scene_path + "/rgbd/color", 0);
+    getFilesInAdirectory(scene_path + "/rgbd", 400.f);
+    if(camImages.size() <= 0)
+        return true;
 
-    // Render depth
-    render_scene_depth_imgs();
+    // render_scene_depth_imgs();
+    vector<tuple<cv::Mat, cv::Mat> >  renderings = render_scenes_gl();
 
-    // Run physx simulation
-    for (int count = 0; count < 30; count++)
+    for (int count = 0; count < iter; count++)
     {
         // Create physx representation of scan scene
         draw_scene();
@@ -855,7 +929,8 @@ void SceneManager::run(int iter)
         // For each scene
         for (scene_count = 0; scene_count < cameraPoses.size(); scene_count++)
         {
-            // Render objects depth and calculate depth mask
+            load_cam_mat(intrinsics_render_out.fx, intrinsics_render_out.fy, intrinsics_render_out.ox, intrinsics_render_out.oy);
+
             if (render_bodies_depth() && calculate_mask())
             {
                 // Render object labels (IDs as color?)
@@ -867,23 +942,52 @@ void SceneManager::run(int iter)
 
                 // Read scene color image
                 cvScene = cv::imread(camImages.at(scene_count), cv::IMREAD_COLOR);
-                // Load camera intrinsics (fox, distortion coeffs, etc.)
-                cv::Mat intrinsic = (cv::Mat1d(3, 3) << intrinsic_vals[0], 0, intrinsic_vals[2], 0, intrinsic_vals[1], intrinsic_vals[3], 0, 0, 1);
-                cv::Mat distCoeffs = (cv::Mat1d(1, 5) << intrinsic_vals[4], intrinsic_vals[5], 0, 0, intrinsic_vals[6]);
-                cv::Mat temp = cvScene.clone();
-                // Remove lens distortion
-                cv::undistort(cvScene, temp, intrinsic, distCoeffs);
-                cvScene = temp;
+                cvRend = get<0>(renderings[scene_count]);
+                cv::resize(cvRend, cvRend, cv::Size(cvScene.cols, cvScene.rows));
+
+                //undistort image
+                if(false){
+                    float k1,k2,k3;
+                    cv::Mat intrinsic = (cv::Mat1d(3, 3) << intrinsic_scene.fx, 0, intrinsic_scene.ox, 0, intrinsic_scene.fy, intrinsic_scene.oy, 0, 0, 1);
+                    cv::Mat distCoeffs = (cv::Mat1d(1, 5) << k1, k2, 0, 0, k3);
+                    cv::undistort(cvScene, cvScene, intrinsic, distCoeffs);
+                }
+
+                // For Debugging
+                if(false){
+                    cv::Mat dep_1 = get<1>(renderings[scene_count]);
+
+                    double min;
+                    double max;
+                    cv::minMaxIdx(dep_1, &min, &max);
+                    cv::convertScaleAbs(dep_1, dep_1, 255 / max);
+                    cv::resize(dep_1, dep_1, cv::Size(960, 480));
+                    cv::imshow("rend Dep", dep_1);
+
+                    cv::imshow("rend image", cvRend);
+                    cv::imshow("blend image", cvScene);
+                    cv::waitKey();
+                }
 
                 // Final image blend
                 blend_rgb();
                 start_count++;
             }
+
+            if(start_count >= max_count){
+                destroy_meshes();
+                remove_bodies_ai();
+                curr_objects.clear();
+                ANNOTATIONS_FILE.close();
+                return false;
+            }
         }
-        // Cleanup
+        destroy_meshes();
         remove_bodies_ai();
+        curr_objects.clear();
         ANNOTATIONS_FILE.close();
     }
+    return true;
 }
 
 // New object transform

@@ -29,7 +29,43 @@ namespace n
 extern AtNodeMethods *CustomNullFilterMtd;
 } // namespace n
 
-// Sets up physx for simulating
+
+string SimManager::get_final_path(){
+    return CONFIG_FILE["final_imgs_path"].GetString();
+}
+
+string SimManager::get_temp_path(){
+    return CONFIG_FILE["temp_files_path"].GetString();
+}
+
+SimManager::~SimManager(){
+    // free physics
+    if(gPhysics != nullptr){
+        free(gFoundation);
+        delete gPhysics;
+        delete gDispatcher;
+        free(gCooking);
+        free(gScene);
+        free(gMaterial);
+    }
+
+    // free arnold
+    if(camera != nullptr)
+    {
+        free(camera);
+        free(options);
+        free(driver);
+        delete outputs_array;
+        free(shader_obj_depth);
+        free(shader_obj_depth);
+        free(shader_bck_depth);
+        free(shader_blendBG);
+    }
+
+    if(curr_scene != nullptr)
+        delete curr_scene;
+}
+
 void SimManager::init_physx()
 {
     gAllocator;
@@ -123,55 +159,30 @@ int extractIntegerWords(string str)
 // Loads all required meshes (physx, rendering)
 void SimManager::load_meshes()
 {
-    // Read paths
-    string physx_mesh_path = CONFIG_FILE["physx_objs"].GetString();
-    string ai_mesh_path = CONFIG_FILE["textured_objs"].GetString();
+    string mesh_path = CONFIG_FILE["models"].GetString();
 
     DIR *dir;
-    struct dirent *ent;
-
-    // Load physx meshes
-    if ((dir = opendir(physx_mesh_path.c_str())) != NULL)
+    if ((dir = opendir(mesh_path.c_str())) != NULL)
     {
-        vector<string> files;
-        // For each mesh
-        while ((ent = readdir(dir)) != NULL)
+        for (int i = 0; i < CONFIG_FILE["objs"].Size(); i++) // Uses SizeType instead of size_t
         {
-            if (ent->d_name[0] == '.')
+            string obj_path = mesh_path + "/" + CONFIG_FILE["objs"][i].GetString() + ".obj";
+            ifstream f(obj_path.c_str());
+
+            if(!f.good()){
+                cerr << "Did not find obj " << CONFIG_FILE["objs"][i].GetString() << "... Skipping." << endl;
                 continue;
-            // Create convex mesh manager
-            string eName = ent->d_name;
-            PxConvManager *curr = new PxConvManager(physx_mesh_path + "/" + eName, extractIntegerWords(eName), 0.1, gPhysics, gScene, gCooking, gMaterial);
-            // Load mesh and create physx object
+            }
+
+            cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
+            PxConvManager *curr = new PxConvManager(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat(), gPhysics, gScene, gCooking, gMaterial);
             curr->load_file();
             curr->drawMeshShape();
-            // Save in vector
+            curr->setMetallic(CONFIG_FILE["metallic"][i].GetFloat());
             physx_objs.push_back(curr);
-            files.push_back(eName);
-        }
-        // Finally close dir
-        closedir(dir);
-    }
 
-    // Load rendering meshes
-    if ((dir = opendir(ai_mesh_path.c_str())) != NULL)
-    {
-        vector<string> files;
-        // For each mesh
-        while ((ent = readdir(dir)) != NULL)
-        {
-            string eName = ent->d_name;
-            if (eName[0] == '.' || eName[eName.size() - 1] != 'j')
-                continue;
-            // Create arnold mesh manager
-            AiMeshManager *curr = new AiMeshManager(physx_mesh_path + "/" + eName, extractIntegerWords(eName), 0.1);
-            cout << eName << endl;
-            cout << extractIntegerWords(eName) << endl;
-            // Save in vector
-            sim_objs.push_back(curr);
-            files.push_back(eName);
+            AiMeshManager *ai_mesh_manager = new AiMeshManager(obj_path, i+1, CONFIG_FILE["scale"].GetFloat());
         }
-        // Finally close dir
         closedir(dir);
     }
 }
@@ -208,59 +219,63 @@ int SimManager::run_sim()
 {
     // Fetch 3R scan scenes
     get_scene_folders(CONFIG_FILE["3RScan_path"].GetString());
-    // Create scene manager
-    SceneManager *curr = new SceneManager(gPhysics, gScene, gCooking,
-                                          gFoundation, gMaterial, camera,
-                                          options, driver, outputs_array,
-                                          physx_objs, sim_objs,
-                                          0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
-                                          shader_obj_depth, shader_bck_depth, shader_blendBG);
+    SceneManager curr(gPhysics, gScene, gCooking, gFoundation, gMaterial, camera, options, driver, outputs_array,
+                      physx_objs, sim_objs, 0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
+            shader_obj_depth, shader_bck_depth, shader_blendBG);
 
-   // Create a bunch of lights
-   AtNode *light = AiNode("point_light");
-   AtNode *light1 = AiNode("point_light");
-   AtNode *light2 = AiNode("point_light");
-   AtNode *light3 = AiNode("point_light");
-   AtNode *light4 = AiNode("point_light");
-   AtNode *light5 = AiNode("point_light");
-   AtNode *light6 = AiNode("point_light");
-   AiNodeSetStr(light, "name", "mylight");
- 
-   // Initialize the lights
-   AiNodeSetPnt(light, "position", -1000.f, 100.f, -1000.f);
-   AiNodeSetFlt(light, "intensity", 2.f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light, "radius", 10.f);   // for soft shadows
-   AiNodeSetInt(light, "decay_type", 0);
-   AiNodeSetPnt(light1, "position", -100.f, 100.f, 100.f);
-   AiNodeSetFlt(light1, "intensity", 2.1f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light1, "radius", 10.f);    // for soft shadows
-   AiNodeSetInt(light1, "decay_type", 0);
-   AiNodeSetPnt(light2, "position", 1000.f, 100.f, -1000.f);
-   AiNodeSetFlt(light2, "intensity", 1.9f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light2, "radius", 10.f);    // for soft shadows
-   AiNodeSetInt(light2, "decay_type", 0);
-   AiNodeSetPnt(light3, "position", 1000.f, 100.f, 1000.f);
-   AiNodeSetFlt(light3, "intensity", 2.f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light3, "radius", 10.f);   // for soft shadows
-   AiNodeSetInt(light3, "decay_type", 0);
-   AiNodeSetPnt(light4, "position", 1000.f, 1000.f, 1000.f);
-   AiNodeSetFlt(light4, "intensity", 2.f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light4, "radius", 10.f);   // for soft shadows
-   AiNodeSetInt(light4, "decay_type", 0);
-   AiNodeSetPnt(light5, "position", 1000.f, 1000.f, -1000.f);
-   AiNodeSetFlt(light5, "intensity", 2.f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light5, "radius", 10.f);   // for soft shadows
-   AiNodeSetInt(light5, "decay_type", 0);
-   AiNodeSetPnt(light6, "position", -1000.f, 1000.f, 1000.f);
-   AiNodeSetFlt(light6, "intensity", 2.f); // alternatively, use 'exposure'
-   AiNodeSetFlt(light6, "radius", 10.f);   // for soft shadows
-   AiNodeSetInt(light6, "decay_type", 0);
+    AtNode *light  = AiNode("point_light");
+    AtNode *light1 = AiNode("point_light");
+    AtNode *light2 = AiNode("point_light");
+    AtNode *light3 = AiNode("point_light");
 
-    // Simulate and render for each 3R scan
+    AtNode *light4 = AiNode("point_light");
+
+    AtNode *light5 = AiNode("point_light");
+
+    AtNode *light6 = AiNode("point_light");
+    AiNodeSetStr(light, "name", "mylight");
+    // position the light (alternatively use 'matrix')
+
+    AiNodeSetPnt(light, "position", -1000.f, 100.f, -1000.f);
+    AiNodeSetFlt(light, "intensity", 2.f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light, "radius", 10.f);   // for soft shadows
+    AiNodeSetInt(light, "decay_type", 0);
+    AiNodeSetPnt(light1, "position", -100.f, 100.f, 100.f);
+    AiNodeSetFlt(light1, "intensity", 2.1f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light1, "radius", 10.f);    // for soft shadows
+    AiNodeSetInt(light1, "decay_type", 0);
+    AiNodeSetPnt(light2, "position", 1000.f, 100.f, -1000.f);
+    AiNodeSetFlt(light2, "intensity", 1.9f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light2, "radius", 10.f);    // for soft shadows
+    AiNodeSetInt(light2, "decay_type", 0);
+    AiNodeSetPnt(light3, "position", 1000.f, 100.f, 1000.f);
+    AiNodeSetFlt(light3, "intensity", 2.f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light3, "radius", 10.f);   // for soft shadows
+    AiNodeSetInt(light3, "decay_type", 0);
+    AiNodeSetPnt(light4, "position", 1000.f, 1000.f, 1000.f);
+    AiNodeSetFlt(light4, "intensity", 2.f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light4, "radius", 10.f);   // for soft shadows
+    AiNodeSetInt(light4, "decay_type", 0);
+    AiNodeSetPnt(light5, "position", 1000.f, 1000.f, -1000.f);
+    AiNodeSetFlt(light5, "intensity", 2.f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light5, "radius", 10.f);   // for soft shadows
+    AiNodeSetInt(light5, "decay_type", 0);
+    AiNodeSetPnt(light6, "position", -1000.f, 1000.f, 1000.f);
+    AiNodeSetFlt(light6, "intensity", 2.f); // alternatively, use 'exposure'
+    AiNodeSetFlt(light6, "radius", 10.f);   // for soft shadows
+    AiNodeSetInt(light6, "decay_type", 0);
+
+    int max_count = CONFIG_FILE["max_images"].GetInt();
+    int iter_per_scene = CONFIG_FILE["iter_per_scene"].GetInt();
+
+    //for(int i = 100; i < scene_folders.size(); i++)
+    //{
+    //    string folder = scene_folders[i];
     for (string folder : scene_folders)
     {
-        curr->set_scene_path(folder);
-        int iter_per_scene = CONFIG_FILE["iter_per_scene"].GetInt();
-        curr->run(iter_per_scene);
+        curr.set_scene_path(folder);
+        bool count_samples = curr.run(iter_per_scene, max_count);
+        if(!count_samples)
+            break;
     }
 }

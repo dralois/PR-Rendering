@@ -17,7 +17,7 @@ FIND_PATH(AI_INCLUDE_DIR
     /usr/include/
     /usr/local/include/ai/
     /usr/local/include/
-    ${CMAKE_SOURCE_DIR}/dependencies/arnold/include/
+    ${CMAKE_SOURCE_DIR}/dependencies/extra/arnold/
 )
 
 FIND_LIBRARY(AI_LIBRARY
@@ -27,7 +27,7 @@ FIND_LIBRARY(AI_LIBRARY
     /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/bin
     /usr/local/lib/
     /usr/lib/
-    ${CMAKE_SOURCE_DIR}/dependencies/arnold/lib/
+    ${CMAKE_SOURCE_DIR}/dependencies/lib/
 )
 
 INCLUDE(FindPackageHandleStandardArgs)

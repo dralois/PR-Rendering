@@ -4,7 +4,6 @@
  * 
  * Author: Wessam
  */
-#define NDEBUG
 
 #include <vector>
 #include <string>
@@ -101,12 +100,14 @@ class PxConvManager : public PxMeshManager
 {
 private:
     PxConvexMesh *convexMesh;
-
+    float metallic = 0.1;
 public:
     ~PxConvManager();
     using PxMeshManager::PxMeshManager;
     bool drawMeshShape();
     PxRigidDynamic *generateObj(vector<float> &pos, vector<float> &quat);
+    inline void setMetallic(float metallic_){metallic = metallic_;}
+    inline float getMetallic(){return metallic;}
 };
 
 /*

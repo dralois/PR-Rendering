@@ -207,13 +207,10 @@ PxRigidDynamic *PxMeshManager::generateObj(vector<float> &pos, vector<float> &qu
 bool PxTriManager::drawMeshShape()
 {
 
-  // Set as physx types
+    // Set as physx types
     setVertsAndIndices();
     PxVec3 *pVerts = getVerts();
     PxU32 *pIndices = getIndices();
-
-    cout << indices.size() << endl;
-    cout << vertices.size() << endl;
 
     // Create triangle mesh object
     PxTriangleMeshDesc triangleDesc;
@@ -299,7 +296,7 @@ PxRigidDynamic *PxConvManager::generateObj(vector<float> &pos, vector<float> &qu
 {
     // Create and add rigidbody to scene
     PxRigidDynamic *body = PxMeshManager::generateObj(pos, quat);
-    PxRigidBodyExt::updateMassAndInertia(*body, 100.0f);
+    PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
     body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
     gScene->addActor(*body);
     PxTransform tempTrans = body->getGlobalPose();

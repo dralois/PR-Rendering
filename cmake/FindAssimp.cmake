@@ -16,9 +16,7 @@ FIND_PATH(ASSIMP_INCLUDE_DIR
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/dependencies/assimp/include
-    ${PROJECT_SOURCE_DIR}/dependencies/assimp/include
+    ${PROJECT_SOURCE_DIR}/dependencies/include/assimp
 )
 
 FIND_LIBRARY(ASSIMP_LIBRARY
@@ -30,9 +28,7 @@ FIND_LIBRARY(ASSIMP_LIBRARY
     /usr/lib
     /usr/local/lib
     /opt/local/lib
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/dependencies/assimp/lib
-    ${PROJECT_SOURCE_DIR}/dependencies/assimp/lib
+    ${PROJECT_SOURCE_DIR}/dependencies/lib
 )
 
 INCLUDE(FindPackageHandleStandardArgs)

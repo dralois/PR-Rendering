@@ -17,9 +17,7 @@ FIND_PATH( RAPIDJSON_INCLUDE_DIR
     /usr/include
     /usr/local/include
     /opt/local/include
-    ${CMAKE_SOURCE_DIR}/includes
-    ${CMAKE_SOURCE_DIR}/dependencies/rapidjson/include
-    ${PROJECT_SOURCE_DIR}/dependencies/rapidjson/include
+    ${PROJECT_SOURCE_DIR}/dependencies/include/rapidjson
     PATH_SUFFIXES
     include
 )

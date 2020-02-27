@@ -10,14 +10,18 @@
 #include <rapidjson/filereadstream.h>
 
 #include "mesh_managers.h"
+#include "../render/include/render.h"
 
 using namespace cv;
 using namespace Eigen;
 
-/*
-* Annotation struct for objects.
-* Used to write out information about objects.
-*/
+struct Camera{
+    float fx;
+    float fy;
+    float ox;
+    float oy;
+};
+
 struct BodyAnnotation
 {
     int id;
@@ -36,6 +40,7 @@ struct BodyAnnotation
 class SceneManager
 {
 private:
+    Render *render;
     PxPhysics *gPhysics;
     PxScene *gScene;
     PxCooking *gCooking;
@@ -59,10 +64,11 @@ private:
     int obj_per_sim;
     string scene_path;
 
-    Mat cvMask, cvScene, cvSceneD, cvBodiesS, cvBodiesD;
+    Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
     Matrix4f camMat;
     Vector3f camPos;
-    float intrinsic_vals[7];
+
+    Camera intrinsic_scene, intrinsics_render_out;
 
     class ObjectInfo;
     vector<ObjectInfo *> curr_objects;
@@ -82,7 +88,9 @@ private:
     void fetch_results();
 
     bool checkIfCenterOnImage(ObjectInfo *);
+    float computeVarianceOfLaplacian(const cv::Mat &image);
     void render_scene_depth_imgs();
+    vector<tuple<cv::Mat, cv::Mat> > render_scenes_gl();
     bool render_bodies_depth();
     // returns a bool stating if the final image should be rendered
     // or no depending on the visible parts of objects and distance
@@ -93,13 +101,13 @@ private:
     void blend_seg();
     void blend_rgb();
     void set_cam_mat(string path);
-    void load_cam_mat();
+    void load_cam_mat(float fx, float fy, float ox, float oy);
     void load_intrinsics();
     void render_image();
     void remove_bodies_ai();
-    void getFilesInAdirectory(string, int);
+    void getFilesInAdirectory(string, float variance_threshold);
 
-    void setAnnPose(BodyAnnotation *ann, Vector3f *pos, Quaterniond *q);
+    void setAnnPose(BodyAnnotation &ann, Vector3f *pos, Quaterniond *q);
     void set_annotations(Mat seg, Mat segMasked);
 
 public:
@@ -109,8 +117,9 @@ public:
                  vector<PxConvManager *> physx_objs, vector<AiMeshManager *> sim_objs,
                  int start_count, int obj_per_sim, rapidjson::Document *CONFIG_FILE,
                  AtNode *shader_obj_depth, AtNode *shader_bck_depth, AtNode *shader_blendBG);
+    ~SceneManager();
     void set_scene_path(string);
-    void run(int iter);
+    bool run(int iter, int max_count);
 };
 
 /*

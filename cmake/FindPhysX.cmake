@@ -18,7 +18,7 @@ FIND_PATH(PhysX_INCLUDE_DIR
     HINTS
     ${PHYSX_HOME}
     $ENV{PHYSX_HOME}
-    ${CMAKE_SOURCE_DIR}/dependencies/physx/
+    ${CMAKE_SOURCE_DIR}/dependencies/extra/physx/
     /home/fabi/Documents/PhysX-4.0.0/physx/
 )
 
@@ -31,8 +31,8 @@ FIND_PATH(PXShared_INCLUDE_DIR
     HINTS
     ${PHYSX_HOME}
     $ENV{PHYSX_HOME}
-    ${CMAKE_SOURCE_DIR}/dependencies/pxshared/
-    /home/fabi/Documents/PhysX-4.0.0/pxshared/
+    ${CMAKE_SOURCE_DIR}/dependencies/extra/pxshared/foundation/
+    /home/fabi/Documents/PhysX-4.0.0/pxshared/foundation/
 )
 
 IF (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -68,7 +68,8 @@ FIND_LIBRARY(PhysX_LIBRARY_RELEASE
     lib
     Lib/${LIBFOLDERSUFFIX}
     HINTS
-    ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/release/
+    ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/release/
+    /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/release/
 )
 FIND_LIBRARY(PhysX_LIBRARY_PROFILE
     NAMES
@@ -78,7 +79,8 @@ FIND_LIBRARY(PhysX_LIBRARY_PROFILE
     lib64
     Lib/${LIBFOLDERSUFFIX}
     HINTS
-    ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/profile/
+    ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/profile/
+    /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/profile/
 )
 FIND_LIBRARY(PhysX_LIBRARY_DEBUG
     NAMES
@@ -88,7 +90,8 @@ FIND_LIBRARY(PhysX_LIBRARY_DEBUG
     lib64
     Lib/${LIBFOLDERSUFFIX}
     HINTS
-    ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/debug/
+    ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/debug/
+    /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/debug/
 )
 
 SET(PhysX_LIBRARIES debug ${PhysX_LIBRARY_DEBUG})
@@ -114,7 +117,8 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         lib64
         Lib/${LIBFOLDERSUFFIX}
         HINTS
-        ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/debug/
+        ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/debug/
+        /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/debug/
     )
     IF (PhysX_LIBRARY_COMPONENT_${component}_DEBUG)
         SET(PhysX_LIBRARIES ${PhysX_LIBRARIES} debug "${PhysX_LIBRARY_COMPONENT_${component}_DEBUG}")
@@ -133,7 +137,8 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         lib64
         Lib/${LIBFOLDERSUFFIX}
         HINTS
-        ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/profile/
+        ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/profile/
+        /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/profile/
     )
 
     FIND_LIBRARY(PhysX_LIBRARY_COMPONENT_${component}_RELEASE
@@ -149,7 +154,8 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         lib64
         Lib/${LIBFOLDERSUFFIX}
         HINTS
-        ${CMAKE_SOURCE_DIR}/dependencies/physx/lib/${LIBFOLDER}/release/
+        ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/release/
+        /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/release/
     )
 
     MARK_AS_ADVANCED(PhysX_LIBRARY_COMPONENT_${component}_DEBUG PhysX_LIBRARY_COMPONENT_${component}_PROFILE PhysX_LIBRARY_COMPONENT_${component}_RELEASE)
