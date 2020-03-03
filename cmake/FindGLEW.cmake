@@ -1,49 +1,63 @@
+# - Try to find GLEW
+# Once done, this will define
 #
-# Try to find GLEW library and include path.
-# Once done this will define
-#
-# GLEW_FOUND
-# GLEW_INCLUDE_PATH
-# GLEW_LIBRARY
-# 
+# GLEW_FOUND        - system has GLEW
+# GLEW_INCLUDE_DIRS - the GLEW include directories
+# GLEW_LIBRARIES    - link these to use GLEW
+
+IF(GLEW_INCLUDE_DIR)
+    SET(GLEW_FIND_QUIETLY TRUE)
+ENDIF(GLEW_INCLUDE_DIR)
 
 IF (WIN32)
-	FIND_PATH( GLEW_INCLUDE_PATH GL/glew.h
-		$ENV{PROGRAMFILES}/GLEW/include
-		${PROJECT_SOURCE_DIR}/src/nvgl/glew/include
-		${PROJECT_SOURCE_DIR}/ThirdParty/include
-		DOC "The directory where GL/glew.h resides")
-	FIND_LIBRARY( GLEW_LIBRARY
-		NAMES glew GLEW glew32 glew32s
-		PATHS
-		$ENV{PROGRAMFILES}/GLEW/lib
-		${PROJECT_SOURCE_DIR}/src/nvgl/glew/bin
-		${PROJECT_SOURCE_DIR}/src/nvgl/glew/lib
-		${PROJECT_SOURCE_DIR}/ThirdParty/lib64
-		DOC "The GLEW library")
+    FIND_PATH(GLEW_INCLUDE_DIR
+            NAMES
+            GL/glew.h
+            HINTS
+            $ENV{PROGRAMFILES}/GLEW/include
+            ${PROJECT_SOURCE_DIR}/dependencies/include/GLEW
+    )
+    FIND_LIBRARY(GLEW_LIBRARY
+                NAMES
+                glew
+                GLEW
+                glew32
+                glew32s
+                PATHS
+                $ENV{PROGRAMFILES}/GLEW/lib
+                ${PROJECT_SOURCE_DIR}/dependencies/lib
+    )
 ELSE (WIN32)
-	FIND_PATH( GLEW_INCLUDE_PATH GL/glew.h
-		/usr/include
-		/usr/local/include
-		/sw/include
-		/opt/local/include
-		DOC "The directory where GL/glew.h resides")
-	FIND_LIBRARY( GLEW_LIBRARY
-		NAMES GLEW glew
-		PATHS
-		/usr/lib64
-		/usr/lib
-		/usr/local/lib64
-		/usr/local/lib
-		/sw/lib
-		/opt/local/lib
-		DOC "The GLEW library")
+    FIND_PATH(GLEW_INCLUDE_DIR
+            NAMES
+            GL/glew.h
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/local/include
+            /opt/local/include
+    )
+    FIND_LIBRARY(GLEW_LIBRARY
+                NAMES
+                GLEW
+                glew
+                PATHS
+                /sw/lib
+                /usr/lib
+                /usr/lib64
+                /opt/local/lib
+                /usr/local/lib
+                /usr/local/lib64
+    )
 ENDIF (WIN32)
 
-IF (GLEW_INCLUDE_PATH)
-	SET( GLEW_FOUND 1 CACHE STRING "Set to 1 if GLEW is found, 0 otherwise")
-ELSE (GLEW_INCLUDE_PATH)
-	SET( GLEW_FOUND 0 CACHE STRING "Set to 1 if GLEW is found, 0 otherwise")
-ENDIF (GLEW_INCLUDE_PATH)
+INCLUDE(FindPackageHandleStandardArgs)
 
-MARK_AS_ADVANCED( GLEW_FOUND )
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(glew DEFAULT_MSG GLEW_INCLUDE_DIR GLEW_LIBRARY)
+MARK_AS_ADVANCED(GLEW_INCLUDE_DIR GLEW_LIBRARY)
+
+IF(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)
+    SET(GLEW_FOUND TRUE)
+    SET(GLEW_LIBRARIES ${GLEW_LIBRARY})
+    SET(GLEW_INCLUDE_DIRS ${GLEW_INCLUDE_DIR})
+ENDIF(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)

@@ -185,7 +185,7 @@ PxMeshManager::~PxMeshManager()
 }
 
 // Cleanup rigidbody
-bool PxMeshManager::destroyObject(PxRigidDynamic *curr)
+void PxMeshManager::destroyObject(PxRigidDynamic *curr)
 {
     curr->release();
 }

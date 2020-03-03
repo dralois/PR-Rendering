@@ -10,7 +10,7 @@
 #pragma once
 
 #include "types.h"
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 
 namespace C3DV_camera {
     

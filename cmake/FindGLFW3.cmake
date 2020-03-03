@@ -1,67 +1,70 @@
-# Locate the glfw library
-# This module defines the following variables:
-# GLFW_LIBRARY, the name of the library;
-# GLFW_INCLUDE_DIR, where to find glfw include files.
-# GLFW_FOUND, true if both the GLFW_LIBRARY and GLFW_INCLUDE_DIR have been found.
+# - Try to find GLFW
+# Once done, this will define
 #
-# To help locate the library and include file, you could define an environment variable called
-# GLFW_ROOT which points to the root of the glfw library installation. This is pretty useful
-# on a Windows platform.
-#
-#
-# Usage example to compile an "executable" target to the glfw library:
-#
-# FIND_PACKAGE (glfw REQUIRED)
-# INCLUDE_DIRECTORIES (${GLFW_INCLUDE_DIR})
-# ADD_EXECUTABLE (executable ${EXECUTABLE_SRCS})
-# TARGET_LINK_LIBRARIES (executable ${GLFW_LIBRARY})
-#
-# TODO:
-# Allow the user to select to link to a shared library or to a static library.
+# GLFW_FOUND        - system has GLFW
+# GLFW_INCLUDE_DIRS - the GLFW include directories
+# GLFW_LIBRARIES    - link these to use GLFW3
 
-#Search for the include file...
-FIND_PATH(GLFW_INCLUDE_DIRS GLFW/glfw3.h DOC "Path to GLFW include directory."
-  HINTS
-  $ENV{GLFW_ROOT}
-  PATH_SUFFIX include #For finding the include file under the root of the glfw expanded archive, typically on Windows.
-  PATHS
-  /usr/include/
-  /usr/local/include/
-  # By default headers are under GLFW subfolder
-  /usr/include/GLFW
-  /usr/local/include/GLFW
-  ${PROJECT_SOURCE_DIR}/ThirdParty/include/
-  ${GLFW_ROOT_DIR}/include/ # added by ptr
-)
+IF(GLFW_INCLUDE_DIR)
+    SET(GLFW_FIND_QUIETLY TRUE)
+ENDIF(GLFW_INCLUDE_DIR)
 
 SET(GLFW_LIB_NAMES libglfw3.a glfw3 glfw GLFW3.lib)
 
-FIND_LIBRARY(GLFW_LIBRARIES DOC "Absolute path to GLFW library."
-  NAMES ${GLFW_LIB_NAMES}
-  HINTS
-  $ENV{GLFW_ROOT}
-  PATH_SUFFIXES lib/win32 #For finding the library file under the root of the glfw expanded archive, typically on Windows.
-  PATHS
-  /usr/local/lib
-  /usr/lib
-  ${PROJECT_SOURCE_DIR}/ThirdParty/lib64
-  ${GLFW_ROOT_DIR}/lib-msvc100/release # added by ptr
-)
-IF( APPLE )
-    find_library(IOKIT NAMES IOKit)
-    #find_library(OpenGL NAMES OpenGL)
-    find_library(COREVIDEO NAMES CoreVideo)
-    find_library(COCOA NAMES Cocoa)
-    SET(GLFW_LIBRARIES ${GLFW_LIBRARIES} ${IOKIT} ${COREVIDEO} ${COCOA})
-endif( APPLE )
+IF(WIN32)
+    FIND_PATH(GLFW_INCLUDE_DIR
+            NAMES
+            glfw3.h
+            HINTS
+            $ENV{GLFW_ROOT}/include
+            $ENV{PROGRAMFILES}/GLFW/include
+            ${PROJECT_SOURCE_DIR}/dependencies/include/GLFW
+    )
+    FIND_LIBRARY(GLFW_LIBRARY
+                NAMES
+                ${GLFW_LIB_NAMES}
+                HINTS
+                $ENV{GLFW_ROOT}/lib/lib-vc2017
+                $ENV{GLFW_ROOT}/lib/lib-vc2019
+                $ENV{PROGRAMFILES}/GLFW/lib/lib-vc2017
+                $ENV{PROGRAMFILES}/GLFW/lib/lib-vc2019
+                ${PROJECT_SOURCE_DIR}/dependencies/lib/lib-vc2017
+                ${PROJECT_SOURCE_DIR}/dependencies/lib/lib-vc2019
+    )
+ELSE(WIN32)
+    FIND_PATH(GLFW_INCLUDE_DIR
+            NAMES
+            GLFW/glfw3.h
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/include/GLFW
+            /opt/local/include
+            /usr/local/include
+            /usr/local/include/GLFW
+            $ENV{GLFW_ROOT}/include
+    )
+    FIND_LIBRARY(GLFW_LIBRARY
+                NAMES
+                ${GLFW_LIB_NAMES}
+                HINTS
+                /sw/lib
+                /usr/lib
+                /usr/lib64
+                /opt/local/lib
+                /usr/local/lib
+                /usr/local/lib64
+                $ENV{GLFW_ROOT}/lib/lib-mingw-w64
+    )
+ENDIF(WIN32)
 
-IF(GLFW_LIBRARIES AND GLFW_INCLUDE_DIRS)
-  SET(GLFW_FOUND TRUE)
-  message(STATUS "Found GLFW3: ${GLFW_LIBRARIES}")
-ELSE()
-  message(STATUS "GLFW3 NOT found!")
-ENDIF(GLFW_LIBRARIES AND GLFW_INCLUDE_DIRS)
+INCLUDE(FindPackageHandleStandardArgs)
 
-#if(GLFW_FOUND)
-#  MARK_AS_ADVANCED(GLFW_INCLUDE_DIRS GLFW_LIBRARIES)
-#endif(GLFW_FOUND)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(GLFW DEFAULT_MSG GLFW_INCLUDE_DIR GLFW_LIBRARY)
+MARK_AS_ADVANCED(GLFW_INCLUDE_DIR GLFW_LIBRARY)
+
+IF(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
+    SET(GLFW_FOUND TRUE)
+    SET(GLFW_LIBRARIES ${GLFW_LIBRARY})
+    SET(GLFW_INCLUDE_DIRS ${GLFW_INCLUDE_DIR})
+ENDIF(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)

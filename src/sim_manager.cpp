@@ -278,4 +278,6 @@ int SimManager::run_sim()
         if(!count_samples)
             break;
     }
+
+    return 0;
 }

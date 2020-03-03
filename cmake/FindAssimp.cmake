@@ -1,43 +1,61 @@
 # - Try to find Assimp
 # Once done, this will define
 #
-# ASSIMP_FOUND       - system has Assimp
-# ASSIMP_INCLUDE_DIRS - the Assimp include directories
-# ASSIMP_LIBRARIES   - link these to use Assimp
+# Assimp_FOUND        - system has Assimp
+# Assimp_INCLUDE_DIRS - the Assimp include directories
+# Assimp_LIBRARIES    - link these to use Assimp
 
-IF(ASSIMP_INCLUDE_DIR)
-  SET(ASSIMP_FIND_QUIETLY TRUE)
-ENDIF(ASSIMP_INCLUDE_DIR)
+IF(Assimp_INCLUDE_DIR)
+    SET(Assimp_FIND_QUIETLY TRUE)
+ENDIF(Assimp_INCLUDE_DIR)
 
-FIND_PATH(ASSIMP_INCLUDE_DIR
-    NAMES
-    mesh.h
-    HINTS
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    ${PROJECT_SOURCE_DIR}/dependencies/include/assimp
-)
-
-FIND_LIBRARY(ASSIMP_LIBRARY
-    NAMES
-    assimp
-    assimp-vc140-mt
-    HINTS
-    /usr/lib64
-    /usr/lib
-    /usr/local/lib
-    /opt/local/lib
-    ${PROJECT_SOURCE_DIR}/dependencies/lib
-)
+IF(WIN32)
+    FIND_PATH(Assimp_INCLUDE_DIR
+            NAMES
+            mesh.h
+            HINTS
+            $ENV{PROGRAMFILES}/Assimp/include
+            ${PROJECT_SOURCE_DIR}/dependencies/include/Assimp
+    )
+    FIND_LIBRARY(Assimp_LIBRARY
+                NAMES
+                Assimp
+                Assimp-vc120-mt
+                Assimp-vc140-mt
+                HINTS
+                $ENV{PROGRAMFILES}/Assimp/lib
+                ${PROJECT_SOURCE_DIR}/dependencies/lib
+    )
+ELSE(WIN32)
+    FIND_PATH(Assimp_INCLUDE_DIR
+            NAMES
+            mesh.h
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/local/include
+            /opt/local/include
+    )
+    FIND_LIBRARY(Assimp_LIBRARY
+                NAMES
+                Assimp
+                HINTS
+                /sw/lib
+                /usr/lib
+                /usr/lib64
+                /opt/local/lib
+                /usr/local/lib
+                /usr/local/lib64
+    )
+ENDIF(WIN32)
 
 INCLUDE(FindPackageHandleStandardArgs)
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(assimp DEFAULT_MSG ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY)
-MARK_AS_ADVANCED(ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Assimp DEFAULT_MSG Assimp_INCLUDE_DIR Assimp_LIBRARY)
+MARK_AS_ADVANCED(Assimp_INCLUDE_DIR Assimp_LIBRARY)
 
-IF(ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARY)
-    SET(ASSIMP_FOUND TRUE)
-    SET(ASSIMP_LIBRARIES ${ASSIMP_LIBRARY})
-    SET(ASSIMP_INCLUDE_DIRS ${ASSIMP_INCLUDE_DIR})
-ENDIF(ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARY)
+IF(Assimp_INCLUDE_DIR AND Assimp_LIBRARY)
+    SET(Assimp_FOUND TRUE)
+    SET(Assimp_LIBRARIES ${Assimp_LIBRARY})
+    SET(Assimp_INCLUDE_DIRS ${Assimp_INCLUDE_DIR})
+ENDIF(Assimp_INCLUDE_DIR AND Assimp_LIBRARY)

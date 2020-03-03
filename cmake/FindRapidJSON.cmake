@@ -8,19 +8,29 @@ IF(RAPIDJSON_INCLUDE_DIR)
     SET(RAPIDJSON_FIND_QUIETLY TRUE)
 ENDIF(RAPIDJSON_INCLUDE_DIR)
 
-FIND_PATH( RAPIDJSON_INCLUDE_DIR
-    NAMES
-    rapidjson.h
-    reader.h
-    writer.h
-    HINTS
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    ${PROJECT_SOURCE_DIR}/dependencies/include/rapidjson
-    PATH_SUFFIXES
-    include
-)
+IF(WIN32)
+    FIND_PATH(RAPIDJSON_INCLUDE_DIR
+            NAMES
+            rapidjson.h
+            reader.h
+            writer.h
+            HINTS
+            $ENV{PROGRAMFILES}/rapidjson/include
+            ${PROJECT_SOURCE_DIR}/dependencies/include/rapidjson
+    )
+ELSE(WIN32)
+    FIND_PATH(RAPIDJSON_INCLUDE_DIR
+            NAMES
+            rapidjson.h
+            reader.h
+            writer.h
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/local/include
+            /opt/local/include
+    )
+ENDIF(WIN32)
 
 INCLUDE(FindPackageHandleStandardArgs)
 

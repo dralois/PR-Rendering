@@ -18,7 +18,7 @@ FIND_PATH(PhysX_INCLUDE_DIR
     HINTS
     ${PHYSX_HOME}
     $ENV{PHYSX_HOME}
-    ${CMAKE_SOURCE_DIR}/dependencies/extra/physx/
+    ${PROJECT_SOURCE_DIR}/dependencies/extra/physx/
     /home/fabi/Documents/PhysX-4.0.0/physx/
 )
 
@@ -31,7 +31,7 @@ FIND_PATH(PXShared_INCLUDE_DIR
     HINTS
     ${PHYSX_HOME}
     $ENV{PHYSX_HOME}
-    ${CMAKE_SOURCE_DIR}/dependencies/extra/pxshared/foundation/
+    ${PROJECT_SOURCE_DIR}/dependencies/extra/pxshared/foundation/
     /home/fabi/Documents/PhysX-4.0.0/pxshared/foundation/
 )
 
@@ -63,10 +63,6 @@ ENDIF()
 FIND_LIBRARY(PhysX_LIBRARY_RELEASE
     NAMES
     PhysX${PHYSXPREFIX}
-    PATH_SUFFIXES
-    lib64
-    lib
-    Lib/${LIBFOLDERSUFFIX}
     HINTS
     ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/release/
     /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/release/
@@ -74,10 +70,6 @@ FIND_LIBRARY(PhysX_LIBRARY_RELEASE
 FIND_LIBRARY(PhysX_LIBRARY_PROFILE
     NAMES
     PhysX${PHYSXPREFIX}
-    PATH_SUFFIXES
-    lib
-    lib64
-    Lib/${LIBFOLDERSUFFIX}
     HINTS
     ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/profile/
     /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/profile/
@@ -85,10 +77,6 @@ FIND_LIBRARY(PhysX_LIBRARY_PROFILE
 FIND_LIBRARY(PhysX_LIBRARY_DEBUG
     NAMES
     PhysX${PHYSXPREFIX}
-    PATH_SUFFIXES
-    lib
-    lib64
-    Lib/${LIBFOLDERSUFFIX}
     HINTS
     ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/debug/
     /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/debug/
@@ -112,10 +100,6 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         PhysX${component}${PHYSXPREFIX}
         ${component}
         ${component}${PHYSXPREFIX}
-        PATH_SUFFIXES
-        lib
-        lib64
-        Lib/${LIBFOLDERSUFFIX}
         HINTS
         ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/debug/
         /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/debug/
@@ -132,10 +116,6 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         PhysX${component}${PHYSXPREFIX}
         ${component}
         ${component}${PHYSXPREFIX}
-        PATH_SUFFIXES
-        lib
-        lib64
-        Lib/${LIBFOLDERSUFFIX}
         HINTS
         ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/profile/
         /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/profile/
@@ -149,10 +129,6 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
         PhysX${component}${PHYSXPREFIX}
         ${component}
         ${component}${PHYSXPREFIX}
-        PATH_SUFFIXES
-        lib
-        lib64
-        Lib/${LIBFOLDERSUFFIX}
         HINTS
         ${CMAKE_SOURCE_DIR}/dependencies/lib/${LIBFOLDER}/release/
         /home/fabi/Documents/PhysX-4.0.0/physx/bin/${LIBFOLDER}/release/
@@ -174,8 +150,8 @@ FOREACH(component ${PhysX_FIND_COMPONENTS})
 ENDFOREACH()
 
 INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(PhysX DEFAULT_MSG PhysX_INCLUDE_DIR PXShared_INCLUDE_DIR PhysX_LIBRARY_DEBUG PhysX_LIBRARY_RELEASE ${NECESSARY_COMPONENTS})
 
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(PhysX DEFAULT_MSG PhysX_INCLUDE_DIR PXShared_INCLUDE_DIR PhysX_LIBRARY_DEBUG PhysX_LIBRARY_RELEASE ${NECESSARY_COMPONENTS})
 MARK_AS_ADVANCED(PhysX_INCLUDE_DIR PXShared_INCLUDE_DIR PhysX_LIBRARY_DIR PhysX_LIBRARY_DEBUG PhysX_LIBRARY_RELEASE PhysX_LIBRARY_PROFILE)
 
 IF(PhysX_INCLUDE_DIR AND PhysX_LIBRARIES)

@@ -284,7 +284,7 @@ std::vector<std::string> split(std::string str, char delimiter)
 // TODO
 void setBBox(BodyAnnotation &ann, cv::Mat mask)
 {
-    Rect Min_Rect = cv::boundingRect(mask);
+    cv::Rect Min_Rect = cv::boundingRect(mask);
     Min_Rect.x += Min_Rect.width / 2.f;
     Min_Rect.y += Min_Rect.height / 2.f;
     ann.bbox.push_back(Min_Rect.x);
@@ -325,7 +325,7 @@ void SceneManager::setAnnPose(BodyAnnotation &ann, Vector3f *pos, Quaterniond *q
 
 // TODO
 // Write out annotation file for rendered objects
-void SceneManager::set_annotations(Mat seg, Mat segMasked)
+void SceneManager::set_annotations(cv::Mat seg, cv::Mat segMasked)
 {
     // For each mesh
     for (auto currBody : curr_objects)
@@ -529,7 +529,7 @@ bool SceneManager::calculate_mask()
     }
     cvMask = cvBodiesD <= cvSceneD; // 2,5cm buffer
 
-    Scalar maskMean = cv::mean(cvMask);
+    cv::Scalar maskMean = cv::mean(cvMask);
     return maskMean[0] >= 1.f;
 }
 
@@ -854,7 +854,7 @@ void SceneManager::remove_bodies_ai()
 */
 float SceneManager::computeVarianceOfLaplacian(const cv::Mat& image) {
     cv::Mat gray;
-    cv::cvtColor(image, gray, CV_BGR2GRAY);
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
     cv::Mat laplacianImage;
     cv::Laplacian(gray, laplacianImage, CV_64F);
     cv::Scalar mean, stddev; // 0:1st channel, 1:2nd channel and 2:3rd channel
@@ -880,7 +880,7 @@ void SceneManager::getFilesInAdirectory(string path, float variance_threshold)
             string buf = path + "/" + ent->d_name;
 
             if(buf.find("color") != std::string::npos){
-                Mat image = cv::imread(buf);
+                cv::Mat image = cv::imread(buf);
                 float variance = computeVarianceOfLaplacian(image);
                 // skip blurry images
                 if(variance > variance_threshold){

@@ -74,7 +74,7 @@ public:
     PxMeshManager(string path, int _id, float scale, PxPhysics *gPhysics, PxScene *gScene, PxCooking *gCooking, PxMaterial *gMaterial);
     bool drawMeshShape();
     PxRigidDynamic *generateObj(vector<float> &pos, vector<float> &quat);
-    static bool destroyObject(PxRigidDynamic *);
+    static void destroyObject(PxRigidDynamic *);
     ~PxMeshManager();
 };
 

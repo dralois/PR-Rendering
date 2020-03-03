@@ -6,7 +6,7 @@
 
 // GLFW
 #include <GLFW/glfw3.h>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 #include "shader.h"
 #include "data.h"

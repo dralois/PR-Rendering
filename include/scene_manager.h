@@ -12,7 +12,6 @@
 #include "mesh_managers.h"
 #include "../render/include/render.h"
 
-using namespace cv;
 using namespace Eigen;
 
 struct Camera{
@@ -64,7 +63,7 @@ private:
     int obj_per_sim;
     string scene_path;
 
-    Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
+    cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
     Matrix4f camMat;
     Vector3f camPos;
 
@@ -108,7 +107,7 @@ private:
     void getFilesInAdirectory(string, float variance_threshold);
 
     void setAnnPose(BodyAnnotation &ann, Vector3f *pos, Quaterniond *q);
-    void set_annotations(Mat seg, Mat segMasked);
+    void set_annotations(cv::Mat seg, cv::Mat segMasked);
 
 public:
     SceneManager(PxPhysics *gPhysics, PxScene *gScene, PxCooking *gCooking,

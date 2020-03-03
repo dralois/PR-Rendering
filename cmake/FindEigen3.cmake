@@ -1,27 +1,35 @@
 # - Try to find EIGEN3
 # Once done, this will define
 #
-# EIGEN3_FOUND       - system has EIGEN3
+# EIGEN3_FOUND        - system has EIGEN3
 # EIGEN3_INCLUDE_DIRS - the EIGEN3 include directories
 
 IF(EIGEN3_INCLUDE_DIR)
-  SET(EIGEN3_FIND_QUIETLY TRUE)
+    SET(EIGEN3_FIND_QUIETLY TRUE)
 ENDIF(EIGEN3_INCLUDE_DIR)
 
-FIND_PATH(EIGEN3_INCLUDE_DIR
-    NAMES
-    Eigen
-    Dense
-    PATH_SUFFIXES
-    include
-    Eigen
-    src
-    HINTS
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    ${PROJECT_SOURCE_DIR}/dependencies/include/eigen3/Eigen
-)
+IF(WIN32)
+    FIND_PATH(EIGEN3_INCLUDE_DIR
+            NAMES
+            Eigen
+            Dense
+            HINTS
+            $ENV{PROGRAMFILES}/Eigen/Eigen
+            $ENV{PROGRAMFILES}/eigen3/Eigen
+            ${PROJECT_SOURCE_DIR}/dependencies/include/eigen3/Eigen
+    )
+ELSE(WIN32)
+    FIND_PATH(EIGEN3_INCLUDE_DIR
+            NAMES
+            Eigen
+            Dense
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/local/include
+            /opt/local/include
+    )
+ENDIF(WIN32)
 
 INCLUDE(FindPackageHandleStandardArgs)
 
