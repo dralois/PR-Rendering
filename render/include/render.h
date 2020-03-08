@@ -1,7 +1,9 @@
 #pragma once
 
 // GLEW
+#if not WIN32
 #define GLEW_STATIC
+#endif
 #include <GL/glew.h>
 
 // GLFW
@@ -22,9 +24,13 @@ struct RenderData {
 
 class Render {
 public:
+#if WIN32
+    __declspec(dllexport) Render(const std::string shader_path);
+    __declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
+#else
     Render(const std::string shader_path);
-
     vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
+#endif
 private:
 	Data data;
     std::string shader_path{""};

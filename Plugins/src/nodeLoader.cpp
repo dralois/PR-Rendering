@@ -3,17 +3,13 @@
 #endif
 #include <stdio.h>
 
-extern AtNodeMethods *AlphaMethods;
 extern AtNodeMethods *DepthMethods;
 extern AtNodeMethods *LabelMethods;
 extern AtNodeMethods *CustomNullFilterMtd;
 extern AtNodeMethods *BlendMethods;
 
-AI_SHADER_NODE_EXPORT_METHODS(FinalMethods);
-
 enum SHADERS
 {
-    ALPHA_SHADER,
     DEPTH_SHADER,
     LABEL_SHADER,
     BLEND_SHADER,
@@ -24,13 +20,6 @@ node_loader
 {
     switch (i)
     {
-    // Not used (?)
-    case ALPHA_SHADER:
-        node->methods = (AtNodeMethods *)AlphaMethods;
-        node->output_type = AI_TYPE_RGBA;
-        node->name = "alphashader";
-        node->node_type = AI_NODE_SHADER;
-        break;
     // Renders depth (distance) in red channel
     case DEPTH_SHADER:
         node->methods = (AtNodeMethods *)DepthMethods;

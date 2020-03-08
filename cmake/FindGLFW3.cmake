@@ -28,8 +28,7 @@ IF(WIN32)
                 $ENV{GLFW_ROOT}/lib/lib-vc2019
                 $ENV{PROGRAMFILES}/GLFW/lib/lib-vc2017
                 $ENV{PROGRAMFILES}/GLFW/lib/lib-vc2019
-                ${PROJECT_SOURCE_DIR}/dependencies/lib/lib-vc2017
-                ${PROJECT_SOURCE_DIR}/dependencies/lib/lib-vc2019
+                ${PROJECT_SOURCE_DIR}/dependencies/lib
     )
 ELSE(WIN32)
     FIND_PATH(GLFW_INCLUDE_DIR

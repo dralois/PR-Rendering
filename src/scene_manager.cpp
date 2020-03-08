@@ -203,7 +203,6 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::render_scenes_gl(){
     return renderings;
 }
 
-
 void SceneManager::render_scene_depth_imgs()
 {
     // Load scan

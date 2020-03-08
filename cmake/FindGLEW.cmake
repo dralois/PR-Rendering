@@ -19,10 +19,7 @@ IF (WIN32)
     )
     FIND_LIBRARY(GLEW_LIBRARY
                 NAMES
-                glew
-                GLEW
                 glew32
-                glew32s
                 PATHS
                 $ENV{PROGRAMFILES}/GLEW/lib
                 ${PROJECT_SOURCE_DIR}/dependencies/lib
@@ -53,7 +50,7 @@ ENDIF (WIN32)
 
 INCLUDE(FindPackageHandleStandardArgs)
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(glew DEFAULT_MSG GLEW_INCLUDE_DIR GLEW_LIBRARY)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(GLEW DEFAULT_MSG GLEW_INCLUDE_DIR GLEW_LIBRARY)
 MARK_AS_ADVANCED(GLEW_INCLUDE_DIR GLEW_LIBRARY)
 
 IF(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)

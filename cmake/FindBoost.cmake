@@ -25,15 +25,54 @@ IF(WIN32)
                 $ENV{PROGRAMFILES}/Boost/lib
                 ${PROJECT_SOURCE_DIR}/dependencies/lib
     )
+    FIND_LIBRARY(Boost_LIBRARY_DEBUG
+                NAMES
+                libboost_filesystem-vc142-mt-gd-x64-1_72
+                HINTS
+                $ENV{PROGRAMFILES}/Boost/lib
+                ${PROJECT_SOURCE_DIR}/dependencies/lib
+    )
+
+    INCLUDE(FindPackageHandleStandardArgs)
+
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(Boost DEFAULT_MSG Boost_LIBRARY Boost_LIBRARY_DEBUG Boost_INCLUDE_DIR)
+    MARK_AS_ADVANCED(Boost_LIBRARY Boost_LIBRARY_DEBUG Boost_INCLUDE_DIR)
+
+    IF(Boost_LIBRARY_DEBUG AND Boost_LIBRARY)
+        SET(Boost_LIBRARIES optimized ${Boost_LIBRARY} debug ${Boost_LIBRARY_DEBUG})
+    ENDIF(Boost_LIBRARY_DEBUG AND Boost_LIBRARY)
+ELSE(WIN32)
+    FIND_PATH(Boost_INCLUDE_DIR
+            NAMES
+            filesystem.hpp
+            version.hpp
+            HINTS
+            /sw/include
+            /usr/include
+            /usr/local/include
+            /opt/local/include
+    )
+    FIND_LIBRARY(Boost_LIBRARY
+        NAMES
+        lboost_filesystem
+        HINTS
+        /sw/lib
+        /usr/lib
+        /usr/lib64
+        /opt/local/lib
+        /usr/local/lib
+        /usr/local/lib64
+    )
+
+    INCLUDE(FindPackageHandleStandardArgs)
+
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(Boost DEFAULT_MSG Boost_LIBRARY Boost_INCLUDE_DIR)
+    MARK_AS_ADVANCED(Boost_LIBRARY Boost_INCLUDE_DIR)
+
+    SET(Boost_LIBRARIES ${Boost_LIBRARY})
 ENDIF(WIN32)
-
-INCLUDE(FindPackageHandleStandardArgs)
-
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Boost DEFAULT_MSG Boost_INCLUDE_DIR Boost_LIBRARY)
-MARK_AS_ADVANCED(Boost_INCLUDE_DIR Boost_LIBRARY)
 
 IF(Boost_INCLUDE_DIR AND Boost_LIBRARY)
     SET(Boost_FOUND TRUE)
-    SET(Boost_LIBRARIES ${Boost_LIBRARY})
     SET(Boost_INCLUDE_DIRS ${Boost_INCLUDE_DIR})
 ENDIF(Boost_INCLUDE_DIR AND Boost_LIBRARY)
