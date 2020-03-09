@@ -43,51 +43,18 @@ ADD_EXECUTABLE(PRRendering
 # Find and link necessary packages
 ###########################################################################################
 
+# Packages
 FIND_PACKAGE(Assimp 4.1 REQUIRED)
-IF(NOT ${Assimp_FOUND})
-    MESSAGE("Assimp (min. 4.1) not found!")
-ENDIF()
-
 FIND_PACKAGE(Eigen3 3.3 REQUIRED)
-IF(NOT ${EIGEN3_FOUND})
-    MESSAGE("Eigen3 (min. 3.3) not found!")
-ENDIF()
-
 FIND_PACKAGE(AI 4.2 REQUIRED)
-IF(NOT ${AI_FOUND})
-    MESSAGE("Arnold SDK (min. 4.2) not found!")
-ENDIF()
-
 FIND_PACKAGE(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
-IF(NOT ${OPENCV2_FOUND})
-    MESSAGE("OpenCV2 (min. 4.2) (core, highgui, imgproc, objdetect) not found!")
-ENDIF()
-
 FIND_PACKAGE(RapidJSON 1.1 REQUIRED)
-IF(NOT ${RAPIDJSON_FOUND})
-    MESSAGE("RapidJSON (min 1.1) not found!")
-ENDIF()
-
 FIND_PACKAGE(glm REQUIRED)
-IF(NOT ${glm_FOUND})
-    MESSAGE("glm not found!")
-ENDIF()
-
 FIND_PACKAGE(GLFW3 REQUIRED)
-IF(NOT ${GLFW_FOUND})
-    MESSAGE("GLFW3 not found!")
-ENDIF()
-
 FIND_PACKAGE(GLEW REQUIRED)
-IF(NOT ${GLEW_FOUND})
-    MESSAGE("GLEW not found!")
-ENDIF()
-
 FIND_PACKAGE(Boost REQUIRED system thread filesystem)
-IF(NOT ${Boost_FOUND})
-    MESSAGE("Boost (system, thread, filesystem) not found!")
-ENDIF()
 
+# Include dirs
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
                     ${GLEW_INCLUDE_DIRS}
                     ${GLFW_INCLUDE_DIRS}
@@ -99,6 +66,7 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
                     ${EIGEN3_INCLUDE_DIRS}
 )
 
+# Link to executable
 TARGET_LINK_LIBRARIES(PRRendering
                     ${Boost_LIBRARIES}
                     ${GLEW_LIBRARIES}
@@ -114,7 +82,7 @@ TARGET_LINK_LIBRARIES(PRRendering
 ###########################################################################################
 
 # Create shader library
-ADD_LIBRARY(Plugins SHARED
+ADD_LIBRARY(ShadersLib SHARED
             plugins/src/nodeLoader.cpp
             plugins/src/blendShader.cpp
             plugins/src/depthShader.cpp
@@ -123,7 +91,7 @@ ADD_LIBRARY(Plugins SHARED
 )
 
 # Link to shader library
-TARGET_LINK_LIBRARIES(Plugins ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
+TARGET_LINK_LIBRARIES(ShadersLib ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
 
 ###########################################################################################
 # OpenGL library
@@ -152,16 +120,24 @@ ENDIF(WIN32)
 ###########################################################################################
 
 FIND_PACKAGE(PhysX 4.0 REQUIRED Common Cooking Extensions Foundation PvdSDK)
-IF(NOT ${PHYSX_FOUND})
-    MESSAGE("PhysX (min. 4.0) (Common, Cooking, Extensions, Foundation, PvdSDK) not found!")
-ELSE()
-    IF(WIN32)
-        TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} ${Plugins} ${OpenGLLib})
-    ELSE(WIN32)
-        TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} ${Plugins} ${OpenGLLib} pthread dl -lboost_system -lboost_thread -lboost_filesystem -Wl,-rpath='${ORIGIN}')
-    ENDIF(WIN32)
-    INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
-ENDIF()
+# Include dirs
+INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
+# pthread etc. only on Linux
+IF(WIN32)
+    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES})
+ELSE(WIN32)
+    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} pthread dl -lboost_system -lboost_thread -lboost_filesystem -Wl,-rpath='${ORIGIN}')
+ENDIF(WIN32)
+
+###########################################################################################
+# Combine and add libs
+###########################################################################################
+
+ADD_LIBRARY(combinedLib INTERFACE)
+# Combine into one as interface
+TARGET_LINK_LIBRARIES(combinedLib INTERFACE OpenGLLib ShadersLib)
+# Add to executable
+TARGET_LINK_LIBRARIES(PRRendering combinedLib)
 
 ###########################################################################################
 # Debug
