@@ -1,4 +1,5 @@
 {
+    "shaders" : "/home/fabi/Documents/PRRendering/render/shaders",
     "models": "/home/fabi/GIT/students/SyntheticRenderingArnold/bodies_textured",
     "3RScan_path": "/media/fabi/HardDrive/Datasets/RIO",
     

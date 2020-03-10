@@ -31,10 +31,18 @@ ENDIF(MSVC)
 # Add source files
 ADD_EXECUTABLE(PRRendering
                 main.cpp
-                src/mesh_managers.cpp
+                src/Meshbase.cpp
+                src/AiMesh.cpp
+                src/PxMesh.cpp
+                src/PxMeshConvex.cpp
+                src/PxMeshTriangle.cpp
                 src/scene_manager.cpp
                 src/sim_manager.cpp
-                include/mesh_managers.h
+                include/MeshBase.h
+                include/AiMesh.h
+                include/PxMesh.h
+                include/PxMeshConvex.h
+                include/PxMeshTriangle.h
                 include/scene_manager.h
                 include/sim_manager.h
 )
