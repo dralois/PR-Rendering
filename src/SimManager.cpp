@@ -57,19 +57,23 @@ SimManager::~SimManager()
 //---------------------------------------
 void SimManager::InitPhysx()
 {
-	// Singletons
+	// Foundation Singleton
 	PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
-	PxCreateBasePhysics(PX_PHYSICS_VERSION, PxGetFoundation(), PxTolerancesScale(), true, NULL);
+
 #ifdef _DEBUG
+	// Debug: Visual Debugger
 	pPxPvdServer = PxCreatePvd(PxGetFoundation());
-	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
-	pPxPvdServer->connect(*transport, PxPvdInstrumentationFlag::eDEBUG);
-	PxInitExtensions(PxGetPhysics(), pPxPvdServer);
+	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
+	pPxPvdServer->connect(*transport, PxPvdInstrumentationFlag::eALL);
 #endif
+
+	// PhysX API & Extensions
+	PxCreateBasePhysics(PX_PHYSICS_VERSION, PxGetFoundation(), PxTolerancesScale(), true, pPxPvdServer);
+	PxInitExtensions(PxGetPhysics(), pPxPvdServer);
 
 	// Set up scene
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
-	sceneDesc.gravity = PxVec3(0.0f, -6.81f, 0.0f);
+	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
 	pPxDispatcher = PxDefaultCpuDispatcherCreate(2);
 	sceneDesc.cpuDispatcher = pPxDispatcher;
 	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
@@ -91,22 +95,6 @@ void SimManager::InitPhysx()
 
 	// Default physics material
 	pPxMaterial = PxGetPhysics().createMaterial(0.6f, 0.6f, 0.f);
-}
-
-//---------------------------------------
-// Load and parse json config file
-//---------------------------------------
-void SimManager::LoadConfig(string config_path)
-{
-	cout << "Reading config file:\t" << config_path << endl;
-
-	using namespace rapidjson;
-
-	// Open und parse config file
-	char buffer[16000];
-	FILE* pFile = fopen(config_path.c_str(), "rb");
-	FileReadStream is(pFile, buffer, sizeof(buffer));
-	CONFIG_FILE.ParseStream<0, UTF8<>, FileReadStream>(is);
 }
 
 //---------------------------------------
@@ -150,6 +138,22 @@ void SimManager::InitArnold()
 }
 
 //---------------------------------------
+// Load and parse json config file
+//---------------------------------------
+void SimManager::LoadConfig(string config_path)
+{
+	cout << "Reading config file:\t" << config_path << endl;
+
+	using namespace rapidjson;
+
+	// Open und parse config file
+	char buffer[16000];
+	FILE* pFile = fopen(config_path.c_str(), "rb");
+	FileReadStream is(pFile, buffer, sizeof(buffer));
+	CONFIG_FILE.ParseStream<0, UTF8<>, FileReadStream>(is);
+}
+
+//---------------------------------------
 // Load all required meshes (physx, rendering)
 //---------------------------------------
 void SimManager::LoadMeshes()
@@ -175,10 +179,12 @@ void SimManager::LoadMeshes()
 			}
 
 			cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
+
 			// Create physx mesh
 			PxMeshConvex* curr = new PxMeshConvex(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
-			curr->CreateMesh();
+			curr->CreateMesh(false, false);
 			curr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
+
 			// Save in vector
 			vecMeshPhysX.push_back(curr);
 		}

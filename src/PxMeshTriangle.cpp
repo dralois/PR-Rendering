@@ -3,71 +3,61 @@
 //---------------------------------------
 // Creates triangle based physx mesh
 //---------------------------------------
-bool PxMeshTriangle::CreateMesh()
+bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 {
-	PxU8* meshBuff;
-	PxU32 buffSize;
-	// If cooked mesh on disk
-	if (TryReadCookedFile(meshBuff, buffSize))
+	// Path to cooked mesh
+	std::ifstream cookedMesh(meshPath + "px");
+	// If cooked mesh not on disk
+	if (!cookedMesh.good())
 	{
-		// Create the mesh with buffer
-		PxDefaultMemoryInputData input(meshBuff, buffSize);
-		pPxMesh = PxGetPhysics().createTriangleMesh(input);
-		// Cleanup
-		delete[] meshBuff;
-	}
-	// Not cooked and saved yet
-	else
-	{
-		// Load mesh
-		LoadFile();
-
-		// Convert to physx types
-		ConvertBuffers();
-
+		// Load mesh file
+		LoadFile(doubleNorms);
 		// Create triangle mesh object
 		PxTriangleMeshDesc triangleDesc;
-		triangleDesc.points.count = (PxU32)vecVertices.size() / 3;
-		triangleDesc.points.stride = sizeof(PxVec3);
+		triangleDesc.points.count = (PxU32)(vecVertices.size() / 3);
+		triangleDesc.points.stride = (PxU32)sizeof(PxVec3);
 		triangleDesc.points.data = GetVertices();
-		triangleDesc.triangles.count = (PxU32)vecIndices.size() / 3;
-		triangleDesc.triangles.stride = sizeof(PxU32) * 3;
+		triangleDesc.triangles.count = (PxU32)(vecIndices.size() / 3);
+		triangleDesc.triangles.stride = (PxU32)(sizeof(PxU32) * 3);
 		triangleDesc.triangles.data = GetIndices();
 
-		// Lower hierarchy for internal mesh
-		PxDefaultMemoryOutputStream writeBuffer;
-
+		// Cook the mesh
+		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
 		// Cook mesh
-		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeBuffer))
+		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeOutBuffer))
 		{
 			return false;
 		}
+	}
 
-		// Write into file
-		WriteCookedFile(writeBuffer.getData(), writeBuffer.getSize());
+	// Create buffer
+	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
+	// Create the mesh from buffer
+	pPxMesh = PxGetPhysics().createTriangleMesh(readInBuffer);
 
-		// Create the mesh
-		PxDefaultMemoryInputData input(writeBuffer.getData(), writeBuffer.getSize());
-		pPxMesh = PxGetPhysics().createTriangleMesh(input);
-
+	// Save extends
+	if (saveBounds)
+	{
+		xMax = pPxMesh->getLocalBounds().maximum.x;
+		yMax = pPxMesh->getLocalBounds().maximum.y;
+		xMin = pPxMesh->getLocalBounds().minimum.x;
+		yMin = pPxMesh->getLocalBounds().minimum.y;
 	}
 
 	// Create collision detection capable shape from mesh
 	pShape = PxGetPhysics().createShape(PxTriangleMeshGeometry(pPxMesh), *pPxMaterial);
-
 	return true;
 }
 
 //---------------------------------------
 // Create and add triangle rigidbody
 //---------------------------------------
-PxRigidDynamic* PxMeshTriangle::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshTriangle::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidDynamic* body = InitRigidbody(pos, quat);
+	PxRigidStatic* body = (PxRigidStatic*) InitRigidbody(pos, quat, true);
 	// Update
 	pShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
-	body->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 	// Attach rigidbody to shape
 	body->attachShape(*pShape);
 	// Add to scene and return

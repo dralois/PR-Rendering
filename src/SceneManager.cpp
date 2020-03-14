@@ -1,8 +1,4 @@
-#include <dirent.h>
-
 #include "SceneManager.h"
-#include "rapidxml.hpp"
-#include "rapidxml_utils.hpp"
 
 string FILE_TEMP_PATH = "";
 string FILE_FINAL_PATH = "";
@@ -94,9 +90,7 @@ void SceneManager::X_PxCreateScene()
 	string mesh_path = scenePath + "/mesh.refined.obj";
 	// Create physx mesh, shape and rigidbody of scan scene
 	pPhysxScene = new PxMeshTriangle(mesh_path, 0, 100, pScene, pCooking, pMaterial);
-	pPhysxScene->calculateBounds = true;
-	pPhysxScene->doubleNorms = true;
-	pPhysxScene->CreateMesh();
+	pPhysxScene->CreateMesh(true, false);
 	vector<float> pos{ 0, 0, 0 };
 	vector<float> rot{ 0, 0, 0, 1 };
 	pPhysxScene->CreateRigidbody(pos, rot);
@@ -116,14 +110,14 @@ void SceneManager::X_PxCreateObjs()
 		PxMeshConvex* objManager = vecpPhysxObjs.at(objManagerPos);
 		// Random position, same rotation
 		float y = (rand() % 10) + 1;
-		float x = (rand() % ((int)(pPhysxScene->xMax * 100 - pPhysxScene->xMin * 100))) + pPhysxScene->xMin * 100;
-		float z = (rand() % ((int)(pPhysxScene->yMax * 100 - pPhysxScene->yMin * 100))) + pPhysxScene->yMin * 100;
+		float x = (rand() % ((int)(pPhysxScene->GetXMax() - pPhysxScene->GetXMin()))) + pPhysxScene->GetXMin();
+		float z = (rand() % ((int)(pPhysxScene->GetYMax() - pPhysxScene->GetYMin()))) + pPhysxScene->GetYMin();
 		vector<float> pos{ x, y, z };
 		vector<float> rot{ -0.7071068, 0, 0, 0.7071068 };
 
 		// Save rigidbody and mesh in vector
-		PxRigidDynamic* body = objManager->CreateRigidbody(pos, rot);
-		dicObjsRigidbodies.push_back(make_pair(objManager, body));
+		PxRigidActor* body = objManager->CreateRigidbody(pos, rot);
+		dicObjsRigidbodies.push_back(make_pair(objManager, (PxRigidDynamic*) body));
 	}
 }
 
@@ -150,7 +144,7 @@ void SceneManager::X_PxDestroy()
 void SceneManager::X_PxRunSim()
 {
 	// 10000 steps
-	for (PxU32 i = 0; i < 10000; i++)
+	for (PxU32 i = 0; i < 2000; i++)
 	{
 		pScene->simulate(2.f / 60.0f);
 		pScene->fetchResults(true);
@@ -170,19 +164,22 @@ void SceneManager::X_PxSaveSimResults()
 	// For each physx object
 	for (auto obj : dicObjsRigidbodies)
 	{
-		i++;
 		// Get position
 		tempTrans = obj.second->getGlobalPose();
 		// Create pose struct
-		SceneManager::ObjectInfo* currInfo = new SceneManager::ObjectInfo(obj.first->GetID(), i);
+		ObjectInfo currInfo;
 		// Fetch and convert physx position & rotation
 		PxQuat pxRot = tempTrans.q.getNormalized();
 		PxVec3 pxPos = tempTrans.p;
 		Vector3f pos(pxPos.x, pxPos.y, pxPos.z);
 		Quaterniond rot(pxRot.w, pxRot.x, pxRot.y, pxRot.z);
 		// Save poses in vector
-		currInfo->SetPose(pos, rot);
-		vecpCurrObjs.push_back(currInfo);
+		currInfo.shapeId = obj.first->GetMeshId();
+		currInfo.objSimId = i++;
+		currInfo.pos = pos;
+		currInfo.rot = rot;
+		currInfo.name = "body" + to_string(currInfo.shapeId) + "_" + to_string(currInfo.objSimId);
+		vecCurrObjs.push_back(currInfo);
 	}
 }
 
@@ -249,15 +246,15 @@ void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos
 void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked)
 {
 	// For each mesh
-	for (auto currBody : vecpCurrObjs)
+	for (auto currBody : vecCurrObjs)
 	{
 		// Determine label sum unmasked
-		float segBodySum = cv::sum(seg == (currBody->objSimId + 1) * 10)[0];
+		float segBodySum = cv::sum(seg == (currBody.objSimId + 1) * 10)[0];
 		// Stop if object completely covered
 		if (segBodySum == 0)
 			continue;
 		// Determine label sum masked
-		float segBodySumMasked = cv::sum(segMasked == (currBody->objSimId + 1) * 10)[0];
+		float segBodySumMasked = cv::sum(segMasked == (currBody.objSimId + 1) * 10)[0];
 		float percent = segBodySumMasked / segBodySum;
 		// Stop if less then 30% coverage
 		if (percent <= 0.3 || segBodySumMasked / 255 < 2000)
@@ -267,12 +264,12 @@ void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMaske
 		currAnn.vecPos = std::vector<float>();
 		currAnn.vecRot = std::vector<float>();
 		currAnn.vecBBox = std::vector<float>();
-		currAnn.shapeId = currBody->shapeId;
-		currAnn.objId = (currBody->objSimId + 1) * 10;
+		currAnn.shapeId = currBody.shapeId;
+		currAnn.objId = (currBody.objSimId + 1) * 10;
 
 		// Set bounding box & annotiation
-		setBBox(currAnn, seg == (currBody->objSimId + 1) * 10);
-		X_SaveAnnotationPose(currAnn, currBody->GetPos(), currBody->GetRot());
+		setBBox(currAnn, seg == (currBody.objSimId + 1) * 10);
+		X_SaveAnnotationPose(currAnn, currBody.pos, currBody.rot);
 
 		ostringstream out;
 		out << std::internal << std::setfill('0') << std::setw(2) << currAnn.shapeId;
@@ -306,30 +303,30 @@ void SceneManager::X_AiCreateObjs()
 	vector<void*> vecThreads;
 
 	// For each created object
-	for (auto body : vecpCurrObjs)
+	for (auto body : vecCurrObjs)
 	{
 		// Create arnold mesh
-		AiMesh* mesh = vecpArnoldObjs.at(body->shapeId);
-		if (vecpArnoldObjs.at(body->shapeId) == NULL)
+		AiMesh* mesh = vecpArnoldObjs.at(body.shapeId);
+		if (vecpArnoldObjs.at(body.shapeId) == NULL)
 		{
 			ostringstream out;
-			out << std::internal << std::setfill('0') << std::setw(2) << (body->shapeId);
+			out << std::internal << std::setfill('0') << std::setw(2) << (body.shapeId);
 			string buf = FILE_OBJ_PATH + "/obj_" + out.str() + ".obj";
 			// Load arnold mesh accordingly
-			mesh = new AiMesh(buf, body->shapeId, 0.1);
-			vecpArnoldObjs.at(body->shapeId) = mesh;
+			mesh = new AiMesh(buf, body.shapeId, 0.1);
+			vecpArnoldObjs.at(body.shapeId) = mesh;
 		}
 
 		// Set position and rotation accordingly
-		Vector3f p = (*body).GetPos();
-		Quaterniond q = (*body).GetRot();
+		Vector3f p = body.pos;
+		Quaterniond q = body.rot;
 		vector<float> pos{ p.x(), p.y(), p.z() };
 		vector<float> rot{ (float)q.x(), (float)q.y(), (float)q.z(), (float)q.w() };
 
 		// Create thread input
 		AiMeshInput input;
 		input.pAiMesh = mesh;
-		input.meshId = body->objSimId;
+		input.objSimId = body.objSimId;
 		input.pos = pos;
 		input.rot = rot;
 
@@ -354,12 +351,12 @@ void SceneManager::X_AiCreateObjs()
 bool SceneManager::X_CheckIfImageCenter(const ObjectInfo& body) const
 {
 	// Pose rotation matrix
-	Quaterniond q = body.GetRot();
+	Quaterniond q = body.rot;
 	Matrix<float, 4, 4> bRotMat = Eigen::Matrix4f::Identity();
 	bRotMat.block(0, 0, 3, 3) = q.normalized().toRotationMatrix().cast<float>();
 
 	// Set position
-	Vector3f pos = body.GetPos();
+	Vector3f pos = body.pos;
 	bRotMat(0, 3) = pos.x();
 	bRotMat(1, 3) = pos.y();
 	bRotMat(2, 3) = pos.z();
@@ -386,9 +383,9 @@ bool SceneManager::X_RenderObjsDepth() const
 {
 	bool valid = false;
 	// For each arnold mesh
-	for (auto body : vecpCurrObjs)
+	for (auto body : vecCurrObjs)
 	{
-		AtNode* curr = AiNodeLookUpByName(body->GetName().c_str());
+		AtNode* curr = AiNodeLookUpByName(body.name.c_str());
 		AiNodeSetPtr(curr, "shader", aiShaderDepthObj);
 		valid = true;
 	}
@@ -409,7 +406,12 @@ bool SceneManager::X_RenderObjsDepth() const
 	// Temp file name
 	ostringstream out;
 	out << std::internal << std::setfill('0') << std::setw(6) << sceneCount;
-	string buf = FILE_TEMP_PATH + "/" + "body_depth/img_" + out.str() + ".png";
+	string buf = FILE_TEMP_PATH + "/body_depth/img_" + out.str() + ".png";
+
+	ofstream createFile;
+	createFile.open(buf.c_str(), ios_base::binary | ios_base::out);
+	createFile.write("0", 1);
+	createFile.close();
 
 	// Render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
@@ -459,10 +461,10 @@ bool SceneManager::X_CalculateObjsMask()
 void SceneManager::X_RenderObjsLabel() const
 {
 	// For each arnold mesh
-	for (auto body : vecpCurrObjs)
+	for (auto body : vecCurrObjs)
 	{
 		AtNode* shader_obj_label;
-		string sbuffer = "label_" + std::to_string(body->objSimId);
+		string sbuffer = "label_" + std::to_string(body.objSimId);
 		// Try to find mesh node
 		shader_obj_label = AiNodeLookUpByName(sbuffer.c_str());
 		// If not found create
@@ -470,10 +472,10 @@ void SceneManager::X_RenderObjsLabel() const
 		{
 			shader_obj_label = AiNode("labelshader");
 			AiNodeSetStr(shader_obj_label, "name", sbuffer.c_str());
-			AiNodeSetInt(shader_obj_label, "id", (body->objSimId + 1) * 10);
+			AiNodeSetInt(shader_obj_label, "id", (body.objSimId + 1) * 10);
 		}
 		// Save node
-		AtNode* curr = AiNodeLookUpByName(body->GetName().c_str());
+		AtNode* curr = AiNodeLookUpByName(body.name.c_str());
 		AiNodeSetPtr(curr, "shader", shader_obj_label);
 	}
 
@@ -576,12 +578,12 @@ void SceneManager::X_BlendLabel()
 void SceneManager::X_BlendImage()
 {
 	// For each object
-	for (auto body : vecpCurrObjs)
+	for (auto body : vecCurrObjs)
 	{
-		string buffer = "blend_" + std::to_string(body->shapeId);
-		float ks = vecpPhysxObjs[body->shapeId - 1]->GetMetallic();
+		string buffer = "blend_" + std::to_string(body.shapeId);
+		float ks = vecpPhysxObjs[body.shapeId - 1]->GetMetallic();
 		// Try to find mesh node
-		AtNode* curr = AiNodeLookUpByName(body->GetName().c_str());
+		AtNode* curr = AiNodeLookUpByName(body.name.c_str());
 		AtNode* blendTemp = AiNodeLookUpByName(buffer.c_str());
 		// If not found create
 		if (blendTemp != nullptr)
@@ -599,7 +601,7 @@ void SceneManager::X_BlendImage()
 
 		// Texture path
 		ostringstream out;
-		out << std::internal << std::setfill('0') << std::setw(2) << (body->shapeId);
+		out << std::internal << std::setfill('0') << std::setw(2) << (body.shapeId);
 		string imgbuffer = "obj_" + out.str() + "_color.png";
 		string imgPath = FILE_OBJ_PATH + "/" + imgbuffer;
 
@@ -787,9 +789,9 @@ void SceneManager::X_LoadCamIntrinsics()
 //---------------------------------------
 void SceneManager::X_AiDestroy()
 {
-	for (ObjectInfo* curr : vecpCurrObjs)
+	for (auto curr : vecCurrObjs)
 	{
-		AiMesh::DestroyMesh(curr->GetName());
+		AiMesh::DestroyMesh(curr.name);
 	}
 }
 
@@ -926,7 +928,7 @@ bool SceneManager::Run(int iterations, int maxCount)
 				// Cleanup
 				X_PxDestroy();
 				X_AiDestroy();
-				vecpCurrObjs.clear();
+				vecCurrObjs.clear();
 				ANNOTATIONS_FILE.close();
 				// Unsuccessful (?)
 				return false;
@@ -935,20 +937,9 @@ bool SceneManager::Run(int iterations, int maxCount)
 		// Cleanup
 		X_PxDestroy();
 		X_AiDestroy();
-		vecpCurrObjs.clear();
+		vecCurrObjs.clear();
 		ANNOTATIONS_FILE.close();
 	}
 	// Success
 	return true;
 }
-
-//---------------------------------------
-// New object transform
-//---------------------------------------
-SceneManager::ObjectInfo::ObjectInfo(int shapeId, int objSimId) :
-	shapeId(shapeId),
-	objSimId(objSimId),
-	pos(),
-	rot()
-{
-};

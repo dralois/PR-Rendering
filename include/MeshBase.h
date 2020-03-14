@@ -9,6 +9,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
 #include <eigen3/Eigen/Dense>
 #pragma warning(pop)
 
@@ -31,27 +32,25 @@ protected:
 	vector<int> vecIndices;
 	vector<float> vecUVs;
 	vector<float> vecNormals;
-
-	//---------------------------------------
-	// Methods
-	//---------------------------------------
-	bool LoadFile();
-
-public:
-	//---------------------------------------
-	// Fields
-	//---------------------------------------
 	float xMin = 1e8;
 	float yMin = 1e8;
 	float xMax = -1e8;
 	float yMax = -1e8;
-	bool doubleNorms = false;
-	bool calculateBounds = false;
 
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+	bool LoadFile(bool doubleNorms);
+
+public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline int GetID() { return meshId; };
+	inline int GetMeshId() { return meshId; };
+	inline float GetXMax() { return xMax; };
+	inline float GetXMin() { return xMin; };
+	inline float GetYMax() { return yMax; };
+	inline float GetYMin() { return yMin; };
 
 	//---------------------------------------
 	// Constructors

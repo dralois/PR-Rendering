@@ -13,6 +13,11 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
+#include "rapidxml.hpp"
+#include "rapidxml_utils.hpp"
+
+#include <dirent.h>
+
 #include "PxPhysicsAPI.h"
 
 #include "ai.h"
@@ -50,6 +55,18 @@ struct BodyAnnotation
 	std::vector<float> vecBBox;
 	std::vector<float> vecPos;
 	std::vector<float> vecRot;
+};
+
+//---------------------------------------
+// Spawned object info
+//---------------------------------------
+struct ObjectInfo
+{
+	int shapeId;
+	int objSimId;
+	string name;
+	Vector3f pos;
+	Quaterniond rot;
 };
 
 //---------------------------------------
@@ -93,8 +110,7 @@ private:
 	Vector3f camPos;
 
 	// Objects
-	class ObjectInfo;
-	vector<ObjectInfo*> vecpCurrObjs;
+	vector<ObjectInfo> vecCurrObjs;
 
 	// OpenCV
 	cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
@@ -163,37 +179,4 @@ public:
 							AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
 	~SceneManager();
 
-};
-
-//---------------------------------------
-// Saves position and rotation
-//---------------------------------------
-class SceneManager::ObjectInfo
-{
-private:
-	//---------------------------------------
-	// Fields
-	//---------------------------------------
-	Vector3f pos;
-	Quaterniond rot;
-
-public:
-	//---------------------------------------
-	// Fields
-	//---------------------------------------
-	int shapeId;
-	int objSimId;
-
-	//---------------------------------------
-	// Methods
-	//---------------------------------------
-	inline void SetPose(Vector3f pos, Quaterniond rot) { pos = pos; rot = rot; };
-	inline Quaterniond GetRot() const { return rot; };
-	inline Vector3f GetPos() const { return pos; };
-	inline string GetName() const { return "body" + to_string(shapeId) + "_" + to_string(objSimId); };
-
-	//---------------------------------------
-	// Constructors
-	//---------------------------------------
-	ObjectInfo(int shapeId, int objSimId);
 };

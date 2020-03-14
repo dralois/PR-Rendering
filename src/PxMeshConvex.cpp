@@ -3,48 +3,42 @@
 //---------------------------------------
 // Creates convex physx mesh
 //---------------------------------------
-bool PxMeshConvex::CreateMesh()
+bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 {
-	PxU8* meshBuff;
-	PxU32 buffSize;
-	// If cooked mesh on disk
-	if (TryReadCookedFile(meshBuff, buffSize))
+	// Path to cooked mesh
+	std::ifstream cookedMesh(meshPath + "px");
+	// If cooked mesh not on disk
+	if (!cookedMesh.good())
 	{
-		// Create the mesh with buffer
-		PxDefaultMemoryInputData input(meshBuff, buffSize);
-		pPxMesh = PxGetPhysics().createConvexMesh(input);
-		// Cleanup
-		delete[] meshBuff;
-	}
-	// Not cooked and saved yet
-	else
-	{
-		// Load mesh
-		LoadFile();
-
-		// Convert to physx types
-		ConvertBuffers();
-
+		// Load mesh file
+		LoadFile(doubleNorms);
 		// Create convex mesh
 		PxConvexMeshDesc convDesc;
-		convDesc.points.count = (PxU32)vecVertices.size() / (3);
-		convDesc.points.stride = sizeof(PxVec3);
+		convDesc.points.count = (PxU32) (vecVertices.size() / 3);
+		convDesc.points.stride = (PxU32) sizeof(PxVec3);
 		convDesc.points.data = GetVertices();
 		convDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
 
 		// Cook the mesh
-		PxDefaultMemoryOutputStream writeBuffer;
-		if (!pPxCooking->cookConvexMesh(convDesc, writeBuffer))
+		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
+		if (!pPxCooking->cookConvexMesh(convDesc, writeOutBuffer))
 		{
 			return false;
 		}
+	}
 
-		// Write into file
-		WriteCookedFile(writeBuffer.getData(), writeBuffer.getSize());
+	// Create buffer
+	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
+	// Create the mesh from buffer
+	pPxMesh = PxGetPhysics().createConvexMesh(readInBuffer);
 
-		// Create the mesh
-		PxDefaultMemoryInputData input(writeBuffer.getData(), writeBuffer.getSize());
-		pPxMesh = PxGetPhysics().createConvexMesh(input);
+	// Save extends
+	if (saveBounds)
+	{
+		xMax = pPxMesh->getLocalBounds().maximum.x;
+		yMax = pPxMesh->getLocalBounds().maximum.y;
+		xMin = pPxMesh->getLocalBounds().minimum.x;
+		yMin = pPxMesh->getLocalBounds().minimum.y;
 	}
 
 	// Create collision detection capable shape from mesh
@@ -57,10 +51,10 @@ bool PxMeshConvex::CreateMesh()
 //---------------------------------------
 // Create and add convex rigidbody
 //---------------------------------------
-PxRigidDynamic* PxMeshConvex::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshConvex::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidDynamic* body = InitRigidbody(pos, quat);
+	PxRigidDynamic* body = (PxRigidDynamic*) InitRigidbody(pos, quat, false);
 	// Update
 	PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
 	body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);

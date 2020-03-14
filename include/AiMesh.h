@@ -8,7 +8,7 @@
 
 struct AiMeshInput
 {
-	int meshId;
+	int objSimId;
 	vector<float> pos;
 	vector<float> rot;
 	void* pAiMesh;

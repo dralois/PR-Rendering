@@ -18,7 +18,7 @@ unsigned int AiMesh::CreateMesh(void* data)
 {
 	// Cast to input struct, create name
 	AiMeshInput* input = static_cast<AiMeshInput*>(data);
-	string objName = "body" + std::to_string(meshId) + "_" + std::to_string(input->meshId);
+	string objName = "body" + std::to_string(meshId) + "_" + std::to_string(input->objSimId);
 
 	// Destroy old mesh
 	AtNode* node = AiNodeLookUpByName(objName.c_str());
@@ -131,7 +131,7 @@ void AiMesh::DestroyMesh(const string nodeName)
 AiMesh::AiMesh(string meshPath, string texturePath, int meshId, float scale) :
 	MeshBase(meshPath, texturePath, meshId, scale)
 {
-	LoadFile();
+	LoadFile(false);
 }
 
 //---------------------------------------
@@ -140,5 +140,5 @@ AiMesh::AiMesh(string meshPath, string texturePath, int meshId, float scale) :
 AiMesh::AiMesh(string meshPath, int meshId, float scale) :
 	MeshBase(meshPath, meshId, scale)
 {
-	LoadFile();
+	LoadFile(false);
 }

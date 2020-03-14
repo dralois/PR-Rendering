@@ -18,8 +18,8 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh() override;
-	virtual PxRigidDynamic* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const override;
+	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) override;
+	virtual PxRigidActor* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const override;
 
 	//---------------------------------------
 	// Properties

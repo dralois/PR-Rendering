@@ -3,7 +3,7 @@
 //---------------------------------------
 // Try to load the mesh
 //---------------------------------------
-bool MeshBase::LoadFile()
+bool MeshBase::LoadFile(bool doubleNorms)
 {
 	Assimp::Importer importer;
 
@@ -35,43 +35,9 @@ bool MeshBase::LoadFile()
 		aiVector3D pos = mesh->mVertices[i];
 		// Scale
 		vecVertices.push_back(pos.x * scale);
-		if (scale == 100)
-		{
-			vecVertices.push_back(pos.z * scale);
-			vecVertices.push_back(pos.y * scale);
-		}
-		else
-		{
-			vecVertices.push_back(pos.y * scale);
-			vecVertices.push_back(pos.z * scale);
-		}
-		// Update bounds
-		if (calculateBounds)
-		{
-			if (pos.x < xMin)
-			{
-				xMin = pos.x;
-			}
-			else if (pos.x > xMax)
-			{
-				xMax = pos.x;
-			}
-			if (pos.y < yMin)
-			{
-				yMin = pos.y;
-			}
-			else if (pos.y > yMax)
-			{
-				yMax = pos.y;
-			}
-		}
+		vecVertices.push_back((scale == 100 ? pos.z : pos.y) * scale);
+		vecVertices.push_back((scale == 100 ? pos.y : pos.z) * scale);
 	}
-
-	// Tolerance (?)
-	xMax -= 0.5;
-	xMin += 0.5;
-	yMax -= 0.5;
-	yMin += 0.5;
 
 	// Load UVs
 	if (mesh->HasTextureCoords(0))
@@ -99,15 +65,17 @@ bool MeshBase::LoadFile()
 	// Load faces
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 	{
-		vecIndices.push_back(mesh->mFaces[i].mIndices[0]);
-		vecIndices.push_back(mesh->mFaces[i].mIndices[1]);
-		vecIndices.push_back(mesh->mFaces[i].mIndices[2]);
-		// Not in use?
+		for(unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
+		{
+			vecIndices.push_back(mesh->mFaces[i].mIndices[j]);
+		}
+		// ??
 		if (doubleNorms)
 		{
-			vecIndices.push_back(mesh->mFaces[i].mIndices[2]);
-			vecIndices.push_back(mesh->mFaces[i].mIndices[1]);
-			vecIndices.push_back(mesh->mFaces[i].mIndices[0]);
+			for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
+			{
+				vecIndices.push_back(mesh->mFaces[i].mIndices[j] - mesh->mFaces[i].mNumIndices + 1);
+			}
 		}
 	}
 

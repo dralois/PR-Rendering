@@ -2,7 +2,9 @@
 
 #include "MeshBase.h"
 
+#pragma warning(push, 0)
 #include <PxPhysicsAPI.h>
+#pragma warning(pop)
 
 #define PX_RELEASE(x) if(x) { x->release(); x = NULL; }
 
@@ -13,13 +15,6 @@ using namespace physx;
 //---------------------------------------
 class PxMesh : public MeshBase
 {
-private:
-	//---------------------------------------
-	// Fields
-	//---------------------------------------
-	PxVec3* pVertices;
-	PxU32* pIndices;
-
 protected:
 	//---------------------------------------
 	// Fields
@@ -29,17 +24,10 @@ protected:
 	PxMaterial* pPxMaterial;
 
 	//---------------------------------------
-	// Methods
-	//---------------------------------------
-	void ConvertBuffers();
-	bool TryReadCookedFile(PxU8*& outBuffer, PxU32& outSize) const;
-	void WriteCookedFile(PxU8* const buffer, PxU32 const size) const;
-
-	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline PxVec3* GetVertices() { return pVertices; };
-	inline PxU32* GetIndices() { return pIndices; };
+	inline PxVec3* GetVertices() { return (PxVec3*) &vecVertices[0]; };
+	inline PxU32* GetIndices() { return (PxU32*) &vecIndices[0]; };
 
 public:
 	//---------------------------------------
@@ -50,11 +38,10 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh() = 0;
-	virtual PxRigidDynamic* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const = 0;
-
-	PxRigidDynamic* InitRigidbody(const vector<float>& pos, const vector<float>& quat) const;
-	static void DestroyRigidbody(PxRigidDynamic* body);
+	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) = 0;
+	virtual PxRigidActor* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const = 0;
+	PxRigidActor* InitRigidbody(const vector<float>& pos, const vector<float>& quat, bool isStatic) const;
+	static void DestroyRigidbody(PxRigidActor* body);
 
 	//---------------------------------------
 	// Constructors
