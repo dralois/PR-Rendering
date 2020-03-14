@@ -1,9 +1,12 @@
 #pragma once
 
-#include "SimManager.h"
-
 #include <iostream>
+
+#pragma warning(push, 0)
 #include <boost/filesystem.hpp>
+#pragma warning(pop)
+
+#include "SimManager.h"
 
 // Entry point
 int main(int argc, char** argv)
@@ -55,7 +58,8 @@ int main(int argc, char** argv)
 	std::cout << "Deleting Temp Directories" << std::endl;
 
 	// Delete temporary output
-	if (boost::filesystem::exists(temp_dir)) {
+	if (boost::filesystem::exists(temp_dir))
+	{
 		boost::filesystem::remove_all(temp_dir);
 	}
 

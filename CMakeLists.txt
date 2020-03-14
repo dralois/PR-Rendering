@@ -1,5 +1,5 @@
 # CMake version
-CMAKE_MINIMUM_REQUIRED (VERSION 3.11)
+CMAKE_MINIMUM_REQUIRED (VERSION 3.15)
 # Project name
 PROJECT (PRRendering CXX)
 
@@ -36,15 +36,15 @@ ADD_EXECUTABLE(PRRendering
                 src/PxMesh.cpp
                 src/PxMeshConvex.cpp
                 src/PxMeshTriangle.cpp
-                src/scene_manager.cpp
-                src/sim_manager.cpp
+                src/SceneManager.cpp
+                src/SimManager.cpp
                 include/MeshBase.h
                 include/AiMesh.h
                 include/PxMesh.h
                 include/PxMeshConvex.h
                 include/PxMeshTriangle.h
-                include/scene_manager.h
-                include/sim_manager.h
+                include/SceneManager.h
+                include/SimManager.h
 )
 
 ###########################################################################################
@@ -60,6 +60,15 @@ FIND_PACKAGE(RapidJSON 1.1 REQUIRED)
 FIND_PACKAGE(glm REQUIRED)
 FIND_PACKAGE(GLFW3 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
+
+# Defines for boost and glew on windows
+IF(WIN32)
+    SET(BOOST_INCLUDEDIR ${PROJECT_SOURCE_DIR}/dependencies/include)
+    SET(BOOST_LIBRARYDIR ${PROJECT_SOURCE_DIR}/dependencies/lib)
+    SET(Boost_NAMESPACE "libboost")
+ENDIF(WIN32)
+
+# FindBoost is shipped with CMake
 FIND_PACKAGE(Boost REQUIRED system thread filesystem)
 
 # Include dirs

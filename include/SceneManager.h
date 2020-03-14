@@ -1,5 +1,6 @@
 #pragma once
 
+#pragma warning(push, 0)
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -12,11 +13,12 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
-#include "../render/include/render.h"
+#include "PxPhysicsAPI.h"
 
 #include "ai.h"
+#pragma warning(pop)
 
-#include "PxPhysicsAPI.h"
+#include "../render/include/render.h"
 
 #include <AiMesh.h>
 #include <PxMeshConvex.h>
@@ -26,6 +28,9 @@ using namespace Eigen;
 using namespace physx;
 using namespace std;
 
+//---------------------------------------
+// Camera intrinsics
+//---------------------------------------
 struct Camera
 {
 	float fx;
@@ -34,116 +39,161 @@ struct Camera
 	float oy;
 };
 
+//---------------------------------------
+// Annotation info
+//---------------------------------------
 struct BodyAnnotation
 {
-	int id;
-	int sim_id;
+	int shapeId;
+	int objId;
 	char* name;
-	std::vector<float> bbox;
-	std::vector<float> trans;
-	std::vector<float> quat;
+	std::vector<float> vecBBox;
+	std::vector<float> vecPos;
+	std::vector<float> vecRot;
 };
 
+//---------------------------------------
 // Simulates and renderes a scene
+//---------------------------------------
 class SceneManager
 {
 private:
-	Render* render;
-	PxPhysics* gPhysics;
-	PxScene* gScene;
-	PxCooking* gCooking;
-	PxFoundation* gFoundation;
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
 
-	AtNode* camera;
-	AtNode* options;
-	AtNode* driver;
-	AtArray* outputs_array;
-	AtNode* shader_obj_depth;
-	AtNode* shader_bck_depth;
-	AtNode* shader_blendBG;
+	// PhysX
+	PxScene* pScene;
+	PxCooking* pCooking;
+	PxMaterial* pMaterial;
+	PxRigidDynamic* pSceneRigidbody;
+	vector<pair<PxMeshConvex*, PxRigidDynamic*>> dicObjsRigidbodies;
 
-	PxMaterial* gMaterial;
+	// Rendering
+	Render* pRenderer;
+	AtNode* aiCamera;
+	AtNode* aiOptions;
+	AtNode* aiDriver;
+	AtArray* aiArrOutputs;
+	AtNode* aiShaderDepthObj;
+	AtNode* aiShaderDepthScene;
+	AtNode* aiShaderBlendImage;
 
-	vector<PxMeshConvex*> physx_objs;
-	vector<AiMesh*> sim_objs;
-	vector<string> cameraPoses;
-	vector<string> camImages;
-	int start_count;
-	int obj_per_sim;
-	string scene_path;
+	// Meshes
+	vector<PxMeshConvex*> vecpPhysxObjs;
+	vector<AiMesh*> vecpArnoldObjs;
+	PxMeshTriangle* pPhysxScene;
+	AiMesh* pArnoldScene;
 
-	cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
+	// Camera
+	Camera camIntrinsicScene, camIntrinsicsRender;
+	vector<string> vecCameraPoses;
+	vector<string> vecCameraImages;
 	Matrix4f camMat;
 	Vector3f camPos;
 
-	Camera intrinsic_scene, intrinsics_render_out;
-
+	// Objects
 	class ObjectInfo;
-	vector<ObjectInfo*> curr_objects;
-	vector<pair<PxMeshConvex*, PxRigidDynamic*>> sim_objects;
-	PxMeshTriangle* scenePxMesh;
-	AiMesh* sceneAiMesh;
-	PxRigidDynamic* myScene;
-	int scene_count;
+	vector<ObjectInfo*> vecpCurrObjs;
 
+	// OpenCV
+	cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
+
+	// Files
 	std::ofstream ANNOTATIONS_FILE;
 	rapidjson::Document* CONFIG_FILE;
 
-	void draw_scene();
-	void generate_objects();
-	void destroy_meshes();
-	void run_physx_sim();
-	void fetch_results();
+	// Other
+	int startCount;
+	int objsPerSim;
+	int sceneCount;
+	string scenePath;
 
-	bool checkIfCenterOnImage(ObjectInfo*);
-	float computeVarianceOfLaplacian(const cv::Mat& image);
-	void render_scene_depth_imgs();
-	vector<tuple<cv::Mat, cv::Mat> > render_scenes_gl();
-	bool render_bodies_depth();
-	// returns a bool stating if the final image should be rendered
-	// or no depending on the visible parts of objects and distance
-	void draw_bodies();
-	bool calculate_mask();
-	void render_bodies_seg();
-	void blend_depth();
-	void blend_seg();
-	void blend_rgb();
-	void set_cam_mat(string path);
-	void load_cam_mat(float fx, float fy, float ox, float oy);
-	void load_intrinsics();
-	void render_image();
-	void remove_bodies_ai();
-	void getFilesInAdirectory(string, float variance_threshold);
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
 
-	void setAnnPose(BodyAnnotation& ann, Vector3f* pos, Quaterniond* q);
-	void set_annotations(cv::Mat seg, cv::Mat segMasked);
+	// PhysX
+	void X_PxCreateScene();
+	void X_PxCreateObjs();
+	void X_PxRunSim();
+	void X_PxSaveSimResults();
+	void X_PxDestroy();
+
+	// Arnold
+	void X_AiCreateObjs();
+	void X_AiDestroy();
+
+	// Rendering
+	vector<tuple<cv::Mat, cv::Mat>> X_RenderSceneDepth() const;
+	bool X_RenderObjsDepth() const;
+	void X_RenderObjsLabel() const;
+
+	// Helpers
+	void X_GetFilesInDir(string dir, float varThreshold);
+	float X_ComputeImageVariance(const cv::Mat& image) const;
+	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
+	bool X_CalculateObjsMask();
+
+	// Blending & Camera
+	void X_LoadCamMat(float fx, float fy, float ox, float oy);
+	void X_LoadCamIntrinsics();
+	void X_BlendDepth();
+	void X_BlendLabel();
+	void X_BlendImage();
+
+	// Annotation
+	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaterniond& rot) const;
+	void X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked);
 
 public:
-	SceneManager(PxPhysics* gPhysics, PxScene* gScene, PxCooking* gCooking,
-		PxFoundation* gFoundation, PxMaterial* gMaterial, AtNode* camera,
-		AtNode* options, AtNode* driver, AtArray* outputs_array,
-		vector<PxMeshConvex*> physx_objs, vector<AiMesh*> sim_objs,
-		int start_count, int obj_per_sim, rapidjson::Document* CONFIG_FILE,
-		AtNode* shader_obj_depth, AtNode* shader_bck_depth, AtNode* shader_blendBG);
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+	inline void SetScenePath(string path) { scenePath = path; };
+	bool Run(int iterations, int maxCount);
+
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+	SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial* pPxMaterial,
+							AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
+							vector<PxMeshConvex*> vecPhysxObjs, vector<AiMesh*> vecArnoldObjs,
+							int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
+							AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
 	~SceneManager();
-	void set_scene_path(string);
-	bool run(int iter, int max_count);
+
 };
 
+//---------------------------------------
 // Saves position and rotation
+//---------------------------------------
 class SceneManager::ObjectInfo
 {
 private:
-	Vector3f* pos;
-	Quaterniond* rot;
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+	Vector3f pos;
+	Quaterniond rot;
 
 public:
-	int shape_id;
-	int object_sim_id;
-	ObjectInfo(int, int);
-	void set_pose(Vector3f*, Quaterniond*);
-	Vector3f* get_pos();
-	Quaterniond* get_rot();
-	string get_name();
-	~ObjectInfo();
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+	int shapeId;
+	int objSimId;
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+	inline void SetPose(Vector3f pos, Quaterniond rot) { pos = pos; rot = rot; };
+	inline Quaterniond GetRot() const { return rot; };
+	inline Vector3f GetPos() const { return pos; };
+	inline string GetName() const { return "body" + to_string(shapeId) + "_" + to_string(objSimId); };
+
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+	ObjectInfo(int shapeId, int objSimId);
 };

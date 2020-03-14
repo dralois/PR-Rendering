@@ -2,23 +2,46 @@
 
 #include "MeshBase.h"
 
+#pragma warning(push, 0)
 #include <ai.h>
+#pragma warning(pop)
 
+struct AiMeshInput
+{
+	int meshId;
+	vector<float> pos;
+	vector<float> rot;
+	void* pAiMesh;
+};
+
+//---------------------------------------
+// Arnold meshes, used for rendering
+//---------------------------------------
 class AiMesh : public MeshBase
 {
 private:
+	//---------------------------------------
 	// Methods
+	//---------------------------------------
 	template <class T>
-	AtArray* X_ArrayConvertByVector(const std::vector<T>& input, const AtByte type);
+	AtArray* X_VectorToAiArray(const std::vector<T>& input, const AtByte type);
 
 public:
+	//---------------------------------------
 	// Fields
+	//---------------------------------------
 	bool isScene = false;
 
+	//---------------------------------------
 	// Methods
-	AtNode* CreateMesh(const int mesh_id, const vector<float>& pos, const vector<float>& quat);
-	static bool DestroyMesh(const string node_name);
+	//---------------------------------------
+	unsigned int CreateMesh(void* data);
+	static void DestroyMesh(const string nodeName);
+	static unsigned int CreateMeshThread(void* data);
 
+	//---------------------------------------
 	// Constructors
-	MeshBase::MeshBase;
+	//---------------------------------------
+	AiMesh(string meshPath, string texturePath, int meshId, float scale);
+	AiMesh(string meshPath, int meshId, float scale);
 };

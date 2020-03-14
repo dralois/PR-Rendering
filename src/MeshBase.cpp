@@ -1,34 +1,33 @@
 #include "MeshBase.h"
 
-// Mesh ID
-int MeshBase::GetID()
-{
-	return mesh_id;
-}
-
+//---------------------------------------
 // Try to load the mesh
+//---------------------------------------
 bool MeshBase::LoadFile()
 {
-	xmin = ymin = 1e8;
-	xmax = ymax = 0;
-
 	Assimp::Importer importer;
 
 	// If reading possible
-	std::ifstream f(path.c_str());
+	std::ifstream f(meshPath.c_str());
 	if (!f.good())
 		return false;
 
 	// Read and load with assimp
-	pScene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+	const aiScene* scene = importer.ReadFile(meshPath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
 
-	if (!pScene)
+	// Error handling
+	if (!scene)
 	{
 		std::cout << importer.GetErrorString() << std::endl;
 		return false;
 	}
+	else if (!scene->HasMeshes())
+	{
+		std::cout << "File " << meshPath << " has no mesh" << endl;
+		return false;
+	}
 
-	const aiMesh* mesh = pScene->mMeshes[0];
+	const aiMesh* mesh = scene->mMeshes[0];
 
 	// Load vertices
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -49,33 +48,33 @@ bool MeshBase::LoadFile()
 		// Update bounds
 		if (calculateBounds)
 		{
-			if (pos.x < xmin)
+			if (pos.x < xMin)
 			{
-				xmin = pos.x;
+				xMin = pos.x;
 			}
-			else if (pos.x > xmax)
+			else if (pos.x > xMax)
 			{
-				xmax = pos.x;
+				xMax = pos.x;
 			}
-			if (pos.y < ymin)
+			if (pos.y < yMin)
 			{
-				ymin = pos.y;
+				yMin = pos.y;
 			}
-			else if (pos.y > ymax)
+			else if (pos.y > yMax)
 			{
-				ymax = pos.y;
+				yMax = pos.y;
 			}
 		}
 	}
 
-	// ?
-	xmax -= 0.5;
-	xmin += 0.5;
-	ymax -= 0.5;
-	ymin += 0.5;
+	// Tolerance (?)
+	xMax -= 0.5;
+	xMin += 0.5;
+	yMax -= 0.5;
+	yMin += 0.5;
 
 	// Load UVs
-	if (mesh->mTextureCoords[0] != nullptr)
+	if (mesh->HasTextureCoords(0))
 	{
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
@@ -86,7 +85,7 @@ bool MeshBase::LoadFile()
 	}
 
 	// Load normals
-	if (&(mesh->mNormals[0]) != nullptr)
+	if (mesh->HasNormals())
 	{
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
@@ -103,6 +102,7 @@ bool MeshBase::LoadFile()
 		vecIndices.push_back(mesh->mFaces[i].mIndices[0]);
 		vecIndices.push_back(mesh->mFaces[i].mIndices[1]);
 		vecIndices.push_back(mesh->mFaces[i].mIndices[2]);
+		// Not in use?
 		if (doubleNorms)
 		{
 			vecIndices.push_back(mesh->mFaces[i].mIndices[2]);
@@ -116,17 +116,21 @@ bool MeshBase::LoadFile()
 	return true;
 }
 
+//---------------------------------------
 // Default constructor
-MeshBase::MeshBase(string path, string texture_path, int mesh_id, float scale) :
-	path(path),
-	texture_path(texture_path),
-	mesh_id(mesh_id),
+//---------------------------------------
+MeshBase::MeshBase(string meshPath, string texturePath, int meshId, float scale) :
+	meshPath(meshPath),
+	texturePath(texturePath),
+	meshId(meshId),
 	scale(scale)
 {
 };
 
+//---------------------------------------
 // Without texture
-MeshBase::MeshBase(string path, int mesh_id, float scale) :
-	MeshBase(path, "", mesh_id, scale)
+//---------------------------------------
+MeshBase::MeshBase(string meshPath, int meshId, float scale) :
+	MeshBase(meshPath, "", meshId, scale)
 {
 };

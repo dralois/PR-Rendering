@@ -1,75 +1,120 @@
 #include "PxMesh.h"
 
-// Physx vertices
-PxVec3* PxMesh::GetVertices()
-{
-	return pVerts;
-}
-
-// Physx indices
-PxU32* PxMesh::GetIndices()
-{
-	return pIndices;
-}
-
+//---------------------------------------
 // Sets vertices and indices as physx types
+//---------------------------------------
 void PxMesh::ConvertBuffers()
 {
-	pVerts = new PxVec3[vecVertices.size() / 3];
+	pVertices = new PxVec3[vecVertices.size() / 3];
 	pIndices = new PxU32[vecIndices.size()];
+	// Save verts & indices
+	memcpy(pVertices, &vecVertices[0], sizeof(float) * vecVertices.size());
+	memcpy(pIndices, &vecIndices[0], sizeof(int) * vecIndices.size());
+}
 
-	for (int i = 0; i * 3 < vecVertices.size(); i++)
+//---------------------------------------
+// Try to read and return a cooked mesh from disk
+//---------------------------------------
+bool PxMesh::TryReadCookedFile(PxU8*& outBuffer, PxU32& outSize) const
+{
+	// Try to load from disk
+	std::ifstream cookedIn;
+	string pxPath = meshPath + "px";
+	cookedIn.open(pxPath, ios_base::in | ios_base::binary | ios_base::ate);
+
+	// If cooked mesh on disk
+	if (cookedIn.is_open())
 	{
-		pVerts[i] = PxVec3(vecVertices.at(i * 3), vecVertices.at(i * 3 + 1), vecVertices.at(i * 3 + 2));
+		// Read file in
+		streampos size = cookedIn.tellg();
+		char* fileBuff = new char[size];
+		cookedIn.seekg(0, ios::beg);
+		cookedIn.read(fileBuff, size);
+		cookedIn.close();
+
+		// Create and copy data into seperate buffer
+		PxU8* convertBuff = new PxU8[size];
+		memcpy(convertBuff, fileBuff, size);
+
+		// Cleanup
+		delete[] fileBuff;
+
+		// Return buffer
+		outBuffer = convertBuff;
+		outSize = size;
+		return true;
 	}
-
-	for (int i = 0; i < vecIndices.size(); i++)
+	// Not on disk
+	else
 	{
-		pIndices[i] = vecIndices.at(i);
+		return false;
 	}
 }
 
+//---------------------------------------
+// Write cooked mesh out into file
+//---------------------------------------
+void PxMesh::WriteCookedFile(PxU8* const buffer, PxU32 const size) const
+{
+	// Create and copy data into seperate buffer
+	char* convertBuff = new char[size];
+	memcpy(convertBuff, buffer, size);
+
+	// Write out into seperate file
+	std::ofstream cookedOut;
+	string pxPath = meshPath + "px";
+	cookedOut.open(pxPath, ios_base::out | ios_base::binary);
+	cookedOut.write(convertBuff, size);
+	cookedOut.close();
+
+	// Cleanup
+	delete[] convertBuff;
+}
+
+//---------------------------------------
 // Create rigidbody
+//---------------------------------------
 PxRigidDynamic* PxMesh::InitRigidbody(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody at provided position and rotation
 	PxQuat currQ(quat.at(0), quat.at(1), quat.at(2), quat.at(3));
 	PxVec3 posVec(pos.at(0), pos.at(1), pos.at(2));
 	PxTransform currT(posVec, currQ);
-	PxRigidDynamic* body = gPhysics->createRigidDynamic(currT);
-	// Attach rigidbody to shape
-	body->attachShape(*pShape);
+	PxRigidDynamic* body = PxGetPhysics().createRigidDynamic(currT);
 	return body;
 }
 
+//---------------------------------------
 // Cleanup rigidbody
+//---------------------------------------
 void PxMesh::DestroyRigidbody(PxRigidDynamic* curr)
 {
-	curr->release();
+	PX_RELEASE(curr);
 }
 
+//---------------------------------------
 // New physx mesh manager
+//---------------------------------------
 PxMesh::PxMesh(string path,
-							int _id,
+							int meshId,
 							float scale,
-							PxPhysics* gPhysics,
-							PxScene* gScene,
-							PxCooking* gCooking,
-							PxMaterial* gMaterial) :
-							MeshBase(path, _id, scale),
-	gPhysics(gPhysics),
-	gScene(gScene),
-	gCooking(gCooking),
-	gMaterial(gMaterial)
+							PxScene* scene,
+							PxCooking* cooking,
+							PxMaterial* material) :
+	MeshBase(path, meshId, scale),
+	pPxScene(scene),
+	pPxCooking(cooking),
+	pPxMaterial(material),
+	pIndices(NULL), pVertices(NULL), pShape(NULL)
 {
-	// Setup vertices and indices for physx
-	ConvertBuffers();
 };
 
+//---------------------------------------
 // Cleanup mesh manager
+//---------------------------------------
 PxMesh::~PxMesh()
 {
-	pShape->release();
-	delete[] pVerts;
+	PX_RELEASE(pShape);
+	delete[] pVertices;
 	delete[] pIndices;
 }

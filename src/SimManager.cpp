@@ -1,5 +1,6 @@
 #include "SimManager.h"
 
+// FixMe: Shaders should not need to be in seperate namespaces
 namespace depth
 {
 	#include "../plugins/src/depthShader.cpp"
@@ -21,93 +22,96 @@ namespace filter
 	extern AtNodeMethods* NullFilter;
 }
 
-string SimManager::GetFinalPath()
-{
-	return CONFIG_FILE["final_imgs_path"].GetString();
-}
-
-string SimManager::GetTemporaryPath()
-{
-	return CONFIG_FILE["temp_files_path"].GetString();
-}
-
+//---------------------------------------
+// Cleanup simulation
+//---------------------------------------
 SimManager::~SimManager()
 {
 	// Free physics
-	if (gPhysics != nullptr)
+	if (pPxScene != NULL)
 	{
-		free(gFoundation);
-		delete gPhysics;
-		delete gDispatcher;
-		free(gCooking);
-		free(gScene);
-		free(gMaterial);
+#ifdef _DEBUG
+		PxCloseExtensions();
+		pPxPvdServer->disconnect();
+		pPxPvdServer->getTransport()->release();
+#endif
+		PxGetPhysics().release();
+		PX_RELEASE(pPxPvdServer);
+		PX_RELEASE(pPxDispatcher);
+		PX_RELEASE(pPxCooking);
+		PX_RELEASE(pPxScene);
+		PX_RELEASE(pPxMaterial);
+		PxGetFoundation().release();
 	}
 
-	// Free arnold
-	if (renderCamera != nullptr)
-	{
-		free(renderCamera);
-		free(renderOptions);
-		free(outputDriver);
-		delete ouputArray;
-		free(shaderObjectDepth);
-		free(shaderSceneDepth);
-		free(shaderBlend);
-	}
+	// Shutdown Arnold, automatically frees everything
+	AiEnd();
 
 	// Delete scene
-	if (currScene != nullptr)
+	if (currScene != NULL)
 		delete currScene;
 }
 
+//---------------------------------------
+// Initialize physx runtime
+//---------------------------------------
 void SimManager::InitPhysx()
 {
-	gAllocator;
-	gErrorCallback;
-
 	// Singletons
-	gFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, gAllocator, gErrorCallback);
-	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, NULL);
+	PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
+	PxCreateBasePhysics(PX_PHYSICS_VERSION, PxGetFoundation(), PxTolerancesScale(), true, NULL);
+#ifdef _DEBUG
+	pPxPvdServer = PxCreatePvd(PxGetFoundation());
+	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+	pPxPvdServer->connect(*transport, PxPvdInstrumentationFlag::eDEBUG);
+	PxInitExtensions(PxGetPhysics(), pPxPvdServer);
+#endif
 
 	// Set up scene
-	PxSceneDesc sceneDesc(gPhysics->getTolerancesScale());
+	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
 	sceneDesc.gravity = PxVec3(0.0f, -6.81f, 0.0f);
-	gDispatcher = PxDefaultCpuDispatcherCreate(2);
-	sceneDesc.cpuDispatcher = gDispatcher;
+	pPxDispatcher = PxDefaultCpuDispatcherCreate(2);
+	sceneDesc.cpuDispatcher = pPxDispatcher;
 	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-	gScene = gPhysics->createScene(sceneDesc);
+	pPxScene = PxGetPhysics().createScene(sceneDesc);
 
 	// Set up mesh cooking
-	gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, PxCookingParams(PxTolerancesScale()));
+	pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, PxGetFoundation(), PxCookingParams(PxTolerancesScale()));
 
+#ifdef _DEBUG
 	// Set up visual debugger
-	PxPvdSceneClient* pvdClient = gScene->getScenePvdClient();
+	PxPvdSceneClient* pvdClient = pPxScene->getScenePvdClient();
 	if (pvdClient)
 	{
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
 	}
+#endif
 
 	// Default physics material
-	gMaterial = gPhysics->createMaterial(0.6f, 0.6f, 0.f);
+	pPxMaterial = PxGetPhysics().createMaterial(0.6f, 0.6f, 0.f);
 }
 
-// Loads json config file
+//---------------------------------------
+// Load and parse json config file
+//---------------------------------------
 void SimManager::LoadConfig(string config_path)
 {
-	cout << "reading config file:\t" << config_path << endl;
+	cout << "Reading config file:\t" << config_path << endl;
+
 	using namespace rapidjson;
 
 	// Open und parse config file
-	char buffer[65536];
+	char buffer[16000];
 	FILE* pFile = fopen(config_path.c_str(), "rb");
 	FileReadStream is(pFile, buffer, sizeof(buffer));
 	CONFIG_FILE.ParseStream<0, UTF8<>, FileReadStream>(is);
 }
 
-// Sets up arnold for rendering
+//---------------------------------------
+// Initialize Arnold for rendering
+//---------------------------------------
 void SimManager::InitArnold()
 {
 	// Set up arnold
@@ -127,23 +131,27 @@ void SimManager::InitArnold()
 	AiNodeEntryInstall(AI_NODE_FILTER, AI_TYPE_INT, "null_filter", SHADERS_PATH, filter::NullFilter, AI_VERSION);
 
 	// Create initialize camera
-	renderCamera = AiNode("persp_camera");
-	renderOptions = AiUniverseGetOptions();
-	AiNodeSetInt(renderOptions, "AA_samples", 4);
-	AiNodeSetInt(renderOptions, "GI_diffuse_depth", 6);
-	AiNodeSetPtr(renderOptions, "camera", renderCamera);
+	aiRenderCamera = AiNode("persp_camera");
+	aiRenderOptions = AiUniverseGetOptions();
+	AiNodeSetInt(aiRenderOptions, "AA_samples", 4);
+	AiNodeSetInt(aiRenderOptions, "GI_diffuse_depth", 6);
+	AiNodeSetPtr(aiRenderOptions, "camera", aiRenderCamera);
+
 	// Create render driver
-	outputDriver = AiNode("driver_png");
-	AiNodeSetStr(outputDriver, "name", "mydriver");
-	ouputArray = AiArrayAllocate(1, 1, AI_TYPE_STRING);
+	aiOutputDriver = AiNode("driver_png");
+	AiNodeSetStr(aiOutputDriver, "name", "outputDriver");
+	aiOuputArray = AiArrayAllocate(1, 1, AI_TYPE_STRING);
+
 	// Initialize Shaders
-	shaderObjectDepth = AiNode("depthshader");
-	AiNodeSetBool(shaderObjectDepth, "is_body", true);
-	shaderSceneDepth = AiNode("depthshader");
-	shaderBlend = AiNode("blendshader");
+	aiShaderObjectDepth = AiNode("depthshader");
+	AiNodeSetBool(aiShaderObjectDepth, "is_body", true);
+	aiShaderSceneDepth = AiNode("depthshader");
+	aiShaderBlend = AiNode("blendshader");
 }
 
-// Loads all required meshes (physx, rendering)
+//---------------------------------------
+// Load all required meshes (physx, rendering)
+//---------------------------------------
 void SimManager::LoadMeshes()
 {
 	DIR* dir;
@@ -168,23 +176,21 @@ void SimManager::LoadMeshes()
 
 			cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
 			// Create physx mesh
-			PxMeshConvex* curr = new PxMeshConvex(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat(), gPhysics, gScene, gCooking, gMaterial);
-			curr->LoadFile();
+			PxMeshConvex* curr = new PxMeshConvex(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
 			curr->CreateMesh();
 			curr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
 			// Save in vector
 			vecMeshPhysX.push_back(curr);
-
-			// Create arnold mesh
-			AiMesh* ai_mesh_manager = new AiMesh(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat());
 		}
 		// Finally close
 		closedir(dir);
 	}
 }
 
-// Determines scenes to process
-void SimManager::X_GetSceneFolders(string path)
+//---------------------------------------
+// Determine scenes to process
+//---------------------------------------
+void SimManager::X_SaveSceneFolders(string path)
 {
 	DIR* dir;
 	struct dirent* ent;
@@ -196,6 +202,7 @@ void SimManager::X_GetSceneFolders(string path)
 		// While folders available
 		while ((ent = readdir(dir)) != NULL)
 		{
+			// Not a folder
 			if (ent->d_name[0] == '.')
 				continue;
 			// Save folder in vector
@@ -209,14 +216,20 @@ void SimManager::X_GetSceneFolders(string path)
 	}
 }
 
-// Runs simulation and rendering
+//---------------------------------------
+// Run simulation and rendering
+//---------------------------------------
 int SimManager::RunSimulation()
 {
 	// Fetch 3R scan scenes
-	X_GetSceneFolders(CONFIG_FILE["3RScan_path"].GetString());
-	SceneManager curr(gPhysics, gScene, gCooking, gFoundation, gMaterial, renderCamera, renderOptions, outputDriver, ouputArray,
-		vecMeshPhysX, vecMesh3D, 0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
-		shaderObjectDepth, shaderSceneDepth, shaderBlend);
+	X_SaveSceneFolders(CONFIG_FILE["3RScan_path"].GetString());
+
+	// Create mananger
+	SceneManager curr(pPxScene, pPxCooking, pPxMaterial,
+										aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOuputArray,
+										vecMeshPhysX, vecMesh3D,
+										0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
+										aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
 
 	// Create lights
 	AtNode* light = AiNode("point_light");
@@ -264,8 +277,8 @@ int SimManager::RunSimulation()
 	// Render all scenes
 	for (string folder : vecSceneFolders)
 	{
-		curr.set_scene_path(folder);
-		bool count_samples = curr.run(iter_per_scene, max_count);
+		curr.SetScenePath(folder);
+		bool count_samples = curr.Run(iter_per_scene, max_count);
 		if (!count_samples)
 			break;
 	}
