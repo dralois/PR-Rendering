@@ -14,11 +14,11 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 		LoadFile(doubleNorms);
 		// Create triangle mesh object
 		PxTriangleMeshDesc triangleDesc;
-		triangleDesc.points.count = (PxU32)(vecVertices.size() / 3);
-		triangleDesc.points.stride = (PxU32)sizeof(PxVec3);
+		triangleDesc.points.count = vecVertices.size() / 3;
+		triangleDesc.points.stride = sizeof(PxVec3);
 		triangleDesc.points.data = GetVertices();
-		triangleDesc.triangles.count = (PxU32)(vecIndices.size() / 3);
-		triangleDesc.triangles.stride = (PxU32)(sizeof(PxU32) * 3);
+		triangleDesc.triangles.count = vecIndices.size() / 3;
+		triangleDesc.triangles.stride = sizeof(PxU32) * 3;
 		triangleDesc.triangles.data = GetIndices();
 
 		// Cook the mesh

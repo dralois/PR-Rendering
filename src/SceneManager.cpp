@@ -90,7 +90,7 @@ void SceneManager::X_PxCreateScene()
 	string mesh_path = scenePath + "/mesh.refined.obj";
 	// Create physx mesh, shape and rigidbody of scan scene
 	pPhysxScene = new PxMeshTriangle(mesh_path, 0, 100, pScene, pCooking, pMaterial);
-	pPhysxScene->CreateMesh(true, false);
+	pPhysxScene->CreateMesh(true, true);
 	vector<float> pos{ 0, 0, 0 };
 	vector<float> rot{ 0, 0, 0, 1 };
 	pPhysxScene->CreateRigidbody(pos, rot);

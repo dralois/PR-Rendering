@@ -28,10 +28,12 @@ protected:
 	float scale;
 	string meshPath;
 	string texturePath;
+
 	vector<float> vecVertices;
 	vector<int> vecIndices;
 	vector<float> vecUVs;
 	vector<float> vecNormals;
+
 	float xMin = 1e8;
 	float yMin = 1e8;
 	float xMax = -1e8;

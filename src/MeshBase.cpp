@@ -57,8 +57,8 @@ bool MeshBase::LoadFile(bool doubleNorms)
 		{
 			aiVector3D n = mesh->mNormals[i];
 			vecNormals.push_back(n.x);
-			vecNormals.push_back(n.z);
-			vecNormals.push_back(n.y);
+			vecVertices.push_back(scale == 100 ? n.z : n.y);
+			vecVertices.push_back(scale == 100 ? n.y : n.z);
 		}
 	}
 
@@ -74,7 +74,7 @@ bool MeshBase::LoadFile(bool doubleNorms)
 		{
 			for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
 			{
-				vecIndices.push_back(mesh->mFaces[i].mIndices[j] - mesh->mFaces[i].mNumIndices + 1);
+				vecIndices.push_back(mesh->mFaces[i].mIndices[mesh->mFaces[i].mNumIndices - j - 1]);
 			}
 		}
 	}
