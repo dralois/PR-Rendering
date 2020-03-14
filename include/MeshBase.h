@@ -9,6 +9,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/Exporter.hpp>
 
 #include <eigen3/Eigen/Dense>
 #pragma warning(pop)
@@ -43,6 +44,7 @@ protected:
 	// Methods
 	//---------------------------------------
 	bool LoadFile(bool doubleNorms);
+	void StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, string ext) const;
 
 public:
 	//---------------------------------------

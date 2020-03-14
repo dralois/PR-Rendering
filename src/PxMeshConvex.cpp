@@ -14,8 +14,8 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 		LoadFile(doubleNorms);
 		// Create convex mesh
 		PxConvexMeshDesc convDesc;
-		convDesc.points.count = (PxU32) (vecVertices.size() / 3);
-		convDesc.points.stride = (PxU32) sizeof(PxVec3);
+		convDesc.points.count = vecVertices.size() / 3;
+		convDesc.points.stride = sizeof(PxVec3);
 		convDesc.points.data = GetVertices();
 		convDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
 
@@ -31,6 +31,52 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
 	// Create the mesh from buffer
 	pPxMesh = PxGetPhysics().createConvexMesh(readInBuffer);
+
+#ifdef PX_EXPORT_TO_OBJ
+	// Triangles and vertices buffers
+	vector<int> tris;
+	vector<float> verts;
+
+	// Get polygons and buffers
+	PxU32 polyNum = pPxMesh->getNbPolygons();
+	PxU32 vertsNum = pPxMesh->getNbVertices();
+	const PxVec3* vertsBuff = pPxMesh->getVertices();
+	const PxU8* idxBuff = pPxMesh->getIndexBuffer();
+
+	// Triangulate
+	PxU32 offset = 0;
+	for (PxU32 i = 0; i < polyNum; i++)
+	{
+		// Get face
+		PxHullPolygon face;
+		pPxMesh->getPolygonData(i, face);
+		// Save vertices
+		const PxU8* faceIndices = idxBuff + face.mIndexBase;
+		for (PxU32 j = 0; j < face.mNbVerts; j++)
+		{
+			verts.push_back(vertsBuff[faceIndices[j]].x);
+			verts.push_back(vertsBuff[faceIndices[j]].y);
+			verts.push_back(vertsBuff[faceIndices[j]].z);
+		}
+		// Save indices
+		for (PxU32 j = 2; j < face.mNbVerts; j++)
+		{
+			tris.push_back(PxU32(offset));
+			tris.push_back(PxU32(offset + j));
+			tris.push_back(PxU32(offset + j - 1));
+		}
+		// Update counter
+		offset += face.mNbVerts;
+	}
+
+	// Create obj file
+	StoreFile(tris, tris.size() / 3, verts, verts.size() / 3, "_px");
+
+	// Cleanup
+	tris.clear();
+	verts.clear();
+
+#endif
 
 	// Save extends
 	if (saveBounds)
@@ -54,7 +100,7 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 PxRigidActor* PxMeshConvex::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidDynamic* body = (PxRigidDynamic*) InitRigidbody(pos, quat, false);
+	PxRigidDynamic* body = (PxRigidDynamic*)InitRigidbody(pos, quat, false);
 	// Update
 	PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
 	body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);

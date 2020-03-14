@@ -3,22 +3,22 @@
 // FixMe: Shaders should not need to be in seperate namespaces
 namespace depth
 {
-	#include "../plugins/src/depthShader.cpp"
+#include "../plugins/src/depthShader.cpp"
 	extern AtNodeMethods* DepthShader;
 }
 namespace label
 {
-	#include "../plugins/src/labelShader.cpp"
+#include "../plugins/src/labelShader.cpp"
 	extern AtNodeMethods* LabelShader;
 }
 namespace blend
 {
-	#include "../plugins/src/blendShader.cpp"
+#include "../plugins/src/blendShader.cpp"
 	extern AtNodeMethods* BlendShader;
 }
 namespace filter
 {
-	#include "../plugins/src/nullFilter.cpp"
+#include "../plugins/src/nullFilter.cpp"
 	extern AtNodeMethods* NullFilter;
 }
 
@@ -232,10 +232,10 @@ int SimManager::RunSimulation()
 
 	// Create mananger
 	SceneManager curr(pPxScene, pPxCooking, pPxMaterial,
-										aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOuputArray,
-										vecMeshPhysX, vecMesh3D,
-										0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
-										aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
+		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOuputArray,
+		vecMeshPhysX, vecMesh3D,
+		0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
+		aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
 
 	// Create lights
 	AtNode* light = AiNode("point_light");

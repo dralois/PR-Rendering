@@ -43,10 +43,10 @@ void setBBox(BodyAnnotation& ann, const cv::Mat& mask)
 // Create new scene manager
 //---------------------------------------
 SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial* pPxMaterial,
-													AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
-													vector<PxMeshConvex*> vecPhysxObjs, vector<AiMesh*> vecArnoldObjs,
-													int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
-													AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend) :
+	AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
+	vector<PxMeshConvex*> vecPhysxObjs, vector<AiMesh*> vecArnoldObjs,
+	int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
+	AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend) :
 	pScene(pPxScene), pCooking(pPxCooking), pMaterial(pPxMaterial),
 	aiCamera(aiCamera), aiOptions(aiOptions), aiDriver(aiDriver), aiArrOutputs(aiOutputArray),
 	vecpPhysxObjs(vecPhysxObjs), vecpArnoldObjs(vecArnoldObjs),
@@ -90,7 +90,7 @@ void SceneManager::X_PxCreateScene()
 	string mesh_path = scenePath + "/mesh.refined.obj";
 	// Create physx mesh, shape and rigidbody of scan scene
 	pPhysxScene = new PxMeshTriangle(mesh_path, 0, 100, pScene, pCooking, pMaterial);
-	pPhysxScene->CreateMesh(true, true);
+	pPhysxScene->CreateMesh(true, false);
 	vector<float> pos{ 0, 0, 0 };
 	vector<float> rot{ 0, 0, 0, 1 };
 	pPhysxScene->CreateRigidbody(pos, rot);
@@ -117,7 +117,7 @@ void SceneManager::X_PxCreateObjs()
 
 		// Save rigidbody and mesh in vector
 		PxRigidActor* body = objManager->CreateRigidbody(pos, rot);
-		dicObjsRigidbodies.push_back(make_pair(objManager, (PxRigidDynamic*) body));
+		dicObjsRigidbodies.push_back(make_pair(objManager, (PxRigidDynamic*)body));
 	}
 }
 

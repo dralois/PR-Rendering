@@ -33,12 +33,8 @@ void PxMesh::DestroyRigidbody(PxRigidActor* curr)
 //---------------------------------------
 // New physx mesh manager
 //---------------------------------------
-PxMesh::PxMesh(string path,
-							int meshId,
-							float scale,
-							PxScene* scene,
-							PxCooking* cooking,
-							PxMaterial* material) :
+PxMesh::PxMesh(string path, int meshId, float scale,
+	PxScene* scene, PxCooking* cooking, PxMaterial* material) :
 	MeshBase(path, meshId, scale),
 	pPxScene(scene),
 	pPxCooking(cooking),

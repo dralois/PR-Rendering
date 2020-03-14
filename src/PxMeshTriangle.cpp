@@ -15,15 +15,14 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 		// Create triangle mesh object
 		PxTriangleMeshDesc triangleDesc;
 		triangleDesc.points.count = vecVertices.size() / 3;
-		triangleDesc.points.stride = sizeof(PxVec3);
+		triangleDesc.points.stride = sizeof(float) * 3;
 		triangleDesc.points.data = GetVertices();
 		triangleDesc.triangles.count = vecIndices.size() / 3;
-		triangleDesc.triangles.stride = sizeof(PxU32) * 3;
+		triangleDesc.triangles.stride = sizeof(int) * 3;
 		triangleDesc.triangles.data = GetIndices();
 
 		// Cook the mesh
 		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
-		// Cook mesh
 		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeOutBuffer))
 		{
 			return false;
@@ -34,6 +33,21 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
 	// Create the mesh from buffer
 	pPxMesh = PxGetPhysics().createTriangleMesh(readInBuffer);
+
+#ifdef PX_EXPORT_TO_OBJ
+	// Save pointers to vertices and triangles
+	const void* trisBuff = pPxMesh->getTriangles();
+	const PxVec3* vertsBuff = pPxMesh->getVertices();
+	PxU32 trisNum = pPxMesh->getNbTriangles();
+	PxU32 vertsNum = pPxMesh->getNbVertices();
+
+	// Triangles and vertices buffers
+	vector<int> tris((int*)trisBuff, (int*)trisBuff + (trisNum * 3));
+	vector<float> verts((float*)vertsBuff, (float*)vertsBuff + (vertsNum * 3));
+
+	// Create obj file
+	StoreFile(tris, trisNum, verts, vertsNum, "_px");
+#endif
 
 	// Save extends
 	if (saveBounds)
@@ -55,7 +69,7 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 PxRigidActor* PxMeshTriangle::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidStatic* body = (PxRigidStatic*) InitRigidbody(pos, quat, true);
+	PxRigidStatic* body = (PxRigidStatic*)InitRigidbody(pos, quat, true);
 	// Update
 	pShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
 	// Attach rigidbody to shape
