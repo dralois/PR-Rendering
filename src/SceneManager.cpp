@@ -293,9 +293,13 @@ void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMaske
 //---------------------------------------
 void SceneManager::X_AiCreateObjs()
 {
-	// Threads
+	// Create thread storage
 	vector<void*> vecThreads;
 	vector<AiMeshInput> vecThreadData;
+
+	// Allocate enough space
+	vecThreads.reserve(vecCurrObjs.size());
+	vecThreadData.reserve(vecCurrObjs.size());
 
 	// For each created object
 	for (auto body : vecCurrObjs)
@@ -413,7 +417,7 @@ bool SceneManager::X_RenderObjsDepth() const
 	AiNodeSetInt(aiOptions, "GI_glossy_samples", 1);
 
 	// Setup rendering
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA nullfilter outputDriver");
+	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
 	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
 
 	// Render
@@ -504,7 +508,7 @@ void SceneManager::X_RenderObjsLabel() const
 	AiNodeSetInt(aiOptions, "GI_glossy_samples", 1);
 
 	// Render image
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA nullfilter outputDriver");
+	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
 	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
 	AiRender(AI_RENDER_MODE_CAMERA);
 }
@@ -646,7 +650,7 @@ void SceneManager::X_RenderImageBlend()
 	X_LoadCamMat(intrCameraRender.fx, intrCameraRender.fy, intrCameraRender.ox, intrCameraRender.oy);
 
 	// Render final image/object blend
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA nullfilter outputDriver");
+	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
 	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
 	AiRender(AI_RENDER_MODE_CAMERA);
 }
