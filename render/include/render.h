@@ -15,38 +15,43 @@
 #include "types.h"
 #include "model.h"
 
-struct RenderData {
-	static float near_;
-	static float far_;
-	GLfloat deltaTime = 0.0f;
-	GLfloat lastFrame = 0.0f;
-};
+namespace Renderer
+{
+	struct RenderData
+	{
+		static float near_;
+		static float far_;
+		GLfloat deltaTime = 0.0f;
+		GLfloat lastFrame = 0.0f;
+	};
 
-class Render {
-public:
+	class Render
+	{
+	public:
 #if WIN32
-	__declspec(dllexport) Render(const std::string shader_path);
-	__declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
+		__declspec(dllexport) Render(const std::string shader_path);
+		__declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
 #else
-	Render(const std::string shader_path);
-	vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
+		__attribute__((visibility("default"))) Render(const std::string shader_path);
+		__attribute__((visibility("default"))) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
 #endif
-private:
-	Data data;
-	std::string shader_path{ "" };
-	RenderData render_data;
-	Eigen::Matrix4f projection;
-	GLFWwindow* window;
+	private:
+		Data data;
+		std::string shader_path{ "" };
+		RenderData render_data;
+		Eigen::Matrix4f projection;
+		GLFWwindow* window;
 
-	const int window_width_ = 1920;
-	const int window_height_ = 1080;
+		const int window_width_ = 1920;
+		const int window_height_ = 1080;
 
-	int SCREEN_WIDTH, SCREEN_HEIGHT;
+		int SCREEN_WIDTH, SCREEN_HEIGHT;
 
-	static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
-	void initGLFW();
-	void render(Model& model, Shader& shader, Eigen::Matrix4f& pose);
+		static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
+		void initGLFW();
+		void render(Model& model, Shader& shader, Eigen::Matrix4f& pose);
 
-	cv::Mat getRGB();
-	cv::Mat getDepth();
-};
+		cv::Mat getRGB();
+		cv::Mat getDepth();
+	};
+}

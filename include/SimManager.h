@@ -17,8 +17,8 @@ private:
 	//---------------------------------------
 
 	// Meshes
-	vector<PxMeshConvex*> vecMeshPhysX;
-	vector<AiMesh*> vecMesh3D;
+	vector<PxMeshConvex*> vecpPxMesh;
+	vector<AiMesh*> vecpAiMesh;
 
 	// PhysX
 #ifdef  _DEBUG
@@ -43,7 +43,6 @@ private:
 	// Other
 	rapidjson::Document CONFIG_FILE;
 	vector<string> vecSceneFolders;
-	SceneManager* currScene;
 	int sceneCount = 0;
 	int imagesCount = 0;
 

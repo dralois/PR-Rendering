@@ -116,10 +116,12 @@ TARGET_LINK_LIBRARIES(ShadersLib ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
 
 # Create OpenGL library
 ADD_LIBRARY(OpenGLLib SHARED
-            render/include/model.h
             render/include/data.h
+            render/include/mesh.h
+            render/include/model.h
             render/include/render.h
             render/include/shader.h
+            render/include/types.h
             render/include/util.h
             render/src/data.cpp
             render/src/render.cpp

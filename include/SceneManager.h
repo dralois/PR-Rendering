@@ -34,9 +34,9 @@ using namespace physx;
 using namespace std;
 
 //---------------------------------------
-// Camera intrinsics
+// Focal lenght & principal point
 //---------------------------------------
-struct Camera
+struct Intrinsics
 {
 	float fx;
 	float fy;
@@ -80,14 +80,14 @@ private:
 	//---------------------------------------
 
 	// PhysX
-	PxScene* pScene;
-	PxCooking* pCooking;
-	PxMaterial* pMaterial;
-	PxRigidDynamic* pSceneRigidbody;
-	vector<pair<PxMeshConvex*, PxRigidDynamic*>> dicObjsRigidbodies;
+	PxScene* pPxScene;
+	PxCooking* pPxCooking;
+	PxMaterial* pPxMaterial;
+	PxRigidDynamic* pPxSceneRigidbody;
+	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxRigidbodies;
 
 	// Rendering
-	Render* pRenderer;
+	Renderer::Render* pRenderer;
 	AtNode* aiCamera;
 	AtNode* aiOptions;
 	AtNode* aiDriver;
@@ -97,17 +97,17 @@ private:
 	AtNode* aiShaderBlendImage;
 
 	// Meshes
-	vector<PxMeshConvex*> vecpPhysxObjs;
-	vector<AiMesh*> vecpArnoldObjs;
-	PxMeshTriangle* pPhysxScene;
-	AiMesh* pArnoldScene;
+	vector<PxMeshConvex*> vecpPxMeshObjs;
+	vector<AiMesh*> vecpAiMeshObjs;
+	PxMeshTriangle* pPxMeshScene;
+	AiMesh* pAiMeshScene;
 
 	// Camera
-	Camera camIntrinsicScene, camIntrinsicsRender;
+	Intrinsics intrCameraScene, intrCameraRender;
 	vector<string> vecCameraPoses;
 	vector<string> vecCameraImages;
-	Matrix4f camMat;
-	Vector3f camPos;
+	Matrix4f matCamera;
+	Vector3f posCamera;
 
 	// Objects
 	vector<ObjectInfo> vecCurrObjs;

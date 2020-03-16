@@ -12,10 +12,11 @@
 #include "types.h"
 #include <eigen3/Eigen/Core>
 
-namespace C3DV_camera {
-
+namespace Renderer
+{
 	template<class T>
-	Eigen::Matrix<T, 4, 4> perspective(const Intrinsics& intrinsics, double n, double f) {
+	Eigen::Matrix<T, 4, 4> perspective(const Intrinsics& intrinsics, double n, double f)
+	{
 		assert(f > n);
 		Eigen::Matrix<T, 4, 4> res = Eigen::Matrix<T, 4, 4>::Zero();
 		// this has to be fixed.
@@ -33,9 +34,10 @@ namespace C3DV_camera {
 	}
 
 	template<class T>
-	Eigen::Matrix<T, 4, 4> lookAt(Eigen::Matrix<T, 3, 1> const& eye,
-		Eigen::Matrix<T, 3, 1> const& center,
-		Eigen::Matrix<T, 3, 1> const& up) {
+	Eigen::Matrix<T, 4, 4> lookAt(Eigen::Matrix<T, 3, 1> const& eye, 
+																Eigen::Matrix<T, 3, 1> const& center,
+																Eigen::Matrix<T, 3, 1> const& up)
+	{
 		const Eigen::Matrix<T, 3, 1> f = (center - eye).normalized();
 		Eigen::Matrix<T, 3, 1> u = up.normalized();
 		const Eigen::Matrix<T, 3, 1> s = f.cross(u).normalized();
@@ -49,6 +51,4 @@ namespace C3DV_camera {
 
 		return res;
 	};
-
-
 };

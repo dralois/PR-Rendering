@@ -1,36 +1,6 @@
 #include "SimManager.h"
 
 //---------------------------------------
-// Cleanup simulation
-//---------------------------------------
-SimManager::~SimManager()
-{
-	// Free physics
-	if (pPxScene != NULL)
-	{
-#ifdef _DEBUG
-		PxCloseExtensions();
-		pPxPvdServer->disconnect();
-		pPxPvdServer->getTransport()->release();
-#endif
-		PxGetPhysics().release();
-		PX_RELEASE(pPxPvdServer);
-		PX_RELEASE(pPxDispatcher);
-		PX_RELEASE(pPxCooking);
-		PX_RELEASE(pPxScene);
-		PX_RELEASE(pPxMaterial);
-		PxGetFoundation().release();
-	}
-
-	// Shutdown Arnold, automatically frees everything
-	AiEnd();
-
-	// Delete scene
-	if (currScene != NULL)
-		delete currScene;
-}
-
-//---------------------------------------
 // Initialize physx runtime
 //---------------------------------------
 void SimManager::InitPhysx()
@@ -130,18 +100,18 @@ void SimManager::LoadMeshes()
 {
 	DIR* dir;
 	// Path to 3D models
-	string mesh_path = CONFIG_FILE["models"].GetString();
+	string meshesPath = CONFIG_FILE["models"].GetString();
 	// If path exists
-	if ((dir = opendir(mesh_path.c_str())) != NULL)
+	if ((dir = opendir(meshesPath.c_str())) != NULL)
 	{
 		// For each object
 		for (int i = 0; i < CONFIG_FILE["objs"].Size(); i++)
 		{
 			// Load path
-			string obj_path = mesh_path + "/" + CONFIG_FILE["objs"][i].GetString() + ".obj";
-			ifstream f(obj_path.c_str());
+			string meshPath = meshesPath + "/" + CONFIG_FILE["objs"][i].GetString() + ".obj";
+			ifstream f(meshPath.c_str());
 
-			// Does object exist?
+			// Does mesh exist?
 			if (!f.good())
 			{
 				cerr << "Did not find obj " << CONFIG_FILE["objs"][i].GetString() << "... Skipping." << endl;
@@ -150,13 +120,17 @@ void SimManager::LoadMeshes()
 
 			cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
 
-			// Create physx mesh
-			PxMeshConvex* curr = new PxMeshConvex(obj_path, i + 1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
-			curr->CreateMesh(false, false);
-			curr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
+			// Create and save physx mesh
+			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i + 1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
+			pxCurr->CreateMesh(false, false);
+			pxCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
+			vecpPxMesh.push_back(pxCurr);
 
-			// Save in vector
-			vecMeshPhysX.push_back(curr);
+			// Create and save arnold mesh
+			string texturePath(meshPath);
+			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
+			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i + 1, 0.1);
+			vecpAiMesh.push_back(aiCurr);
 		}
 		// Finally close
 		closedir(dir);
@@ -203,7 +177,7 @@ int SimManager::RunSimulation()
 	// Create mananger
 	SceneManager curr(pPxScene, pPxCooking, pPxMaterial,
 		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOuputArray,
-		vecMeshPhysX, vecMesh3D,
+		vecpPxMesh, vecpAiMesh,
 		0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
 		aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
 
@@ -261,4 +235,42 @@ int SimManager::RunSimulation()
 	}
 
 	return 0;
+}
+
+//---------------------------------------
+// Cleanup simulation
+//---------------------------------------
+SimManager::~SimManager()
+{
+	if (pPxScene != NULL)
+	{
+		// Cleanup physx meshes
+		for (auto curr : vecpPxMesh)
+		{
+			delete curr;
+		}
+		vecpPxMesh.clear();
+		// Free physics
+#ifdef _DEBUG
+		PxCloseExtensions();
+		pPxPvdServer->disconnect();
+		pPxPvdServer->getTransport()->release();
+#endif
+		PX_RELEASE(pPxPvdServer);
+		PX_RELEASE(pPxDispatcher);
+		PX_RELEASE(pPxCooking);
+		PX_RELEASE(pPxScene);
+		PX_RELEASE(pPxMaterial);
+		PxGetPhysics().release();
+		PxGetFoundation().release();
+	}
+
+	// Cleanup arnold meshes
+	for(auto curr : vecpAiMesh)
+	{
+		delete curr;
+	}
+
+	// Shutdown arnold, automatically frees everything
+	AiEnd();
 }
