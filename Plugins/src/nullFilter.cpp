@@ -1,8 +1,4 @@
-#pragma once
-
-#ifndef ai_common_mtds
 #include <ai.h>
-#endif
 #include <string.h>
 #include <iostream>
 

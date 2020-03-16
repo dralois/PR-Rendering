@@ -1,9 +1,5 @@
-#pragma once
-
-#ifndef ai_common_mtds
 #include <ai.h>
-#endif
-#include <stdio.h>
+#include <string.h>
 
 extern AtNodeMethods* DepthShader;
 extern AtNodeMethods* LabelShader;
@@ -29,7 +25,8 @@ node_loader
 			node->output_type = AI_TYPE_RGBA;
 			node->name = "depthshader";
 			node->node_type = AI_NODE_SHADER;
-			break;
+			strcpy(node->version, AI_VERSION);
+			return true;
 		}
 		// Renders object IDs in red channel
 		case LABEL_SHADER:
@@ -38,7 +35,8 @@ node_loader
 			node->output_type = AI_TYPE_RGBA;
 			node->name = "labelshader";
 			node->node_type = AI_NODE_SHADER;
-			break;
+			strcpy(node->version, AI_VERSION);
+			return true;
 		}
 		// Final color blend, renders objects on image
 		case BLEND_SHADER:
@@ -47,7 +45,8 @@ node_loader
 			node->output_type = AI_TYPE_RGB;
 			node->name = "blendshader";
 			node->node_type = AI_NODE_SHADER;
-			break;
+			strcpy(node->version, AI_VERSION);
+			return true;
 		}
 		// Filter, calculates average red channel sum
 		case NULL_FILTER:
@@ -56,11 +55,10 @@ node_loader
 			node->output_type = AI_TYPE_INT;
 			node->name = "null_filter";
 			node->node_type = AI_NODE_FILTER;
-			break;
+			strcpy(node->version, AI_VERSION);
+			return true;
 		}
 		default:
 			return false;
 	}
-	sprintf(node->version, AI_VERSION);
-	return true;
 }

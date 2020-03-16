@@ -1,5 +1,6 @@
 {
-    "shaders" : "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/render/shaders",
+    "shaders_gl" : "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/render/shaders",
+    "shaders_ai" : "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/build/Debug",
     "models": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Bodies",
     "3RScan_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Scenes",
     

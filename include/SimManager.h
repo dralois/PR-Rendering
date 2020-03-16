@@ -19,6 +19,7 @@ private:
 	// Meshes
 	vector<PxMeshConvex*> vecMeshPhysX;
 	vector<AiMesh*> vecMesh3D;
+
 	// PhysX
 #ifdef  _DEBUG
 	PxPvd* pPxPvdServer;
@@ -29,6 +30,7 @@ private:
 	PxDefaultCpuDispatcher* pPxDispatcher;
 	PxDefaultAllocator pxAllocator;
 	PxDefaultErrorCallback pxErrorCallback;
+
 	// Arnold
 	AtNode* aiRenderCamera;
 	AtNode* aiRenderOptions;
@@ -37,6 +39,7 @@ private:
 	AtNode* aiShaderObjectDepth;
 	AtNode* aiShaderSceneDepth;
 	AtNode* aiShaderBlend;
+
 	// Other
 	rapidjson::Document CONFIG_FILE;
 	vector<string> vecSceneFolders;

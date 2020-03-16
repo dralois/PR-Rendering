@@ -66,7 +66,7 @@ SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial*
 	camIntrinsicsRender.oy = (*CONFIG_FILE)["oy"].GetFloat();
 
 	// Create renderer
-	pRenderer = new Render((*CONFIG_FILE)["shaders"].GetString());
+	pRenderer = new Render((*CONFIG_FILE)["shaders_gl"].GetString());
 }
 
 //---------------------------------------
@@ -301,6 +301,7 @@ void SceneManager::X_AiCreateObjs()
 
 	// Threads
 	vector<void*> vecThreads;
+	vector<AiMeshInput> vecThreadData;
 
 	// For each created object
 	for (auto body : vecCurrObjs)
@@ -330,8 +331,11 @@ void SceneManager::X_AiCreateObjs()
 		input.pos = pos;
 		input.rot = rot;
 
+		// Save in vector
+		vecThreadData.push_back(input);
+
 		// Create thread and save in vector
-		vecThreads.push_back(AiThreadCreate(mesh->CreateMeshThread, &input, AI_PRIORITY_NORMAL));
+		vecThreads.push_back(AiThreadCreate(mesh->CreateMeshThread, &vecThreadData.back(), AI_PRIORITY_NORMAL));
 	}
 
 	// Wait until for all threads to finish and close
@@ -342,6 +346,7 @@ void SceneManager::X_AiCreateObjs()
 	}
 
 	// Cleanup
+	vecThreadData.clear();
 	vecThreads.clear();
 }
 
@@ -396,12 +401,12 @@ bool SceneManager::X_RenderObjsDepth() const
 	AiNodeSetPtr(aiOptions, "background", aiShaderDepthScene);
 
 	// Destroy old filter
-	AtNode* nullFilter = AiNodeLookUpByName("nullfilter");
+	AtNode* nullFilter = AiNodeLookUpByName("null_filter");
 	AiNodeDestroy(nullFilter);
 	// Create new filter
 	nullFilter = AiNode("null_filter");
 	AiNodeSetFlt(nullFilter, "width", 1);
-	AiNodeSetStr(nullFilter, "name", "nullfilter");
+	AiNodeSetStr(nullFilter, "name", "null_filter");
 
 	// Temp file name
 	ostringstream out;
@@ -436,7 +441,7 @@ bool SceneManager::X_RenderObjsDepth() const
 //---------------------------------------
 // Determine depth mask
 //---------------------------------------
-bool SceneManager::X_CalculateObjsMask()
+bool SceneManager::X_CvComputeObjsMask()
 {
 	ostringstream out;
 	out << std::internal << std::setfill('0') << std::setw(6) << sceneCount;
@@ -492,12 +497,12 @@ void SceneManager::X_RenderObjsLabel() const
 	AiNodeSetPtr(aiOptions, "background", shader_bck_label);
 
 	// Destroy old null filter
-	AtNode* nullFilter = AiNodeLookUpByName("nullfilter");
+	AtNode* nullFilter = AiNodeLookUpByName("null_filter");
 	AiNodeDestroy(nullFilter);
 	// Create new null filter
 	nullFilter = AiNode("null_filter");
 	AiNodeSetFlt(nullFilter, "width", 1);
-	AiNodeSetStr(nullFilter, "name", "nullfilter");
+	AiNodeSetStr(nullFilter, "name", "null_filter");
 
 	// Temp file
 	ostringstream out;
@@ -522,7 +527,7 @@ void SceneManager::X_RenderObjsLabel() const
 //---------------------------------------
 // Combine scene and object depth images
 //---------------------------------------
-void SceneManager::X_BlendDepth()
+void SceneManager::X_CvBlendDepth()
 {
 	cv::Mat cvBodiesD, cvOut;
 
@@ -548,7 +553,7 @@ void SceneManager::X_BlendDepth()
 //---------------------------------------
 // Combine mask and label images
 //---------------------------------------
-void SceneManager::X_BlendLabel()
+void SceneManager::X_CvBlendLabel()
 {
 	cv::Mat cvOut;
 
@@ -575,7 +580,7 @@ void SceneManager::X_BlendLabel()
 //---------------------------------------
 // Final image blend
 //---------------------------------------
-void SceneManager::X_BlendImage()
+void SceneManager::X_RenderImageBlend()
 {
 	// For each object
 	for (auto body : vecCurrObjs)
@@ -638,12 +643,12 @@ void SceneManager::X_BlendImage()
 	AiNodeSetPtr(aiOptions, "background", aiShaderBlendImage);
 
 	// Destroy old null filter
-	AtNode* gaussFilter = AiNodeLookUpByName("nullfilter");
+	AtNode* gaussFilter = AiNodeLookUpByName("null_filter");
 	AiNodeDestroy(gaussFilter);
 	// Create new gauss filter
 	gaussFilter = AiNode("gaussian_filter");
 	AiNodeSetFlt(gaussFilter, "width", 1);
-	AiNodeSetStr(gaussFilter, "name", "nullfilter");
+	AiNodeSetStr(gaussFilter, "name", "null_filter");
 
 	// Final image path
 	ostringstream out;
@@ -679,7 +684,7 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 	std::ifstream inFile;
 
 	// Setup camera
-	AiNodeSetStr(aiCamera, "name", "mycamera");
+	AiNodeSetStr(aiCamera, "name", "renderCam");
 
 	// Open camera pose file
 	inFile.open(vecCameraPoses.at(sceneCount));
@@ -727,7 +732,7 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 	camMat(2, 3) = pos1;
 	camMat(1, 3) = pos2;
 
-	// Convert to arnold view matrix (?)
+	// Convert to arnold view matrix
 	camMat = switchAxisMat2 * camMat.transpose();
 	AtMatrix camMatArn = { {camMat(0, 0), camMat(0, 1), camMat(0, 2), camMat(0, 3)},
 												{camMat(1, 0), camMat(1, 1), camMat(1, 2), camMat(1, 3)},
@@ -735,13 +740,13 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 												{camMat(3, 0), camMat(3, 1), camMat(3, 2), 1} };
 	AiNodeSetMatrix(aiCamera, "matrix", camMatArn);
 
-	// Convert fov and save (?)
+	// Calculate fov and save
 	double fovx = 2.0f * atan(960.0f / (2.0f * fx));
 	double fovy = 2.0f * atan(540.0f / (2.0f * fy));
 	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx * 180.f / 3.14f, fovy * 180.f / 3.14f);
 	AiNodeSetArray(aiCamera, "fov", fovArr);
 
-	// Calculate image dimensions (?)
+	// Calculate NDC coordinates
 	float min_x = (ox - (960 / 2)) / (960 / 2) - 1;
 	float max_x = (ox - (960 / 2)) / (960 / 2) + 1;
 	float min_y = (oy - (540 / 2)) / (540 / 2) - 1;
@@ -798,7 +803,7 @@ void SceneManager::X_AiDestroy()
 //---------------------------------------
 // Filter out blurry images (based on variance)
 //---------------------------------------
-float SceneManager::X_ComputeImageVariance(const cv::Mat& image) const
+float SceneManager::X_CvComputeImageVariance(const cv::Mat& image) const
 {
 	cv::Mat gray;
 	cv::Mat laplacianImage;
@@ -836,7 +841,7 @@ void SceneManager::X_GetFilesInDir(string path, float varThreshold)
 			{
 				// Compute variance
 				cv::Mat image = cv::imread(buf);
-				float variance = X_ComputeImageVariance(image);
+				float variance = X_CvComputeImageVariance(image);
 				// Skip blurry images
 				if (variance > varThreshold)
 				{
@@ -894,14 +899,14 @@ bool SceneManager::Run(int iterations, int maxCount)
 			X_LoadCamMat(camIntrinsicsRender.fx, camIntrinsicsRender.fy, camIntrinsicsRender.ox, camIntrinsicsRender.oy);
 
 			// If rendering successful and visible
-			if (X_RenderObjsDepth() && X_CalculateObjsMask())
+			if (X_RenderObjsDepth() && X_CvComputeObjsMask())
 			{
 				// Render object labels (IDs as color)
 				X_RenderObjsLabel();
 				// Blend depth images
-				X_BlendDepth();
+				X_CvBlendDepth();
 				// Blend label and mask images
-				X_BlendLabel();
+				X_CvBlendLabel();
 
 				// Read scene color image
 				cvScene = cv::imread(vecCameraImages.at(sceneCount), cv::IMREAD_COLOR);
@@ -918,7 +923,7 @@ bool SceneManager::Run(int iterations, int maxCount)
 				}
 
 				// Final image blend
-				X_BlendImage();
+				X_RenderImageBlend();
 				startCount++;
 			}
 

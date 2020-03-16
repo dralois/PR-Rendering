@@ -144,19 +144,19 @@ private:
 	vector<tuple<cv::Mat, cv::Mat>> X_RenderSceneDepth() const;
 	bool X_RenderObjsDepth() const;
 	void X_RenderObjsLabel() const;
+	void X_RenderImageBlend();
 
 	// Helpers
 	void X_GetFilesInDir(string dir, float varThreshold);
-	float X_ComputeImageVariance(const cv::Mat& image) const;
 	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
-	bool X_CalculateObjsMask();
-
-	// Blending & Camera
 	void X_LoadCamMat(float fx, float fy, float ox, float oy);
 	void X_LoadCamIntrinsics();
-	void X_BlendDepth();
-	void X_BlendLabel();
-	void X_BlendImage();
+
+	// Image processing
+	float X_CvComputeImageVariance(const cv::Mat& image) const;
+	bool X_CvComputeObjsMask();
+	void X_CvBlendDepth();
+	void X_CvBlendLabel();
 
 	// Annotation
 	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaterniond& rot) const;
@@ -166,8 +166,12 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	inline void SetScenePath(string path) { scenePath = path; };
 	bool Run(int iterations, int maxCount);
+
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+	inline void SetScenePath(string path) { scenePath = path; };
 
 	//---------------------------------------
 	// Constructors
@@ -178,5 +182,4 @@ public:
 							int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
 							AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
 	~SceneManager();
-
 };

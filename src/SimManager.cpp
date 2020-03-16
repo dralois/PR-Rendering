@@ -1,27 +1,5 @@
 #include "SimManager.h"
 
-// FixMe: Shaders should not need to be in seperate namespaces
-namespace depth
-{
-#include "../plugins/src/depthShader.cpp"
-	extern AtNodeMethods* DepthShader;
-}
-namespace label
-{
-#include "../plugins/src/labelShader.cpp"
-	extern AtNodeMethods* LabelShader;
-}
-namespace blend
-{
-#include "../plugins/src/blendShader.cpp"
-	extern AtNodeMethods* BlendShader;
-}
-namespace filter
-{
-#include "../plugins/src/nullFilter.cpp"
-	extern AtNodeMethods* NullFilter;
-}
-
 //---------------------------------------
 // Cleanup simulation
 //---------------------------------------
@@ -102,25 +80,17 @@ void SimManager::InitPhysx()
 //---------------------------------------
 void SimManager::InitArnold()
 {
-	// Set up arnold
+	// Start arnold & load shader library
 	AiBegin();
 	AiMsgSetConsoleFlags(AI_LOG_ALL);
-
-#ifdef WIN32
-	const char* SHADERS_PATH = "ShadersLib.lib";
-#else
-	const char* SHADERS_PATH = "ShadersLib.so";
-#endif
-
-	// Set up shaders
-	AiNodeEntryInstall(AI_NODE_SHADER, AI_TYPE_RGBA, "depthshader", SHADERS_PATH, depth::DepthShader, AI_VERSION);
-	AiNodeEntryInstall(AI_NODE_SHADER, AI_TYPE_RGBA, "blendshader", SHADERS_PATH, blend::BlendShader, AI_VERSION);
-	AiNodeEntryInstall(AI_NODE_SHADER, AI_TYPE_RGBA, "labelshader", SHADERS_PATH, label::LabelShader, AI_VERSION);
-	AiNodeEntryInstall(AI_NODE_FILTER, AI_TYPE_INT, "null_filter", SHADERS_PATH, filter::NullFilter, AI_VERSION);
+	AiLoadPlugins(CONFIG_FILE["shaders_ai"].GetString());
 
 	// Create initialize camera
 	aiRenderCamera = AiNode("persp_camera");
+
+	// Setup rendering
 	aiRenderOptions = AiUniverseGetOptions();
+	AiNodeSetInt(aiRenderOptions, "threads", 0);
 	AiNodeSetInt(aiRenderOptions, "AA_samples", 4);
 	AiNodeSetInt(aiRenderOptions, "GI_diffuse_depth", 6);
 	AiNodeSetPtr(aiRenderOptions, "camera", aiRenderCamera);
@@ -277,6 +247,7 @@ int SimManager::RunSimulation()
 	AiNodeSetFlt(light6, "radius", 10.f);
 	AiNodeSetInt(light6, "decay_type", 0);
 
+	// Load config
 	int max_count = CONFIG_FILE["max_images"].GetInt();
 	int iter_per_scene = CONFIG_FILE["iter_per_scene"].GetInt();
 

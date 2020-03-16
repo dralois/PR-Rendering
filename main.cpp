@@ -22,10 +22,11 @@ int main(int argc, char** argv)
 	string config_path = argv[1];
 
 	SimManager man;
-	// Init PhysX and Arnold, load file
+	// Load configuration
+	man.LoadConfig(config_path);
+	// Init PhysX and Arnold
 	man.InitPhysx();
 	man.InitArnold();
-	man.LoadConfig(config_path);
 
 	// Save the paths
 	boost::filesystem::path final_dir(man.GetFinalPath());

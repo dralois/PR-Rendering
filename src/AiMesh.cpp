@@ -61,17 +61,10 @@ unsigned int AiMesh::CreateMesh(void* data)
 	AtMatrix trans, prod;
 	AiM4Identity(prod);
 	Eigen::Quaterniond q;
-	if (input->rot.size() == 4)
-	{
-		q.x() = input->rot[0];
-		q.y() = input->rot[1];
-		q.z() = input->rot[2];
-		q.w() = input->rot[3];
-	}
-	else
-	{
-		q.setIdentity();
-	}
+	q.x() = input->rot[0];
+	q.y() = input->rot[1];
+	q.z() = input->rot[2];
+	q.w() = input->rot[3];
 
 	// Create rotation matrix
 	Eigen::Matrix<float, 3, 3> bRotMat = q.normalized().toRotationMatrix().cast<float>();
@@ -84,16 +77,7 @@ unsigned int AiMesh::CreateMesh(void* data)
 	}
 
 	// Create position vector
-	AtPoint transV;
-	if (input->pos.size() == 3)
-	{
-		transV = { input->pos[0], input->pos[1], input->pos[2] };
-	}
-	else
-	{
-		transV = { 0,0,0 };
-	}
-
+	AtPoint transV = { input->pos[0], input->pos[1], input->pos[2] };
 	// Create and save object to world matrix
 	AiM4Translation(trans, &transV);
 	AiM4Mult(prod, prod, trans);
