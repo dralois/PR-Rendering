@@ -38,7 +38,7 @@ unsigned int AiMesh::CreateMesh(void* data)
 		AiNodeSetArray(baseMesh, "vidxs", idxs_array);
 
 		// If not scan mesh
-		if (!isScene)
+		if (!isScene && false)
 		{
 			// Sanity check: Sizes must match
 			if (vecUVs.size() / 2 == vecIndices.size() && vecNormals.size() / 3 == vecIndices.size())

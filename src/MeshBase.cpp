@@ -30,6 +30,7 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	const aiMesh* mesh = scene->mMeshes[0];
 
 	// Load vertices
+	vecVertices.reserve(mesh->mNumVertices);
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
 		aiVector3D pos = mesh->mVertices[i];
@@ -42,6 +43,7 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	// Load UVs
 	if (mesh->HasTextureCoords(0))
 	{
+		vecUVs.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
 			aiVector3D UVW = mesh->mTextureCoords[0][i];
@@ -53,6 +55,7 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	// Load normals
 	if (mesh->HasNormals())
 	{
+		vecNormals.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
 			aiVector3D n = mesh->mNormals[i];
