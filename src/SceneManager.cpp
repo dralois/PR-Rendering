@@ -824,6 +824,8 @@ void SceneManager::X_GetFilesInDir(string path, float varThreshold)
 				// Skip blurry images
 				if (variance > varThreshold)
 				{
+					cout << "Using image " << ent->d_name << endl;
+					// Save image in vector
 					vecCameraImages.push_back(buf);
 					string cam_file = buf;
 					cam_file.replace(cam_file.find("color.jpg"), sizeof("color.jpg") - 1, "pose.txt");
