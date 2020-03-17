@@ -23,7 +23,7 @@
 #include "ai.h"
 #pragma warning(pop)
 
-#include "../render/include/render.h"
+#include "../OpenGLLib/include/render.h"
 
 #include <AiMesh.h>
 #include <PxMeshConvex.h>

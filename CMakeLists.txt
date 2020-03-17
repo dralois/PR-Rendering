@@ -100,11 +100,11 @@ TARGET_LINK_LIBRARIES(PRRendering
 
 # Create shader library
 ADD_LIBRARY(ShadersLib SHARED
-            plugins/src/nodeLoader.cpp
-            plugins/src/blendShader.cpp
-            plugins/src/depthShader.cpp
-            plugins/src/labelShader.cpp
-            plugins/src/nullFilter.cpp
+            ShadersLib/nodeLoader.cpp
+            ShadersLib/blendShader.cpp
+            ShadersLib/depthShader.cpp
+            ShadersLib/labelShader.cpp
+            ShadersLib/nullFilter.cpp
 )
 
 # Link to shader library
@@ -116,15 +116,17 @@ TARGET_LINK_LIBRARIES(ShadersLib ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
 
 # Create OpenGL library
 ADD_LIBRARY(OpenGLLib SHARED
-            render/include/data.h
-            render/include/mesh.h
-            render/include/model.h
-            render/include/render.h
-            render/include/shader.h
-            render/include/types.h
-            render/include/util.h
-            render/src/data.cpp
-            render/src/render.cpp
+            OpenGLLib/include/data.h
+            OpenGLLib/include/lodepng.h
+            OpenGLLib/include/mesh.h
+            OpenGLLib/include/model.h
+            OpenGLLib/include/render.h
+            OpenGLLib/include/shader.h
+            OpenGLLib/include/types.h
+            OpenGLLib/include/util.h
+            OpenGLLib/src/data.cpp
+            OpenGLLib/src/render.cpp
+            OpenGLLib/src/lodepng.cpp
 )
 
 # Link to OpenGL library

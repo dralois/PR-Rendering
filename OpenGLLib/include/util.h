@@ -14,6 +14,9 @@
 
 namespace Renderer
 {
+	//---------------------------------------
+	// Creates perspective camera matrix
+	//---------------------------------------
 	template<class T>
 	Eigen::Matrix<T, 4, 4> perspective(const Intrinsics& intrinsics, double n, double f)
 	{
@@ -33,8 +36,11 @@ namespace Renderer
 		return res;
 	}
 
+	//---------------------------------------
+	// Creates a look-at camera matrix
+	//---------------------------------------
 	template<class T>
-	Eigen::Matrix<T, 4, 4> lookAt(Eigen::Matrix<T, 3, 1> const& eye, 
+	Eigen::Matrix<T, 4, 4> lookAt(Eigen::Matrix<T, 3, 1> const& eye,
 																Eigen::Matrix<T, 3, 1> const& center,
 																Eigen::Matrix<T, 3, 1> const& up)
 	{
