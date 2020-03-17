@@ -24,7 +24,7 @@ private:
 	// Methods
 	//---------------------------------------
 	template <class T>
-	AtArray* X_VectorToAiArray(const std::vector<T>& input, const AtByte type);
+	AtArray* X_VectorToAiArray(const std::vector<T>& input, const size_t size, const AtByte type);
 
 public:
 	//---------------------------------------

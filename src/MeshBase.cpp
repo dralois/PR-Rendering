@@ -57,12 +57,12 @@ bool MeshBase::LoadFile(bool doubleNorms)
 		{
 			aiVector3D n = mesh->mNormals[i];
 			vecNormals.push_back(n.x);
-			vecVertices.push_back(scale == 100 ? n.z : n.y);
-			vecVertices.push_back(scale == 100 ? n.y : n.z);
+			vecNormals.push_back(scale == 100 ? n.z : n.y);
+			vecNormals.push_back(scale == 100 ? n.y : n.z);
 		}
 	}
 
-	// Load faces
+	// Load index buffer
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 	{
 		for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
