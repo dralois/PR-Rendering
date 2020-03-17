@@ -6,7 +6,7 @@
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
-#define PX_RELEASE(x) if(x) { x->release(); x = NULL; }
+#define PX_RELEASE(x) if(x) {if(x->isReleasable()){ x->release(); x = NULL; }}
 
 //#define PX_EXPORT_TO_OBJ
 

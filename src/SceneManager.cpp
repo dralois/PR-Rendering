@@ -127,9 +127,11 @@ void SceneManager::X_PxCreateObjs()
 void SceneManager::X_PxDestroy()
 {
 	// Cleanup scene mesh
-	if (pPxMeshScene != nullptr)
+	if (pPxMeshScene != NULL)
+	{
 		delete pPxMeshScene;
-	// Cleanup random objects
+	}
+	// Cleanup random object rigidbodies
 	for (auto obj : vecpPxRigidbodies)
 	{
 		PxMesh::DestroyRigidbody(obj.second);
@@ -144,7 +146,7 @@ void SceneManager::X_PxDestroy()
 void SceneManager::X_PxRunSim()
 {
 	// 10000 steps
-	for (PxU32 i = 0; i < 2000; i++)
+	for (PxU32 i = 0; i < 100; i++)
 	{
 		pPxScene->simulate(2.f / 60.0f);
 		pPxScene->fetchResults(true);
@@ -401,11 +403,6 @@ bool SceneManager::X_RenderObjsDepth() const
 	ostringstream out;
 	out << std::internal << std::setfill('0') << std::setw(6) << sceneCount;
 	string buf = FILE_TEMP_PATH + "/body_depth/img_" + out.str() + ".png";
-
-	ofstream createFile;
-	createFile.open(buf.c_str(), ios_base::binary | ios_base::out);
-	createFile.write("0", 1);
-	createFile.close();
 
 	// Render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());

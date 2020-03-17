@@ -256,11 +256,11 @@ SimManager::~SimManager()
 		pPxPvdServer->disconnect();
 		pPxPvdServer->getTransport()->release();
 #endif
-		PX_RELEASE(pPxPvdServer);
-		PX_RELEASE(pPxDispatcher);
-		PX_RELEASE(pPxCooking);
-		PX_RELEASE(pPxScene);
-		PX_RELEASE(pPxMaterial);
+		pPxPvdServer->release();
+		pPxDispatcher->release();
+		pPxCooking->release();
+		pPxScene->release();
+		pPxMaterial->release();
 		PxGetPhysics().release();
 		PxGetFoundation().release();
 	}

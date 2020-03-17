@@ -58,14 +58,19 @@ unsigned int AiMesh::CreateMesh(void* data)
 		AiNodeSetDisabled(baseMesh, true);
 	}
 
-	// Clone or set the node (scene exists only once)
-	if (currMesh == NULL && !isScene)
+	// If current mesh not created
+	if (currMesh == NULL)
 	{
-		currMesh = AiNodeClone(baseMesh);
-	}
-	else if(isScene)
-	{
-		currMesh = baseMesh;
+		// Clone or set the node (scene exists only once)
+		if(isScene)
+		{
+			currMesh = baseMesh;
+		}
+		else
+		{
+			currMesh = AiNodeClone(baseMesh);
+			AiNodeSetStr(currMesh, "name", currName.c_str());
+		}
 	}
 
 	// Enable the mesh node
