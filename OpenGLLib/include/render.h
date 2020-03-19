@@ -1,57 +1,67 @@
 #pragma once
 
-// GLEW
-#if not WIN32
+#ifndef WIN32
 #define GLEW_STATIC
 #endif
 #include <GL/glew.h>
 
-// GLFW
 #include <GLFW/glfw3.h>
 #include <eigen3/Eigen/Dense>
+#include <opencv2/opencv.hpp>
 
-#include "shader.h"
-#include "data.h"
-#include "types.h"
+#include "camera.h"
 #include "model.h"
+#include "pose.h"
+#include "shader.h"
 
 namespace Renderer
 {
-	struct RenderData
-	{
-		static float near_;
-		static float far_;
-		GLfloat deltaTime = 0.0f;
-		GLfloat lastFrame = 0.0f;
-	};
-
+	//---------------------------------------
+	// OpenGL renderer, renders depth & rgb
+	//---------------------------------------
 	class Render
 	{
-	public:
-#if WIN32
-		__declspec(dllexport) Render(const std::string shader_path);
-		__declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
-#else
-		__attribute__((visibility("default"))) Render(const std::string shader_path);
-		__attribute__((visibility("default"))) vector<tuple<cv::Mat, cv::Mat> > render_scenes(const std::string scene_path, vector<string>cam_poses, float fx, float fy, float ox, float oy);
-#endif
 	private:
-		Data data;
-		std::string shader_path{ "" };
-		RenderData render_data;
-		Eigen::Matrix4f projection;
+		//---------------------------------------
+		// Fields
+		//---------------------------------------
+		Pose data;
+		int width, height;
 		GLFWwindow* window;
+		std::string shaderPath;
+		Eigen::Matrix4f projection;
+		const float NearPlane = 0.1f;
+		const float FarPlane = 10.0f;
 
-		const int window_width_ = 1920;
-		const int window_height_ = 1080;
+		//---------------------------------------
+		// Methods
+		//---------------------------------------
+		void X_SetupGLFW();
+		void X_Render(Model& model, Shader& shader, Eigen::Matrix4f& pose);
 
-		int SCREEN_WIDTH, SCREEN_HEIGHT;
+		//---------------------------------------
+		// Properties
+		//---------------------------------------
+		cv::Mat X_GetRGB();
+		cv::Mat X_GetDepth();
 
-		static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
-		void initGLFW();
-		void render(Model& model, Shader& shader, Eigen::Matrix4f& pose);
+	public:
+		//---------------------------------------
+		// Methods
+		//---------------------------------------
+#if WIN32
+		__declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > RenderScenes(const std::string& scenePath, vector<string>camPoses, float fx, float fy, float ox, float oy);
+#else
+		__attribute__((visibility("default"))) vector<tuple<cv::Mat, cv::Mat> > RenderScenes(const std::string& scenePath, vector<string>camPoses, float fx, float fy, float ox, float oy);
+#endif
 
-		cv::Mat getRGB();
-		cv::Mat getDepth();
+		//---------------------------------------
+		// Constructors
+		//---------------------------------------
+#if WIN32
+		__declspec(dllexport) Render(const std::string& shaderPath, int width, int height);
+#else
+		__attribute__((visibility("default"))) Render(const std::string& shaderPath, int width, int height);
+#endif
 	};
 }

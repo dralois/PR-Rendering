@@ -18,12 +18,12 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	// Error handling
 	if (!scene)
 	{
-		std::cout << importer.GetErrorString() << std::endl;
+		std::cout << "Mesh load error:" << importer.GetErrorString() << std::endl;
 		return false;
 	}
 	else if (!scene->HasMeshes())
 	{
-		std::cout << "File " << meshPath << " has no mesh" << endl;
+		std::cout << "Mesh load error:" << meshPath << " has no mesh" << endl;
 		return false;
 	}
 

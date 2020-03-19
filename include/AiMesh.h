@@ -6,6 +6,9 @@
 #include <ai.h>
 #pragma warning(pop)
 
+//---------------------------------------
+// Mesh thread data input
+//---------------------------------------
 struct AiMeshInput
 {
 	int objSimId;

@@ -66,7 +66,7 @@ SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial*
 	intrCameraRender.oy = (*CONFIG_FILE)["oy"].GetFloat();
 
 	// Create renderer
-	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString());
+	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString(), 1920, 1080);
 }
 
 //---------------------------------------
@@ -192,7 +192,7 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 {
 	// Render depth with OpenGL
 	vector<tuple<cv::Mat, cv::Mat> > renderings =
-		pRenderer->render_scenes(scenePath, vecCameraPoses,
+		pRenderer->RenderScenes(scenePath, vecCameraPoses,
 			intrCameraScene.fx, intrCameraScene.fy,
 			intrCameraScene.ox, intrCameraScene.oy);
 

@@ -116,17 +116,16 @@ TARGET_LINK_LIBRARIES(ShadersLib ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
 
 # Create OpenGL library
 ADD_LIBRARY(OpenGLLib SHARED
-            OpenGLLib/include/data.h
-            OpenGLLib/include/lodepng.h
             OpenGLLib/include/mesh.h
             OpenGLLib/include/model.h
             OpenGLLib/include/render.h
             OpenGLLib/include/shader.h
-            OpenGLLib/include/types.h
-            OpenGLLib/include/util.h
-            OpenGLLib/src/data.cpp
+            OpenGLLib/include/camera.h
+            OpenGLLib/include/pose.h
+            OpenGLLib/src/mesh.cpp
+            OpenGLLib/src/model.cpp
             OpenGLLib/src/render.cpp
-            OpenGLLib/src/lodepng.cpp
+            OpenGLLib/src/shader.cpp
 )
 
 # Link to OpenGL library
