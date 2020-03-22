@@ -1,5 +1,7 @@
 #include "PxMeshConvex.h"
 
+#include <fstream>
+
 //---------------------------------------
 // Creates convex physx mesh
 //---------------------------------------
@@ -16,7 +18,7 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 		PxConvexMeshDesc convDesc;
 		convDesc.points.count = vecVertices.size() / 3;
 		convDesc.points.stride = sizeof(PxVec3);
-		convDesc.points.data = GetVertices();
+		convDesc.points.data = X_GetVertices();
 		convDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
 
 		// Cook the mesh
@@ -97,10 +99,10 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 //---------------------------------------
 // Create and add convex rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshConvex::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshConvex::AddRigidActor(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidDynamic* body = (PxRigidDynamic*)InitRigidbody(pos, quat, false);
+	PxRigidDynamic* body = (PxRigidDynamic*)CreateRigidActor(pos, quat, false);
 	// Update
 	PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
 	body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);

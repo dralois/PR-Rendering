@@ -7,44 +7,41 @@
 #pragma warning(pop)
 
 //---------------------------------------
-// Mesh thread data input
-//---------------------------------------
-struct AiMeshInput
-{
-	int objSimId;
-	vector<float> pos;
-	vector<float> rot;
-	void* pAiMesh;
-};
-
-//---------------------------------------
 // Arnold meshes, used for rendering
 //---------------------------------------
 class AiMesh : public MeshBase
 {
 private:
 	//---------------------------------------
+	// Field
+	//---------------------------------------
+	bool isScene = false;
+	AtNode* baseNode = NULL;
+
+	//---------------------------------------
 	// Methods
 	//---------------------------------------
 	template <class T>
-	AtArray* X_VectorToAiArray(const std::vector<T>& input, const size_t size, const AtByte type);
+	AtArray* X_VectorToAiArray(const vector<T>& input, const size_t size, const AtByte type);
+	void X_CreateBaseNode();
 
 public:
 	//---------------------------------------
-	// Fields
-	//---------------------------------------
-	bool isScene = false;
-
-	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	unsigned int CreateMesh(void* data);
-	static void DestroyMesh(const string nodeName);
-	static unsigned int CreateMeshThread(void* data);
+	void CreateMesh(const vector<float>& pos, const vector<float>& rot);
+	static void DestroyMesh(const string& nodeName);
+	void DestroyBaseNode();
+	void RestoreBaseNode();
+
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+	inline const string GetBaseName() { return "base_" + std::to_string(meshId); };
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	AiMesh(string meshPath, string texturePath, int meshId, float scale);
-	AiMesh(string meshPath, int meshId, float scale);
+	AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId, float scale);
+	AiMesh(const string& meshPath, int meshId, int objId, float scale);
 };

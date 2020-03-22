@@ -3,7 +3,7 @@
 //---------------------------------------
 // Create rigidbody
 //---------------------------------------
-PxRigidActor* PxMesh::InitRigidbody(const vector<float>& pos, const vector<float>& rot, bool isStatic) const
+PxRigidActor* PxMesh::CreateRigidActor(const vector<float>& pos, const vector<float>& rot, bool isStatic) const
 {
 	// Create transform with provided position and rotation
 	PxQuat pxRot(rot.at(0), rot.at(1), rot.at(2), rot.at(3));
@@ -33,15 +33,15 @@ void PxMesh::DestroyRigidbody(PxRigidActor* curr)
 //---------------------------------------
 // New physx mesh manager
 //---------------------------------------
-PxMesh::PxMesh(string path, int meshId, float scale,
+PxMesh::PxMesh(const string& meshPath, int meshId, int objId, float scale,
 	PxScene* scene, PxCooking* cooking, PxMaterial* material) :
-	MeshBase(path, meshId, scale),
+	MeshBase(meshPath, meshId, objId, scale),
 	pPxScene(scene),
 	pPxCooking(cooking),
 	pPxMaterial(material),
 	pShape(NULL)
 {
-};
+}
 
 //---------------------------------------
 // Cleanup mesh manager

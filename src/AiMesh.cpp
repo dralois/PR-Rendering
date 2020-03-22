@@ -1,80 +1,89 @@
 #include "AiMesh.h"
 
+#include <iostream>
+
+#pragma warning(push, 0)
+#include <eigen3/Eigen/Dense>
+#pragma warning(pop)
+
 //---------------------------------------
 // Convert vector to arnold array
 //---------------------------------------
 template <class T>
-AtArray* AiMesh::X_VectorToAiArray(const std::vector<T>& input, const size_t size, const AtByte type)
+AtArray* AiMesh::X_VectorToAiArray(const vector<T>& input, const size_t size, const AtByte type)
 {
 	return AiArrayConvert(size, 1, type, input.data());
 }
 
 //---------------------------------------
-// Create arnold mesh
+// Load & create the base node
 //---------------------------------------
-unsigned int AiMesh::CreateMesh(void* data)
+void AiMesh::X_CreateBaseNode()
 {
-	// Cast to input struct, define names
-	AiMeshInput* input = static_cast<AiMeshInput*>(data);
-	string baseName = "mesh_" + std::to_string(meshId);
-	string currName = baseName + "_" + std::to_string(input->objSimId);
+	// Check if node has been loaded from file
+	baseNode = AiNodeLookUpByName(GetBaseName().c_str());
 
-	// Find base mesh node
-	AtNode* baseMesh = AiNodeLookUpByName(baseName.c_str());
-	// Find actual mesh node
-	AtNode* currMesh = AiNodeLookUpByName(currName.c_str());
+	// Return if loaded
+	if (baseNode != NULL)
+		return;
 
-	// Base mesh node not created
-	if(baseMesh == NULL)
+	// Load the mesh from file
+	LoadFile(false);
+
+	// Create base mesh node
+	baseNode = AiNode("polymesh");
+	AiNodeSetStr(baseNode, "name", GetBaseName().c_str());
+
+	// Convert and set vertices and indices
+	AtArray* vlist_array = X_VectorToAiArray(vecVertices, vecIndices.size(), AI_TYPE_POINT);
+	AiNodeSetArray(baseNode, "vlist", vlist_array);
+	AtArray* idxs_array = X_VectorToAiArray(vecIndices, vecIndices.size(), AI_TYPE_UINT);
+	AiNodeSetArray(baseNode, "vidxs", idxs_array);
+
+	// If not a scan mesh
+	// FIXME: UVs & normals not in use
+	if (!isScene && false)
 	{
-		// Create base mesh node
-		baseMesh = AiNode("polymesh");
-		AiNodeSetStr(baseMesh, "name", baseName.c_str());
-
-		// Convert and set vertices and indices
-		AtArray* vlist_array = X_VectorToAiArray(vecVertices, vecIndices.size(), AI_TYPE_POINT);
-		AiNodeSetArray(baseMesh, "vlist", vlist_array);
-		AtArray* idxs_array = X_VectorToAiArray(vecIndices, vecIndices.size(), AI_TYPE_UINT);
-		AiNodeSetArray(baseMesh, "vidxs", idxs_array);
-
-		// If not scan mesh
-		if (!isScene && false)
+		// Sanity check: Sizes must match
+		if (vecUVs.size() / 2 == vecIndices.size() && vecNormals.size() / 3 == vecIndices.size())
 		{
-			// Sanity check: Sizes must match
-			if (vecUVs.size() / 2 == vecIndices.size() && vecNormals.size() / 3 == vecIndices.size())
-			{
-				// Convert and set UVs & normals
-				AtArray* uvlist_array = X_VectorToAiArray(vecUVs, vecIndices.size(), AI_TYPE_POINT2);
-				AiNodeSetArray(baseMesh, "uvlist", uvlist_array);
-				AtArray* nlist_array = X_VectorToAiArray(vecNormals, vecIndices.size(), AI_TYPE_VECTOR);
-				AiNodeSetArray(baseMesh, "nlist", nlist_array);
-				// Convert and set UV & normal index buffers
-				AiNodeSetArray(baseMesh, "uvidxs", AiArrayCopy(idxs_array));
-				AiNodeSetArray(baseMesh, "nidxs", AiArrayCopy(idxs_array));
-			}
+			// Convert and set UVs & normals
+			AtArray* uvlist_array = X_VectorToAiArray(vecUVs, vecIndices.size(), AI_TYPE_POINT2);
+			AiNodeSetArray(baseNode, "uvlist", uvlist_array);
+			AtArray* nlist_array = X_VectorToAiArray(vecNormals, vecIndices.size(), AI_TYPE_VECTOR);
+			AiNodeSetArray(baseNode, "nlist", nlist_array);
+			// Convert and set UV & normal index buffers
+			AiNodeSetArray(baseNode, "uvidxs", AiArrayCopy(idxs_array));
+			AiNodeSetArray(baseNode, "nidxs", AiArrayCopy(idxs_array));
 		}
-
-		// Disable the base mesh node
-		AiNodeSetDisabled(baseMesh, true);
 	}
 
-	// If current mesh not created
+	// Disable the base mesh node
+	AiNodeSetDisabled(baseNode, true);
+}
+
+//---------------------------------------
+// Create arnold mesh
+//---------------------------------------
+void AiMesh::CreateMesh(const vector<float>& posIn, const vector<float>& rotIn)
+{
+	// Try to find node
+	AtNode* currMesh = AiNodeLookUpByName(GetName().c_str());
+
+	// If mesh not created
 	if (currMesh == NULL)
 	{
 		// Clone or set the node (scene exists only once)
 		if(isScene)
 		{
-			currMesh = baseMesh;
+			currMesh = baseNode;
 		}
 		else
 		{
-			currMesh = AiNodeClone(baseMesh);
-			AiNodeSetStr(currMesh, "name", currName.c_str());
+			currMesh = AiNodeClone(baseNode);
+			AiNodeSetStr(currMesh, "name", GetName().c_str());
 		}
 	}
-
-	// Enable the mesh node
-	AiNodeSetDisabled(currMesh, false);
 
 	// Translation, rotation and transformation matrices
 	AtMatrix aiMatPos, aiMatRot, aiMatTrans;
@@ -83,7 +92,7 @@ unsigned int AiMesh::CreateMesh(void* data)
 	AiM4Identity(aiMatTrans);
 
 	// Create rotation matrix
-	Eigen::Quaternionf rot = Eigen::Quaternion<float>(&input->rot[0]);
+	Eigen::Quaternionf rot = Eigen::Quaternion<float>(&rotIn[0]);
 	Eigen::Matrix<float, 3, 3> matRot = rot.normalized().toRotationMatrix();
 	for (int i = 0; i < 3; i++)
 	{
@@ -94,32 +103,21 @@ unsigned int AiMesh::CreateMesh(void* data)
 	}
 
 	// Create translation matrix
-	AtPoint pos = { input->pos[0], input->pos[1], input->pos[2] };
+	AtPoint pos = { posIn[0], posIn[1], posIn[2] };
 	AiM4Translation(aiMatPos, &pos);
 
 	// Create and save object to world matrix in actual node
 	AiM4Mult(aiMatTrans, aiMatRot, aiMatPos);
 	AiNodeSetMatrix(currMesh, "matrix", aiMatTrans);
 
-	// Done
-	return 0;
-}
-
-//---------------------------------------
-// Static function calling the member function
-//---------------------------------------
-unsigned int AiMesh::CreateMeshThread(void* data)
-{
-	// Cast to input struct
-	AiMeshInput* input = static_cast<AiMeshInput*>(data);
-	// Call actual member function
-	return ((AiMesh*)input->pAiMesh)->CreateMesh(data);
+	// Finally enable the mesh node
+	AiNodeSetDisabled(currMesh, false);
 }
 
 //---------------------------------------
 // Cleanup arnold mesh
 //---------------------------------------
-void AiMesh::DestroyMesh(const string nodeName)
+void AiMesh::DestroyMesh(const string& nodeName)
 {
 	// Find and destroy mesh node
 	AtNode* node = AiNodeLookUpByName(nodeName.c_str());
@@ -128,19 +126,35 @@ void AiMesh::DestroyMesh(const string nodeName)
 }
 
 //---------------------------------------
+// Destroys the base node of this mesh
+//---------------------------------------
+void AiMesh::DestroyBaseNode()
+{
+	AiNodeDestroy(baseNode);
+}
+
+//---------------------------------------
+// Restores the base node of this mesh
+//---------------------------------------
+void AiMesh::RestoreBaseNode()
+{
+	baseNode = AiNodeLookUpByName(GetBaseName().c_str());
+}
+
+//---------------------------------------
 // Constructor with texture
 //---------------------------------------
-AiMesh::AiMesh(string meshPath, string texturePath, int meshId, float scale) :
-	MeshBase(meshPath, texturePath, meshId, scale)
+AiMesh::AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId, float scale) :
+	MeshBase(meshPath, texturePath, meshId, objId, scale)
 {
-	LoadFile(false);
+	X_CreateBaseNode();
 }
 
 //---------------------------------------
 // Constructor without texture
 //---------------------------------------
-AiMesh::AiMesh(string meshPath, int meshId, float scale) :
-	MeshBase(meshPath, meshId, scale)
+AiMesh::AiMesh(const string& meshPath, int meshId, int objId, float scale) :
+	MeshBase(meshPath, meshId, objId, scale)
 {
-	LoadFile(false);
+	X_CreateBaseNode();
 }

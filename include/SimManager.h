@@ -3,7 +3,6 @@
 #include "SceneManager.h"
 
 #pragma warning(push, 0)
-#include <dirent.h>
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 #pragma warning(pop)
@@ -49,7 +48,7 @@ private:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	void X_SaveSceneFolders(string path);
+	void X_SaveSceneFolders(const string& path);
 
 public:
 	//---------------------------------------
@@ -57,15 +56,15 @@ public:
 	//---------------------------------------
 	void InitPhysx();
 	void InitArnold();
-	void LoadConfig(string config_path);
+	void LoadConfig(const string& configPath);
 	void LoadMeshes();
 	int RunSimulation();
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline string GetFinalPath() { return CONFIG_FILE["final_imgs_path"].GetString(); };
-	inline string GetTemporaryPath() { return CONFIG_FILE["temp_files_path"].GetString(); };
+	inline const string GetFinalPath() { return CONFIG_FILE["final_imgs_path"].GetString(); };
+	inline const string GetTemporaryPath() { return CONFIG_FILE["temp_files_path"].GetString(); };
 
 	//---------------------------------------
 	// Construtors

@@ -18,7 +18,7 @@ public:
 	// Methods
 	//---------------------------------------
 	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) override;
-	virtual PxRigidActor* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const override;
+	virtual PxRigidActor* AddRigidActor(const vector<float>& pos, const vector<float>& quat) const override;
 
 	//---------------------------------------
 	// Constructors

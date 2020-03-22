@@ -1,5 +1,9 @@
 #include "SimManager.h"
 
+#pragma warning(push, 0)
+#include <dirent.h>
+#pragma warning(pop)
+
 //---------------------------------------
 // Initialize physx runtime
 //---------------------------------------
@@ -80,15 +84,15 @@ void SimManager::InitArnold()
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
-void SimManager::LoadConfig(string config_path)
+void SimManager::LoadConfig(const string& configPath)
 {
-	cout << "Reading config file:\t" << config_path << endl;
+	cout << "Reading config file:\t" << configPath << endl;
 
 	using namespace rapidjson;
 
 	// Open und parse config file
 	char buffer[16000];
-	FILE* pFile = fopen(config_path.c_str(), "rb");
+	FILE* pFile = fopen(configPath.c_str(), "rb");
 	FileReadStream is(pFile, buffer, sizeof(buffer));
 	CONFIG_FILE.ParseStream<0, UTF8<>, FileReadStream>(is);
 }
@@ -101,6 +105,15 @@ void SimManager::LoadMeshes()
 	DIR* dir;
 	// Path to 3D models
 	string meshesPath = CONFIG_FILE["models"].GetString();
+	string aiPath = meshesPath + "/ai_meshes.ass";
+
+	// Initialize vectors
+	vecpPxMesh.reserve(CONFIG_FILE["objs"].Size());
+	vecpAiMesh.reserve(CONFIG_FILE["objs"].Size());
+
+	// Try to load the arnold mesh nodes
+	bool aiNodesLoaded = AiASSLoad(aiPath.c_str()) == 0;
+
 	// If path exists
 	if ((dir = opendir(meshesPath.c_str())) != NULL)
 	{
@@ -117,11 +130,13 @@ void SimManager::LoadMeshes()
 				cerr << "Did not find obj " << CONFIG_FILE["objs"][i].GetString() << "... Skipping." << endl;
 				continue;
 			}
-
-			cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
+			else
+			{
+				cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
+			}
 
 			// Create and save physx mesh
-			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i + 1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
+			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
 			pxCurr->CreateMesh(false, false);
 			pxCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
 			vecpPxMesh.push_back(pxCurr);
@@ -129,18 +144,37 @@ void SimManager::LoadMeshes()
 			// Create and save arnold mesh
 			string texturePath(meshPath);
 			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
-			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i + 1, 0.1);
+			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i, -1, 0.1);
 			vecpAiMesh.push_back(aiCurr);
 		}
 		// Finally close
 		closedir(dir);
+	}
+
+	// If base nodes were not yet created
+	if (!aiNodesLoaded)
+	{
+		// Store arnold base nodes in file
+		AiASSWrite(aiPath.c_str(), AI_NODE_SHAPE);
+		// Discard them
+		for (auto mesh : vecpAiMesh)
+		{
+			mesh->DestroyBaseNode();
+		}
+		// Reload the base nodes
+		AiASSLoad(aiPath.c_str());
+		// Restore them
+		for (auto mesh : vecpAiMesh)
+		{
+			mesh->RestoreBaseNode();
+		}
 	}
 }
 
 //---------------------------------------
 // Determine scenes to process
 //---------------------------------------
-void SimManager::X_SaveSceneFolders(string path)
+void SimManager::X_SaveSceneFolders(const string& path)
 {
 	DIR* dir;
 	struct dirent* ent;
@@ -222,15 +256,15 @@ int SimManager::RunSimulation()
 	AiNodeSetInt(light6, "decay_type", 0);
 
 	// Load config
-	int max_count = CONFIG_FILE["max_images"].GetInt();
-	int iter_per_scene = CONFIG_FILE["iter_per_scene"].GetInt();
+	int maxImages = CONFIG_FILE["max_images"].GetInt();
+	int sceneIters = CONFIG_FILE["iter_per_scene"].GetInt();
 
 	// Render all scenes
 	for (string folder : vecSceneFolders)
 	{
 		curr.SetScenePath(folder);
-		bool count_samples = curr.Run(iter_per_scene, max_count);
-		if (!count_samples)
+		bool maxReached = curr.Run(sceneIters, maxImages);
+		if (!maxReached)
 			break;
 	}
 
@@ -266,7 +300,7 @@ SimManager::~SimManager()
 	}
 
 	// Cleanup arnold meshes
-	for(auto curr : vecpAiMesh)
+	for (auto curr : vecpAiMesh)
 	{
 		delete curr;
 	}

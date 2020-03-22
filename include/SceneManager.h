@@ -1,9 +1,7 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#include <eigen3/Eigen/Dense>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
@@ -13,14 +11,11 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
-#include "rapidxml.hpp"
-#include "rapidxml_utils.hpp"
-
-#include <dirent.h>
-
 #include "PxPhysicsAPI.h"
 
-#include "ai.h"
+#include <ai.h>
+
+#include <dirent.h>
 #pragma warning(pop)
 
 #include "../OpenGLLib/include/render.h"
@@ -49,8 +44,8 @@ struct Intrinsics
 //---------------------------------------
 struct BodyAnnotation
 {
-	int shapeId;
-	int objId;
+	int meshId;
+	int labelId;
 	char* name;
 	std::vector<float> vecBBox;
 	std::vector<float> vecPos;
@@ -62,11 +57,11 @@ struct BodyAnnotation
 //---------------------------------------
 struct ObjectInfo
 {
-	int shapeId;
-	int objSimId;
-	string name;
+	int meshId;
+	int objId;
+	string objName;
 	Vector3f pos;
-	Quaterniond rot;
+	Quaternionf rot;
 };
 
 //---------------------------------------
@@ -84,7 +79,6 @@ private:
 	PxCooking* pPxCooking;
 	PxMaterial* pPxMaterial;
 	PxRigidDynamic* pPxSceneRigidbody;
-	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxRigidbodies;
 
 	// Rendering
 	Renderer::Render* pRenderer;
@@ -96,9 +90,13 @@ private:
 	AtNode* aiShaderDepthScene;
 	AtNode* aiShaderBlendImage;
 
-	// Meshes
+	// Meshes (Reference)
 	vector<PxMeshConvex*> vecpPxMeshObjs;
 	vector<AiMesh*> vecpAiMeshObjs;
+
+	// Meshes (Copies)
+	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxMeshCurrObjs;
+	vector<AiMesh*> vecpAiMeshCurrObj;
 	PxMeshTriangle* pPxMeshScene;
 	AiMesh* pAiMeshScene;
 
@@ -120,9 +118,9 @@ private:
 	rapidjson::Document* CONFIG_FILE;
 
 	// Other
-	int startCount;
+	int imageCount;
 	int objsPerSim;
-	int sceneCount;
+	int poseCount;
 	string scenePath;
 
 	//---------------------------------------
@@ -142,12 +140,12 @@ private:
 
 	// Rendering
 	vector<tuple<cv::Mat, cv::Mat>> X_RenderSceneDepth() const;
-	bool X_RenderObjsDepth() const;
-	void X_RenderObjsLabel() const;
+	bool X_RenderObjsDepth();
+	void X_RenderObjsLabel();
 	void X_RenderImageBlend();
 
 	// Helpers
-	void X_GetFilesInDir(string dir, float varThreshold);
+	void X_GetImagesToProcess(const string& dir, float varThreshold);
 	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
 	void X_LoadCamMat(float fx, float fy, float ox, float oy);
 	void X_LoadCamIntrinsics();
@@ -159,19 +157,19 @@ private:
 	void X_CvBlendLabel();
 
 	// Annotation
-	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaterniond& rot) const;
+	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const;
 	void X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked);
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	bool Run(int iterations, int maxCount);
+	bool Run(int sceneIters, int maxImages);
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline void SetScenePath(string path) { scenePath = path; };
+	inline void SetScenePath(const string& path) { scenePath = path; };
 
 	//---------------------------------------
 	// Constructors

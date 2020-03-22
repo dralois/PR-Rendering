@@ -1,5 +1,17 @@
 #include "MeshBase.h"
 
+#include <iostream>
+#include <fstream>
+
+#pragma warning(push, 0)
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <assimp/Exporter.hpp>
+
+#include <eigen3/Eigen/Dense>
+#pragma warning(pop)
+
 //---------------------------------------
 // Try to load the mesh
 //---------------------------------------
@@ -90,7 +102,7 @@ bool MeshBase::LoadFile(bool doubleNorms)
 //---------------------------------------
 // Stores a provided mesh
 //---------------------------------------
-void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, string ext) const
+void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const
 {
 	Assimp::Exporter exporter;
 
@@ -151,10 +163,11 @@ void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>
 //---------------------------------------
 // Default constructor
 //---------------------------------------
-MeshBase::MeshBase(string meshPath, string texturePath, int meshId, float scale) :
+MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId, float scale) :
 	meshPath(meshPath),
 	texturePath(texturePath),
 	meshId(meshId),
+	objId(objId),
 	scale(scale)
 {
 };
@@ -162,7 +175,7 @@ MeshBase::MeshBase(string meshPath, string texturePath, int meshId, float scale)
 //---------------------------------------
 // Without texture
 //---------------------------------------
-MeshBase::MeshBase(string meshPath, int meshId, float scale) :
-	MeshBase(meshPath, "", meshId, scale)
+MeshBase::MeshBase(const string& meshPath, int meshId, int objId, float scale) :
+	MeshBase(meshPath, "", meshId, objId, scale)
 {
 };

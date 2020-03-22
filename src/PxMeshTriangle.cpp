@@ -1,5 +1,7 @@
 #include "PxMeshTriangle.h"
 
+#include <fstream>
+
 //---------------------------------------
 // Creates triangle based physx mesh
 //---------------------------------------
@@ -16,10 +18,10 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 		PxTriangleMeshDesc triangleDesc;
 		triangleDesc.points.count = vecVertices.size() / 3;
 		triangleDesc.points.stride = sizeof(float) * 3;
-		triangleDesc.points.data = GetVertices();
+		triangleDesc.points.data = X_GetVertices();
 		triangleDesc.triangles.count = vecIndices.size() / 3;
 		triangleDesc.triangles.stride = sizeof(int) * 3;
-		triangleDesc.triangles.data = GetIndices();
+		triangleDesc.triangles.data = X_GetIndices();
 
 		// Cook the mesh
 		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
@@ -66,10 +68,10 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 //---------------------------------------
 // Create and add triangle rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshTriangle::CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshTriangle::AddRigidActor(const vector<float>& pos, const vector<float>& quat) const
 {
 	// Create rigidbody
-	PxRigidStatic* body = (PxRigidStatic*)InitRigidbody(pos, quat, true);
+	PxRigidStatic* body = (PxRigidStatic*)CreateRigidActor(pos, quat, true);
 	// Update
 	pShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
 	// Attach rigidbody to shape

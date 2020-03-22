@@ -6,7 +6,7 @@
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
-#define PX_RELEASE(x) if(x) {if(x->isReleasable()){ x->release(); x = NULL; }}
+#define PX_RELEASE(x) if(x != NULL) {if(x->isReleasable()){ x->release(); x = NULL; }}
 
 //#define PX_EXPORT_TO_OBJ
 
@@ -28,8 +28,8 @@ protected:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline PxVec3* GetVertices() { return (PxVec3*) &vecVertices[0]; };
-	inline PxU32* GetIndices() { return (PxU32*) &vecIndices[0]; };
+	inline PxVec3* X_GetVertices() { return (PxVec3*) &vecVertices[0]; };
+	inline PxU32* X_GetIndices() { return (PxU32*) &vecIndices[0]; };
 
 public:
 	//---------------------------------------
@@ -41,13 +41,13 @@ public:
 	// Methods
 	//---------------------------------------
 	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) = 0;
-	virtual PxRigidActor* CreateRigidbody(const vector<float>& pos, const vector<float>& quat) const = 0;
-	PxRigidActor* InitRigidbody(const vector<float>& pos, const vector<float>& quat, bool isStatic) const;
+	virtual PxRigidActor* AddRigidActor(const vector<float>& pos, const vector<float>& quat) const = 0;
+	PxRigidActor* CreateRigidActor(const vector<float>& pos, const vector<float>& quat, bool isStatic) const;
 	static void DestroyRigidbody(PxRigidActor* body);
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	PxMesh(string path, int meshId, float scale, PxScene* scene, PxCooking* cooking, PxMaterial* material);
+	PxMesh(const string& meshPath, int meshId, int objId, float scale, PxScene* scene, PxCooking* cooking, PxMaterial* material);
 	~PxMesh();
 };

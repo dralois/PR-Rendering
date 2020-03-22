@@ -2,17 +2,6 @@
 
 #include <vector>
 #include <string>
-#include <iostream>
-#include <fstream>
-
-#pragma warning(push, 0)
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/Exporter.hpp>
-
-#include <eigen3/Eigen/Dense>
-#pragma warning(pop)
 
 using namespace std;
 
@@ -26,6 +15,7 @@ protected:
 	// Fields
 	//---------------------------------------
 	int meshId;
+	int objId;
 	float scale;
 	string meshPath;
 	string texturePath;
@@ -44,12 +34,15 @@ protected:
 	// Methods
 	//---------------------------------------
 	bool LoadFile(bool doubleNorms);
-	void StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, string ext) const;
+	void StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const;
 
 public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
+	inline const string GetName() { return "mesh_" + to_string(meshId) + "_" + to_string(objId); };
+	inline int GetObjId() { return objId; };
+	inline void SetObjId(int objId_) { objId = objId_; };
 	inline int GetMeshId() { return meshId; };
 	inline float GetXMax() { return xMax; };
 	inline float GetXMin() { return xMin; };
@@ -59,6 +52,6 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	MeshBase(string meshPath, string texturePath, int meshId, float scale);
-	MeshBase(string meshPath, int meshId, float scale);
+	MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId, float scale);
+	MeshBase(const string& meshPath, int meshId, int objId, float scale);
 };
