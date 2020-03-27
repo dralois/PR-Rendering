@@ -21,7 +21,8 @@ namespace Renderer
 		static void X_LoadPose(const std::string& pose_file, Eigen::Matrix4f& pose)
 		{
 			std::ifstream file(pose_file);
-			if (file.is_open()) {
+			if (file.is_open())
+			{
 				for (int i = 0; i < 4; i++)
 					for (int j = 0; j < 4; j++)
 						file >> pose(i, j);

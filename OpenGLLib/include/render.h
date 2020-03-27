@@ -25,7 +25,6 @@ namespace Renderer
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		Pose data;
 		int width, height;
 		GLFWwindow* window;
 		std::string shaderPath;

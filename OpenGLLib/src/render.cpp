@@ -34,7 +34,7 @@ namespace Renderer
 			cv::Mat col, dep;
 
 			// Load camera matrix
-			Eigen::Matrix4f pose = data.LoadViewMatrix(currPose);
+			Eigen::Matrix4f camMat = Pose::LoadViewMatrix(currPose);
 
 			glfwPollEvents();
 			// Clear buffer
@@ -42,7 +42,7 @@ namespace Renderer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			// Render pose
-			X_Render(model, shader, pose);
+			X_Render(model, shader, camMat);
 
 			// Fetch results
 			glfwSwapBuffers(window);
@@ -82,8 +82,8 @@ namespace Renderer
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-		glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	}
 
 	//---------------------------------------
@@ -96,6 +96,7 @@ namespace Renderer
 		GLuint* data = new GLuint[height * width * 3];
 
 		// Read result
+		glReadBuffer(GL_FRONT);
 		glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_INT, &data[0]);
 
 		// For each pixel
@@ -125,6 +126,7 @@ namespace Renderer
 		GLfloat* data = new GLfloat[height * width];
 
 		// Read results
+		glReadBuffer(GL_FRONT);
 		glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, &data[0]);
 
 		// For each pixel
