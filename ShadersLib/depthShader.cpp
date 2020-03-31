@@ -47,16 +47,13 @@ shader_evaluate
 	}
 
 	// ?
-	sg->out.FLT = 20.f;
-	sg->out.INT = 30;
-	sg->out.UINT = 40;
+	sg->out.FLT() = 20.f;
+	sg->out.INT() = 30;
+	sg->out.UINT() = 40;
 
 	// Save distance in red channel
-	AtRGBA rgba;
-	rgba.r = x;
-	rgba.g = 1;
-	rgba.b = 1;
+	AtRGBA rgba(x, 1, 1, 1);
 
 	// Return distance
-	sg->out.RGBA = rgba;
+	sg->out.RGBA() = rgba;
 }

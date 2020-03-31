@@ -51,7 +51,7 @@ shader_evaluate
 	Mat blend_image = *(Mat*)AiShaderEvalParamPtr(p_blend_image);
 	Mat rend_image = *(Mat*)AiShaderEvalParamPtr(p_rend_image);
 
-	AtRGB rgba;
+	AtRGB rgb;
 
 	// Pixel X/Y
 	int x = sg->x;
@@ -131,7 +131,7 @@ shader_evaluate
 		// If forced draw
 		if (AiShaderEvalParamBool(p_force_scene))
 		{
-			AtColor opac;
+			AtRGB opac;
 			// Determine transparency
 			if (body_ratio <= 0.5)
 			{
@@ -146,14 +146,16 @@ shader_evaluate
 				opac.b = 0;
 			}
 			// Set transparency
-			sg->out_opacity = opac;
+			AtClosureList closure;
+			closure.add(AiClosureTransparent(sg, opac));
+			sg->out.CLOSURE() = closure;
 			body_ratio = 0;
 		}
 
 		//blend scene with rgb
-		rgba.r = bodyC.r * body_ratio * 1.5 * avg + (((float)pxBlend[2]) / 255.0) * (1.0 - body_ratio);
-		rgba.g = bodyC.g * body_ratio * 1.5 * avg + (((float)pxBlend[1]) / 255.0) * (1.0 - body_ratio);
-		rgba.b = bodyC.b * body_ratio * 1.5 * avg + (((float)pxBlend[0]) / 255.0) * (1.0 - body_ratio);
+		rgb.r = bodyC.r * body_ratio * 1.5 * avg + (((float)pxBlend[2]) / 255.0) * (1.0 - body_ratio);
+		rgb.g = bodyC.g * body_ratio * 1.5 * avg + (((float)pxBlend[1]) / 255.0) * (1.0 - body_ratio);
+		rgb.b = bodyC.b * body_ratio * 1.5 * avg + (((float)pxBlend[0]) / 255.0) * (1.0 - body_ratio);
 	}
 	// Currently used mode
 	else
@@ -185,17 +187,17 @@ shader_evaluate
 			}
 			l_diff = l_diff / count;
 			*/
-			rgba.r = (bodyC.r + l_diff);
-			rgba.g = (bodyC.g + l_diff);
-			rgba.b = (bodyC.b + l_diff);
+			rgb.r = (bodyC.r + l_diff);
+			rgb.g = (bodyC.g + l_diff);
+			rgb.b = (bodyC.b + l_diff);
 		}
 		else
 		{
-			rgba.r = (((float)pxBlend[2]) / 255.0);
-			rgba.g = (((float)pxBlend[1]) / 255.0);
-			rgba.b = (((float)pxBlend[0]) / 255.0);
+			rgb.r = (((float)pxBlend[2]) / 255.0);
+			rgb.g = (((float)pxBlend[1]) / 255.0);
+			rgb.b = (((float)pxBlend[0]) / 255.0);
 		}
 	}
 	// Write out color
-	sg->out.RGB = rgba;
+	sg->out.RGB() = rgb;
 }

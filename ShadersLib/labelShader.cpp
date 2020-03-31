@@ -30,7 +30,7 @@ node_finish
 shader_evaluate
 {
 	// Renders object ID into red channel
-	AtRGBA rgba;
+	AtRGBA rgba(0,0,0,1);
 	rgba.r = AiShaderEvalParamInt(p_id);
-	sg->out.RGBA = rgba;
+	sg->out.RGBA() = rgba;
 }

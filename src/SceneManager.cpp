@@ -89,11 +89,12 @@ void SceneManager::X_PxCreateScene()
 {
 	string mesh_path = scenePath + "/mesh.refined.obj";
 	// Create physx mesh, shape and rigidbody of scan scene
-	pPxMeshScene = new PxMeshTriangle(mesh_path, 0, 0, 100.0f, pPxScene, pPxCooking, pPxMaterial);
-	pPxMeshScene->CreateMesh(true, false);
-	vector<float> pos{ 0, 0, 0 };
-	vector<float> rot{ 0, 0, 0, 1 };
-	pPxMeshScene->AddRigidActor(pos, rot);
+	pPxMeshScene = new PxMeshTriangle(mesh_path, 0, 0, pPxScene, pPxCooking, pPxMaterial);
+	pPxMeshScene->CreateMesh(true, (*CONFIG_FILE)["scene_scale"].GetFloat());
+	// Mesh needs to be rotated 90* around X for the simulation
+	PxVec3 pos(0, 0, 0);
+	PxQuat rot(-AI_PIOVER2, PxVec3(1, 0, 0));
+	pPxSceneRigidbody = (PxRigidStatic*) pPxMeshScene->AddRigidActor(pos, rot);
 }
 
 //---------------------------------------
@@ -117,8 +118,8 @@ void SceneManager::X_PxCreateObjs()
 		float y = (rand() % 10) + 1;
 		float x = (rand() % ((int)(pPxMeshScene->GetXMax() - pPxMeshScene->GetXMin()))) + pPxMeshScene->GetXMin();
 		float z = (rand() % ((int)(pPxMeshScene->GetYMax() - pPxMeshScene->GetYMin()))) + pPxMeshScene->GetYMin();
-		vector<float> pos{ x, y, z };
-		vector<float> rot{ -0.7071068, 0, 0, 0.7071068 };
+		PxVec3 pos(x, y, z);
+		PxQuat rot(-0.7071068, 0, 0, 0.7071068);
 
 		// Save rigidbody and mesh in vector
 		PxRigidActor* body = currObj->AddRigidActor(pos, rot);
@@ -131,12 +132,13 @@ void SceneManager::X_PxCreateObjs()
 //---------------------------------------
 void SceneManager::X_PxDestroy()
 {
-	// Cleanup scene mesh
+	// Cleanup scene
 	if (pPxMeshScene != NULL)
 	{
+		PxMesh::DestroyRigidbody(pPxSceneRigidbody);
 		delete pPxMeshScene;
 	}
-	// Cleanup random object rigidbodies
+	// Cleanup random objects
 	for (auto obj : vecpPxMeshCurrObjs)
 	{
 		PxMesh::DestroyRigidbody(obj.second);
@@ -151,10 +153,10 @@ void SceneManager::X_PxDestroy()
 //---------------------------------------
 void SceneManager::X_PxRunSim()
 {
-	// 10000 steps
-	for (PxU32 i = 0; i < 100; i++)
+	// Simulate in 16ms steps
+	for (PxU32 i = 0; i < 300; i++)
 	{
-		pPxScene->simulate(2.f / 60.0f);
+		pPxScene->simulate(1.0f / 30.0f);
 		pPxScene->fetchResults(true);
 
 	}
@@ -176,10 +178,14 @@ void SceneManager::X_PxSaveSimResults()
 		tempTrans = obj.second->getGlobalPose();
 		// Create pose struct
 		ObjectInfo currInfo;
+		// Undo 90* around X rotation
+		PxQuat undo(AI_PIOVER2, PxVec3(1, 0, 0));
+		tempTrans.q *= undo;
+		tempTrans.p = undo.rotate(tempTrans.p);
 		// Fetch and convert physx position & rotation
 		PxQuat pxRot = tempTrans.q.getNormalized();
 		PxVec3 pxPos = tempTrans.p;
-		Vector3f pos(pxPos.x, pxPos.y, pxPos.z);
+		Vector3f pos(pxPos.x, pxPos.z, pxPos.y);
 		Quaternionf rot(pxRot.w, pxRot.x, pxRot.y, pxRot.z);
 		// Save poses in vector
 		currInfo.meshId = obj.first->GetMeshId();
@@ -188,6 +194,7 @@ void SceneManager::X_PxSaveSimResults()
 		currInfo.pos = pos;
 		currInfo.rot = rot;
 		vecCurrObjs.push_back(currInfo);
+		obj.second->setGlobalPose(tempTrans, false);
 	}
 }
 
@@ -203,12 +210,12 @@ void SceneManager::X_AiCreateObjs()
 		Vector3f p = body.pos;
 		Quaternionf q = body.rot;
 		vector<float> pos{ p.x(), p.y(), p.z() };
-		vector<float> rot{ (float)q.x(), (float)q.y(), (float)q.z(), (float)q.w() };
+		vector<float> rot{ q.w(), q.x(), q.y(), q.z() };
 
 		// Create the mesh & save in vector
 		AiMesh* mesh = new AiMesh(*vecpAiMeshObjs[body.meshId]);
 		mesh->SetObjId(body.objId);
-		mesh->CreateMesh(pos, rot);
+		mesh->CreateMesh(pos, rot, (*CONFIG_FILE)["obj_scale"].GetFloat());
 		vecpAiMeshCurrObj.push_back(mesh);
 	}
 }
@@ -267,26 +274,22 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const
 {
 	// Create pose matrix
-	Matrix<float, 4, 4> bRotMat = Eigen::Matrix4f::Identity();
-	bRotMat.block(0, 0, 3, 3) = rot.normalized().toRotationMatrix().cast<float>();
-	bRotMat.block(3, 0, 1, 3) = pos;
+	Eigen::Affine3f bTransMat;
+	bTransMat = bTransMat.fromPositionOrientationScale(pos, rot, Vector3f::Identity());
 
 	// Camera space -> World space
-	bRotMat = matCamera.transpose().inverse() * bRotMat;
-
-	// Normalize rotation
-	Matrix3f temp = bRotMat.block(0, 0, 3, 3);
-	Quaternionf qr = Quaternionf(temp).normalized();
+	bTransMat = matCamera.transpose().inverse().matrix() * bTransMat.matrix();
 
 	// Save position in vector
-	ann.vecPos.push_back(bRotMat(0, 3) * 10);
-	ann.vecPos.push_back(bRotMat(1, 3) * 10);
-	ann.vecPos.push_back(bRotMat(2, 3) * 10);
+	ann.vecPos.push_back(bTransMat.translation().x() * 10);
+	ann.vecPos.push_back(bTransMat.translation().y() * 10);
+	ann.vecPos.push_back(bTransMat.translation().z() * 10);
 	// Save rotation in vector
-	ann.vecRot.push_back(qr.w());
-	ann.vecRot.push_back(qr.x());
-	ann.vecRot.push_back(qr.y());
-	ann.vecRot.push_back(qr.z());
+	Quaternionf q = Quaternionf(bTransMat.rotation().matrix());
+	ann.vecRot.push_back(q.w());
+	ann.vecRot.push_back(q.x());
+	ann.vecRot.push_back(q.y());
+	ann.vecRot.push_back(q.z());
 }
 
 //---------------------------------------
@@ -402,12 +405,12 @@ bool SceneManager::X_RenderObjsDepth()
 
 	// Render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", AI_TYPE_INT);
+	AiNodeSetInt(aiDriver, "format", 1);
 	AiNodeSetInt(aiOptions, "xres", 1920);
 	AiNodeSetInt(aiOptions, "yres", 1080);
-	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
 	AiNodeSetInt(aiOptions, "AA_samples", 1);
-	AiNodeSetInt(aiOptions, "GI_glossy_samples", 1);
+	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
+	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
 
 	// Setup rendering
 	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
@@ -493,12 +496,12 @@ void SceneManager::X_RenderObjsLabel()
 
 	// Setup render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", AI_TYPE_INT);
+	AiNodeSetInt(aiDriver, "format", 1);
 	AiNodeSetInt(aiOptions, "xres", 1920);
 	AiNodeSetInt(aiOptions, "yres", 1080);
-	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
 	AiNodeSetInt(aiOptions, "AA_samples", 1);
-	AiNodeSetInt(aiOptions, "GI_glossy_samples", 1);
+	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
+	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
 
 	// Render image
 	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
@@ -631,13 +634,12 @@ void SceneManager::X_RenderImageBlend()
 
 	// Setup render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", AI_TYPE_RGBA);
-	AiNodeSetFlt(aiDriver, "gamma", 1.0f);
+	AiNodeSetInt(aiDriver, "format", 1);
 	AiNodeSetInt(aiOptions, "xres", 960);
 	AiNodeSetInt(aiOptions, "yres", 540);
 	AiNodeSetInt(aiOptions, "AA_samples", 6);
 	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 6);
-	AiNodeSetInt(aiOptions, "GI_glossy_samples", 6);
+	AiNodeSetInt(aiOptions, "GI_specular_samples", 6);
 
 	// Render final image/object blend
 	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
@@ -647,74 +649,48 @@ void SceneManager::X_RenderImageBlend()
 
 //---------------------------------------
 // Loads camera matrix with fov
-// FIXME: Improve this
 //---------------------------------------
 void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 {
-	int i = 0;
 	std::string line;
 	std::ifstream inFile;
 
 	// Setup camera
 	AiNodeSetStr(aiCamera, "name", "renderCam");
 
-	// Open camera pose file
+	// Open camera pose file & save as matrix
 	inFile.open(vecCameraPoses.at(poseCount));
-
-	// For each camera pose
-	while (std::getline(inFile, line))
+	if (inFile.is_open())
 	{
-		// Read matrix
-		std::vector<std::string> entries = split(line, ' ');
-		for (int j = 0; j < entries.size(); j++)
-		{
-			matCamera(i, j) = std::stof(entries.at(j));
-		}
-		i++;
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				inFile >> matCamera(i, j);
+		inFile.close();
 	}
 
-	// Meters -> Millimeters;
-	float pos0 = matCamera(0, 3) * 100;
-	float pos1 = matCamera(1, 3) * 100;
-	float pos2 = matCamera(2, 3) * 100;
+	// Extract rotation & position from extrinsics
+	matCamera.transposeInPlace();
+	Matrix3f rotExt = matCamera.block<3, 3>(0, 0).transpose();
+	Vector3f posExt = -100.0f * rotExt * matCamera.block<3, 1>(0, 3);
 
-	// Reset position
-	matCamera(0, 3) = 0;
-	matCamera(1, 3) = 0;
-	matCamera(2, 3) = 0;
+	AtMatrix aiMatRot = AiM4Identity();
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			aiMatRot[i][j] = rotExt(j, i);
+		}
+	}
 
-	Matrix4f switchAxisMat;
-	Matrix4f switchAxisMat2;
-	// 90° around X, 180° around Z axis
-	switchAxisMat << -1, 0, 0, 0,
-		0, 0, -1, 0,
-		0, -1, 0, 0,
-		0, 0, 0, 1;
-	// Mirrors X position
-	switchAxisMat2 << -1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1;
-
-	// Mirror on X (?)
-	matCamera = (switchAxisMat * matCamera);
-
-	// Restore position
-	matCamera(0, 3) = pos0;
-	matCamera(2, 3) = pos1;
-	matCamera(1, 3) = pos2;
-
-	// Convert to arnold view matrix
-	matCamera = switchAxisMat2 * matCamera.transpose();
-	AtMatrix matAiCam = { {matCamera(0, 0), matCamera(0, 1), matCamera(0, 2), matCamera(0, 3)},
-												{matCamera(1, 0), matCamera(1, 1), matCamera(1, 2), matCamera(1, 3)},
-												{matCamera(2, 0), matCamera(2, 1), matCamera(2, 2), matCamera(2, 3)},
-												{matCamera(3, 0), matCamera(3, 1), matCamera(3, 2), 1} };
-	AiNodeSetMatrix(aiCamera, "matrix", matAiCam);
+	// Save in camera
+	AtVector pos(posExt.x(), posExt.y(), posExt.z());
+	AtMatrix aiMatPos = AiM4Translation(pos);
+	AtMatrix aiMatTrans = AiM4Mult(aiMatRot, aiMatPos);
+	AiNodeSetMatrix(aiCamera, "matrix", aiMatTrans);
 
 	// Calculate fov and save
-	double fovx = 2.0f * atan(960.0f / (2.0f * fx));
-	double fovy = 2.0f * atan(540.0f / (2.0f * fy));
+	float fovx = 2.0f * atan(960.0f / (2.0f * fx));
+	float fovy = 2.0f * atan(540.0f / (2.0f * fy));
 	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx * 180.f / 3.14f, fovy * 180.f / 3.14f);
 	AiNodeSetArray(aiCamera, "fov", fovArr);
 
@@ -725,8 +701,8 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 	float max_y = (oy - (540 / 2)) / (540 / 2) + 1;
 
 	// Save
-	AiNodeSetPnt2(aiCamera, "screen_window_min", min_x, min_y);
-	AiNodeSetPnt2(aiCamera, "screen_window_max", max_x, max_y);
+	AiNodeSetVec2(aiCamera, "screen_window_min", min_x, min_y);
+	AiNodeSetVec2(aiCamera, "screen_window_max", max_x, max_y);
 }
 
 //---------------------------------------

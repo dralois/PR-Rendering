@@ -55,7 +55,8 @@ void SimManager::InitPhysx()
 void SimManager::InitArnold()
 {
 	// Start arnold & load shader library
-	AiBegin();
+	AiBegin(AI_SESSION_INTERACTIVE);
+	AiDeviceAutoSelect();
 	AiMsgSetConsoleFlags(AI_LOG_ALL);
 	AiLoadPlugins(CONFIG_FILE["shaders_ai"].GetString());
 
@@ -65,6 +66,7 @@ void SimManager::InitArnold()
 	// Setup rendering
 	aiRenderOptions = AiUniverseGetOptions();
 	AiNodeSetInt(aiRenderOptions, "threads", 0);
+	AiNodeSetBool(aiRenderOptions, "skip_license_check", true);
 	AiNodeSetInt(aiRenderOptions, "AA_samples", 4);
 	AiNodeSetInt(aiRenderOptions, "GI_diffuse_depth", 6);
 	AiNodeSetPtr(aiRenderOptions, "camera", aiRenderCamera);
@@ -72,7 +74,7 @@ void SimManager::InitArnold()
 	// Create render driver
 	aiOutputDriver = AiNode("driver_png");
 	AiNodeSetStr(aiOutputDriver, "name", "outputDriver");
-	aiOuputArray = AiArrayAllocate(1, 1, AI_TYPE_STRING);
+	aiOutputArray = AiArrayAllocate(1, 1, AI_TYPE_STRING);
 
 	// Initialize Shaders
 	aiShaderObjectDepth = AiNode("depthshader");
@@ -112,7 +114,17 @@ void SimManager::LoadMeshes()
 	vecpAiMesh.reserve(CONFIG_FILE["objs"].Size());
 
 	// Try to load the arnold mesh nodes
-	bool aiNodesLoaded = AiASSLoad(aiPath.c_str()) == 0;
+	AtParamValueMap* params = AiParamValueMap();
+	AiParamValueMapSetInt(params, AtString("mask"), AI_NODE_SHAPE);
+	bool aiNodesLoaded = AiSceneLoad(NULL, aiPath.c_str(), params);
+	AiParamValueMapDestroy(params);
+
+	// Fasten up node creation
+	if (!aiNodesLoaded)
+	{
+		AiNodeSetBool(aiRenderOptions, "enable_procedural_cache", true);
+		AiNodeSetBool(aiRenderOptions, "parallel_node_init", true);
+	}
 
 	// If path exists
 	if ((dir = opendir(meshesPath.c_str())) != NULL)
@@ -136,15 +148,15 @@ void SimManager::LoadMeshes()
 			}
 
 			// Create and save physx mesh
-			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, CONFIG_FILE["scale"].GetFloat(), pPxScene, pPxCooking, pPxMaterial);
-			pxCurr->CreateMesh(false, false);
+			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, pPxScene, pPxCooking, pPxMaterial);
+			pxCurr->CreateMesh(false, CONFIG_FILE["obj_scale"].GetFloat());
 			pxCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
 			vecpPxMesh.push_back(pxCurr);
 
 			// Create and save arnold mesh
 			string texturePath(meshPath);
 			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
-			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i, -1, 0.1);
+			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i, -1);
 			vecpAiMesh.push_back(aiCurr);
 		}
 		// Finally close
@@ -155,19 +167,12 @@ void SimManager::LoadMeshes()
 	if (!aiNodesLoaded)
 	{
 		// Store arnold base nodes in file
-		AiASSWrite(aiPath.c_str(), AI_NODE_SHAPE);
-		// Discard them
-		for (auto mesh : vecpAiMesh)
-		{
-			mesh->DestroyBaseNode();
-		}
-		// Reload the base nodes
-		AiASSLoad(aiPath.c_str());
-		// Restore them
-		for (auto mesh : vecpAiMesh)
-		{
-			mesh->RestoreBaseNode();
-		}
+		AtParamValueMap* params = AiParamValueMap();
+		AiParamValueMapSetInt(params, AtString("mask"), AI_NODE_SHAPE);
+		AiParamValueMapSetBool(params, AtString("binary"), true);
+		AiParamValueMapSetBool(params, AtString("open_procs"), true);
+		AiSceneWrite(NULL, aiPath.c_str(), params);
+		AiParamValueMapDestroy(params);
 	}
 }
 
@@ -210,7 +215,7 @@ int SimManager::RunSimulation()
 
 	// Create mananger
 	SceneManager curr(pPxScene, pPxCooking, pPxMaterial,
-		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOuputArray,
+		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOutputArray,
 		vecpPxMesh, vecpAiMesh,
 		0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
 		aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
@@ -226,34 +231,27 @@ int SimManager::RunSimulation()
 
 	// Setup lights
 	AiNodeSetStr(light, "name", "mylight");
-	AiNodeSetPnt(light, "position", -1000.f, 100.f, -1000.f);
+	AiNodeSetVec(light, "position", -1000.f, 100.f, -1000.f);
 	AiNodeSetFlt(light, "intensity", 2.f);
 	AiNodeSetFlt(light, "radius", 10.f);
-	AiNodeSetInt(light, "decay_type", 0);
-	AiNodeSetPnt(light1, "position", -100.f, 100.f, 100.f);
+	AiNodeSetVec(light1, "position", -100.f, 100.f, 100.f);
 	AiNodeSetFlt(light1, "intensity", 2.1f);
 	AiNodeSetFlt(light1, "radius", 10.f);
-	AiNodeSetInt(light1, "decay_type", 0);
-	AiNodeSetPnt(light2, "position", 1000.f, 100.f, -1000.f);
+	AiNodeSetVec(light2, "position", 1000.f, 100.f, -1000.f);
 	AiNodeSetFlt(light2, "intensity", 1.9f);
 	AiNodeSetFlt(light2, "radius", 10.f);
-	AiNodeSetInt(light2, "decay_type", 0);
-	AiNodeSetPnt(light3, "position", 1000.f, 100.f, 1000.f);
+	AiNodeSetVec(light3, "position", 1000.f, 100.f, 1000.f);
 	AiNodeSetFlt(light3, "intensity", 2.f);
 	AiNodeSetFlt(light3, "radius", 10.f);
-	AiNodeSetInt(light3, "decay_type", 0);
-	AiNodeSetPnt(light4, "position", 1000.f, 1000.f, 1000.f);
+	AiNodeSetVec(light4, "position", 1000.f, 1000.f, 1000.f);
 	AiNodeSetFlt(light4, "intensity", 2.f);
 	AiNodeSetFlt(light4, "radius", 10.f);
-	AiNodeSetInt(light4, "decay_type", 0);
-	AiNodeSetPnt(light5, "position", 1000.f, 1000.f, -1000.f);
+	AiNodeSetVec(light5, "position", 1000.f, 1000.f, -1000.f);
 	AiNodeSetFlt(light5, "intensity", 2.f);
 	AiNodeSetFlt(light5, "radius", 10.f);
-	AiNodeSetInt(light5, "decay_type", 0);
-	AiNodeSetPnt(light6, "position", -1000.f, 1000.f, 1000.f);
+	AiNodeSetVec(light6, "position", -1000.f, 1000.f, 1000.f);
 	AiNodeSetFlt(light6, "intensity", 2.f);
 	AiNodeSetFlt(light6, "radius", 10.f);
-	AiNodeSetInt(light6, "decay_type", 0);
 
 	// Load config
 	int maxImages = CONFIG_FILE["max_images"].GetInt();

@@ -16,7 +16,6 @@ protected:
 	//---------------------------------------
 	int meshId;
 	int objId;
-	float scale;
 	string meshPath;
 	string texturePath;
 
@@ -24,6 +23,8 @@ protected:
 	vector<int> vecIndices;
 	vector<float> vecUVs;
 	vector<float> vecNormals;
+
+	float metalness = 0.1f;
 
 	float xMin = 1e8;
 	float yMin = 1e8;
@@ -33,7 +34,7 @@ protected:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	bool LoadFile(bool doubleNorms);
+	bool LoadFile(float scale);
 	void StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const;
 
 public:
@@ -48,10 +49,12 @@ public:
 	inline float GetXMin() { return xMin; };
 	inline float GetYMax() { return yMax; };
 	inline float GetYMin() { return yMin; };
+	inline float GetMetallic() { return metalness; }
+	inline void SetMetallic(float metallic) { metalness = metallic; }
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId, float scale);
-	MeshBase(const string& meshPath, int meshId, int objId, float scale);
+	MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId);
+	MeshBase(const string& meshPath, int meshId, int objId);
 };

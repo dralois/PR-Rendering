@@ -1,10 +1,10 @@
 #include <ai.h>
 #include <string.h>
 
-extern AtNodeMethods* DepthShader;
-extern AtNodeMethods* LabelShader;
-extern AtNodeMethods* NullFilter;
-extern AtNodeMethods* BlendShader;
+extern const AtNodeMethods* DepthShader;
+extern const AtNodeMethods* LabelShader;
+extern const AtNodeMethods* NullFilter;
+extern const AtNodeMethods* BlendShader;
 
 enum SHADERS
 {

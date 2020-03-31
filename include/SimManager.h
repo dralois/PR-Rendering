@@ -34,7 +34,7 @@ private:
 	AtNode* aiRenderCamera;
 	AtNode* aiRenderOptions;
 	AtNode* aiOutputDriver;
-	AtArray* aiOuputArray;
+	AtArray* aiOutputArray;
 	AtNode* aiShaderObjectDepth;
 	AtNode* aiShaderSceneDepth;
 	AtNode* aiShaderBlend;

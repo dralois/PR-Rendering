@@ -5,7 +5,7 @@
 //---------------------------------------
 // Creates triangle based physx mesh
 //---------------------------------------
-bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
+bool PxMeshTriangle::CreateMesh(bool saveBounds, float scale)
 {
 	// Path to cooked mesh
 	std::ifstream cookedMesh(meshPath + "px");
@@ -13,7 +13,7 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 	if (!cookedMesh.good())
 	{
 		// Load mesh file
-		LoadFile(doubleNorms);
+		LoadFile(scale);
 		// Create triangle mesh object
 		PxTriangleMeshDesc triangleDesc;
 		triangleDesc.points.count = vecVertices.size() / 3;
@@ -61,24 +61,34 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, bool doubleNorms)
 	}
 
 	// Create collision detection capable shape from mesh
-	pShape = PxGetPhysics().createShape(PxTriangleMeshGeometry(pPxMesh), *pPxMaterial);
+	pPxShape = PxGetPhysics().createShape(PxTriangleMeshGeometry(pPxMesh), *pPxMaterial);
 	return true;
 }
 
 //---------------------------------------
 // Create and add triangle rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshTriangle::AddRigidActor(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshTriangle::AddRigidActor(const PxVec3& pos, const PxQuat& rot) const
 {
 	// Create rigidbody
-	PxRigidStatic* body = (PxRigidStatic*)CreateRigidActor(pos, quat, true);
+	PxRigidStatic* body = (PxRigidStatic*)CreateRigidActor(pos, rot, true);
 	// Update
-	pShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
+	pPxShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
 	// Attach rigidbody to shape
-	body->attachShape(*pShape);
+	body->attachShape(*pPxShape);
 	// Add to scene and return
 	pPxScene->addActor(*body);
 	return body;
+}
+
+//---------------------------------------
+// Copy constructor, increases reference count
+//---------------------------------------
+PxMeshTriangle::PxMeshTriangle(const PxMeshTriangle& copy):
+	pPxMesh(copy.pPxMesh),
+	PxMesh(copy)
+{
+	pPxMesh->acquireReference();
 }
 
 //---------------------------------------

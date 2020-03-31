@@ -78,7 +78,7 @@ private:
 	PxScene* pPxScene;
 	PxCooking* pPxCooking;
 	PxMaterial* pPxMaterial;
-	PxRigidDynamic* pPxSceneRigidbody;
+	PxRigidStatic* pPxSceneRigidbody;
 
 	// Rendering
 	Renderer::Render* pRenderer;

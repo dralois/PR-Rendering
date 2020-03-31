@@ -13,7 +13,7 @@ node_parameters
 
 node_initialize
 {
-	AiFilterInitialize(node, true, NULL, NULL);
+	AiFilterInitialize(node, true, NULL);
 }
 
 node_update
@@ -23,7 +23,6 @@ node_update
 
 node_finish
 {
-	AiFilterDestroy(node);
 }
 
 filter_output_type

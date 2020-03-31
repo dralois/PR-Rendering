@@ -3,12 +3,10 @@
 //---------------------------------------
 // Create rigidbody
 //---------------------------------------
-PxRigidActor* PxMesh::CreateRigidActor(const vector<float>& pos, const vector<float>& rot, bool isStatic) const
+PxRigidActor* PxMesh::CreateRigidActor(const PxVec3& pos, const PxQuat& rot, bool isStatic) const
 {
 	// Create transform with provided position and rotation
-	PxQuat pxRot(rot.at(0), rot.at(1), rot.at(2), rot.at(3));
-	PxVec3 pxPos(pos.at(0), pos.at(1), pos.at(2));
-	PxTransform currT(pxPos, pxRot);
+	PxTransform currT(pos, rot);
 	// Create and return rigidbody
 	if (isStatic)
 	{
@@ -33,14 +31,27 @@ void PxMesh::DestroyRigidbody(PxRigidActor* curr)
 //---------------------------------------
 // New physx mesh manager
 //---------------------------------------
-PxMesh::PxMesh(const string& meshPath, int meshId, int objId, float scale,
+PxMesh::PxMesh(const string& meshPath, int meshId, int objId,
 	PxScene* scene, PxCooking* cooking, PxMaterial* material) :
-	MeshBase(meshPath, meshId, objId, scale),
+	MeshBase(meshPath, meshId, objId),
 	pPxScene(scene),
 	pPxCooking(cooking),
 	pPxMaterial(material),
-	pShape(NULL)
+	pPxShape(NULL)
 {
+}
+
+//---------------------------------------
+// Copy constructor, increases reference count
+//---------------------------------------
+PxMesh::PxMesh(const PxMesh& copy):
+	pPxCooking(copy.pPxCooking),
+	pPxMaterial(copy.pPxMaterial),
+	pPxScene(copy.pPxScene),
+	pPxShape(copy.pPxShape),
+	MeshBase(copy)
+{
+	pPxShape->acquireReference();
 }
 
 //---------------------------------------
@@ -48,5 +59,5 @@ PxMesh::PxMesh(const string& meshPath, int meshId, int objId, float scale,
 //---------------------------------------
 PxMesh::~PxMesh()
 {
-	PX_RELEASE(pShape);
+	PX_RELEASE(pPxShape);
 }

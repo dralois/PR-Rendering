@@ -6,9 +6,9 @@
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
-#define PX_RELEASE(x) if(x != NULL) {if(x->isReleasable()){ x->release(); x = NULL; }}
+#define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
 
-//#define PX_EXPORT_TO_OBJ
+#define PX_EXPORT_TO_OBJ
 
 using namespace physx;
 
@@ -35,19 +35,20 @@ public:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	PxShape* pShape;
+	PxShape* pPxShape;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) = 0;
-	virtual PxRigidActor* AddRigidActor(const vector<float>& pos, const vector<float>& quat) const = 0;
-	PxRigidActor* CreateRigidActor(const vector<float>& pos, const vector<float>& quat, bool isStatic) const;
+	virtual bool CreateMesh(bool saveBounds, float scale) = 0;
+	virtual PxRigidActor* AddRigidActor(const PxVec3& pos, const PxQuat& rot) const = 0;
+	PxRigidActor* CreateRigidActor(const PxVec3& pos, const PxQuat& rot, bool isStatic) const;
 	static void DestroyRigidbody(PxRigidActor* body);
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	PxMesh(const string& meshPath, int meshId, int objId, float scale, PxScene* scene, PxCooking* cooking, PxMaterial* material);
+	PxMesh(const string& meshPath, int meshId, int objId, PxScene* scene, PxCooking* cooking, PxMaterial* material);
+	PxMesh(const PxMesh& copy);
 	~PxMesh();
 };

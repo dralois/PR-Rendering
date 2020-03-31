@@ -15,7 +15,7 @@
 //---------------------------------------
 // Try to load the mesh
 //---------------------------------------
-bool MeshBase::LoadFile(bool doubleNorms)
+bool MeshBase::LoadFile(float scale)
 {
 	Assimp::Importer importer;
 
@@ -42,20 +42,20 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	const aiMesh* mesh = scene->mMeshes[0];
 
 	// Load vertices
-	vecVertices.resize(mesh->mNumVertices);
+	vecVertices.reserve(mesh->mNumVertices);
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
-		aiVector3D pos = mesh->mVertices[i];
+		aiVector3D pos = mesh->mVertices[i] * scale;
 		// Scale
-		vecVertices.push_back(pos.x * scale);
-		vecVertices.push_back((scale == 100 ? pos.z : pos.y) * scale);
-		vecVertices.push_back((scale == 100 ? pos.y : pos.z) * scale);
+		vecVertices.push_back(pos.x);
+		vecVertices.push_back(pos.y);
+		vecVertices.push_back(pos.z);
 	}
 
 	// Load UVs
 	if (mesh->HasTextureCoords(0))
 	{
-		vecUVs.resize(mesh->mNumVertices);
+		vecUVs.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
 			aiVector3D UVW = mesh->mTextureCoords[0][i];
@@ -67,13 +67,13 @@ bool MeshBase::LoadFile(bool doubleNorms)
 	// Load normals
 	if (mesh->HasNormals())
 	{
-		vecNormals.resize(mesh->mNumVertices);
+		vecNormals.reserve(mesh->mNumVertices);
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
 			aiVector3D n = mesh->mNormals[i];
 			vecNormals.push_back(n.x);
-			vecNormals.push_back(scale == 100 ? n.z : n.y);
-			vecNormals.push_back(scale == 100 ? n.y : n.z);
+			vecNormals.push_back(n.y);
+			vecNormals.push_back(n.z);
 		}
 	}
 
@@ -83,14 +83,6 @@ bool MeshBase::LoadFile(bool doubleNorms)
 		for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
 		{
 			vecIndices.push_back(mesh->mFaces[i].mIndices[j]);
-		}
-		// ??
-		if (doubleNorms)
-		{
-			for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
-			{
-				vecIndices.push_back(mesh->mFaces[i].mIndices[mesh->mFaces[i].mNumIndices - j - 1]);
-			}
 		}
 	}
 
@@ -163,19 +155,18 @@ void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>
 //---------------------------------------
 // Default constructor
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId, float scale) :
+MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId) :
 	meshPath(meshPath),
 	texturePath(texturePath),
 	meshId(meshId),
-	objId(objId),
-	scale(scale)
+	objId(objId)
 {
 };
 
 //---------------------------------------
 // Without texture
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, int meshId, int objId, float scale) :
-	MeshBase(meshPath, "", meshId, objId, scale)
+MeshBase::MeshBase(const string& meshPath, int meshId, int objId) :
+	MeshBase(meshPath, "", meshId, objId)
 {
 };

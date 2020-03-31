@@ -12,24 +12,18 @@ private:
 	// Fields
 	//---------------------------------------
 	PxConvexMesh* pPxMesh;
-	float metallic = 0.1;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh(bool saveBounds, bool doubleNorms) override;
-	virtual PxRigidActor* AddRigidActor(const vector<float>& pos, const vector<float>& quat) const override;
-
-	//---------------------------------------
-	// Properties
-	//---------------------------------------
-	inline void SetMetallic(float metallic_) { metallic = metallic_; }
-	inline float GetMetallic() { return metallic; }
+	virtual bool CreateMesh(bool saveBounds, float scale) override;
+	virtual PxRigidActor* AddRigidActor(const PxVec3& pos, const PxQuat& rot) const override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 	using PxMesh::PxMesh;
+	PxMeshConvex(const PxMeshConvex& copy);
 	~PxMeshConvex();
 };

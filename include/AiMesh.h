@@ -22,26 +22,24 @@ private:
 	// Methods
 	//---------------------------------------
 	template <class T>
-	AtArray* X_VectorToAiArray(const vector<T>& input, const size_t size, const AtByte type);
+	AtArray* X_VectorToAiArray(const vector<T>& input, const size_t size, const uint8_t type);
 	void X_CreateBaseNode();
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	void CreateMesh(const vector<float>& pos, const vector<float>& rot);
+	void CreateMesh(const vector<float>& pos, const vector<float>& rot, float scale);
 	static void DestroyMesh(const string& nodeName);
-	void DestroyBaseNode();
-	void RestoreBaseNode();
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline const string GetBaseName() { return "base_" + std::to_string(meshId); };
+	const string GetBaseName();
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId, float scale);
-	AiMesh(const string& meshPath, int meshId, int objId, float scale);
+	AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId);
+	AiMesh(const string& meshPath, int meshId, int objId);
 };

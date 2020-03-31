@@ -5,7 +5,7 @@
 //---------------------------------------
 // Creates convex physx mesh
 //---------------------------------------
-bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
+bool PxMeshConvex::CreateMesh(bool saveBounds, float scale)
 {
 	// Path to cooked mesh
 	std::ifstream cookedMesh(meshPath + "px");
@@ -13,7 +13,7 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 	if (!cookedMesh.good())
 	{
 		// Load mesh file
-		LoadFile(doubleNorms);
+		LoadFile(scale);
 		// Create convex mesh
 		PxConvexMeshDesc convDesc;
 		convDesc.points.count = vecVertices.size() / 3;
@@ -90,8 +90,8 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 	}
 
 	// Create collision detection capable shape from mesh
-	pShape = PxGetPhysics().createShape(PxConvexMeshGeometry(pPxMesh), *pPxMaterial);
-	pShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
+	pPxShape = PxGetPhysics().createShape(PxConvexMeshGeometry(pPxMesh), *pPxMaterial);
+	pPxShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
 
 	return true;
 }
@@ -99,18 +99,28 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, bool doubleNorms)
 //---------------------------------------
 // Create and add convex rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshConvex::AddRigidActor(const vector<float>& pos, const vector<float>& quat) const
+PxRigidActor* PxMeshConvex::AddRigidActor(const PxVec3& pos, const PxQuat& rot) const
 {
 	// Create rigidbody
-	PxRigidDynamic* body = (PxRigidDynamic*)CreateRigidActor(pos, quat, false);
+	PxRigidDynamic* body = (PxRigidDynamic*)CreateRigidActor(pos, rot, false);
 	// Update
 	PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
 	body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
 	// Attach rigidbody to shape
-	body->attachShape(*pShape);
+	body->attachShape(*pPxShape);
 	// Add to scene and return
 	pPxScene->addActor(*body);
 	return body;
+}
+
+//---------------------------------------
+// Copy constructor, increases reference count
+//---------------------------------------
+PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy):
+	pPxMesh(copy.pPxMesh),
+	PxMesh(copy)
+{
+	pPxMesh->acquireReference();
 }
 
 //---------------------------------------
