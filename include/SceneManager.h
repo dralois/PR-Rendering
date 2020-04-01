@@ -101,7 +101,7 @@ private:
 	AiMesh* pAiMeshScene;
 
 	// Camera
-	Intrinsics intrCameraScene, intrCameraRender;
+	Intrinsics intrOriginal, intrCustom;
 	vector<string> vecCameraPoses;
 	vector<string> vecCameraImages;
 	Matrix4f matCamera;
@@ -147,8 +147,8 @@ private:
 	// Helpers
 	void X_GetImagesToProcess(const string& dir, float varThreshold);
 	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
-	void X_LoadCamMat(float fx, float fy, float ox, float oy);
-	void X_LoadCamIntrinsics();
+	void X_LoadCameraMatrix(float fx, float fy, float ox, float oy);
+	void X_LoadSceneIntrinsics();
 
 	// Image processing
 	float X_CvComputeImageVariance(const cv::Mat& image) const;

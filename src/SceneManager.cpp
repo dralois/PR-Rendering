@@ -52,7 +52,7 @@ SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial*
 	vecpPxMeshObjs(vecPhysxObjs), vecpAiMeshObjs(vecArnoldObjs),
 	imageCount(startCount), objsPerSim(objPerSim), CONFIG_FILE(CONFIG_FILE),
 	aiShaderDepthObj(aiShaderObjDepth), aiShaderDepthScene(aiShaderSceneDepth), aiShaderBlendImage(aiShaderBlend),
-	intrCameraScene(), pPxSceneRigidbody(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0)
+	intrOriginal(), pPxSceneRigidbody(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0)
 {
 	// Fetch path to output location and meshes
 	FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
@@ -60,10 +60,10 @@ SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial*
 	FILE_FINAL_PATH = (*CONFIG_FILE)["final_imgs_path"].GetString();
 
 	// Load intrinsics
-	intrCameraRender.fx = (*CONFIG_FILE)["fx"].GetFloat();
-	intrCameraRender.fy = (*CONFIG_FILE)["fy"].GetFloat();
-	intrCameraRender.ox = (*CONFIG_FILE)["ox"].GetFloat();
-	intrCameraRender.oy = (*CONFIG_FILE)["oy"].GetFloat();
+	intrCustom.fx = (*CONFIG_FILE)["fx"].GetFloat();
+	intrCustom.fy = (*CONFIG_FILE)["fy"].GetFloat();
+	intrCustom.ox = (*CONFIG_FILE)["ox"].GetFloat();
+	intrCustom.oy = (*CONFIG_FILE)["oy"].GetFloat();
 
 	// Create renderer
 	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString(), 1920, 1080);
@@ -246,8 +246,8 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 	// Render depth with OpenGL
 	vector<tuple<cv::Mat, cv::Mat> > renderings =
 		pRenderer->RenderScenes(scenePath, vecCameraPoses,
-			intrCameraScene.fx, intrCameraScene.fy,
-			intrCameraScene.ox, intrCameraScene.oy);
+			intrOriginal.fx, intrOriginal.fy,
+			intrOriginal.ox, intrOriginal.oy);
 
 	// For each image
 	for (int render_count = 0; render_count < renderings.size(); render_count++)
@@ -335,7 +335,7 @@ void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMaske
 			<< "0"
 			<< ", " << currAnn.vecPos[0] << ", " << currAnn.vecPos[1] << ", " << currAnn.vecPos[2] << ", "
 			<< currAnn.labelId
-			<< " [" << intrCameraRender.fx << ", " << intrCameraRender.fy << ", " << intrCameraScene.ox << ", " << intrCameraScene.oy << "]" << "\n";
+			<< " [" << intrCustom.fx << ", " << intrCustom.fy << ", " << intrOriginal.ox << ", " << intrOriginal.oy << "]" << "\n";
 	}
 }
 
@@ -649,7 +649,7 @@ void SceneManager::X_RenderImageBlend()
 //---------------------------------------
 // Loads camera matrix with fov
 //---------------------------------------
-void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
+void SceneManager::X_LoadCameraMatrix(float fx, float fy, float ox, float oy)
 {
 	std::string line;
 	std::ifstream inFile;
@@ -708,7 +708,7 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 //---------------------------------------
 // Loads camera intrinsics
 //---------------------------------------
-void SceneManager::X_LoadCamIntrinsics()
+void SceneManager::X_LoadSceneIntrinsics()
 {
 	std::string line;
 	std::ifstream inFile;
@@ -729,10 +729,10 @@ void SceneManager::X_LoadCamIntrinsics()
 		{
 			std::vector<std::string> entries = split(line, ' ');
 			// Save them
-			intrCameraScene.fx = std::stof(entries[2]);
-			intrCameraScene.fy = std::stof(entries[7]);
-			intrCameraScene.ox = std::stof(entries[4]);
-			intrCameraScene.oy = std::stof(entries[8]);
+			intrOriginal.fx = std::stof(entries[2]);
+			intrOriginal.fy = std::stof(entries[7]);
+			intrOriginal.ox = std::stof(entries[4]);
+			intrOriginal.oy = std::stof(entries[8]);
 			break;
 		}
 	}
@@ -806,7 +806,7 @@ void SceneManager::X_GetImagesToProcess(const string& path, float varThreshold)
 bool SceneManager::Run(int sceneIters, int maxImages)
 {
 	// Load camera intrinsics (fov)
-	X_LoadCamIntrinsics();
+	X_LoadSceneIntrinsics();
 
 	// Get non blurry images
 	X_GetImagesToProcess(scenePath + "/rgbd", 400.f);
@@ -835,8 +835,8 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		// For each camera pose
 		for (poseCount = 0; poseCount < vecCameraPoses.size(); poseCount++)
 		{
-			// Load camera matrix
-			X_LoadCamMat(intrCameraScene.fx, intrCameraScene.fy, intrCameraScene.ox, intrCameraScene.oy);
+			// Load camera matrix with custom intrinsics
+			X_LoadCameraMatrix(intrCustom.fx, intrCustom.fy, intrCustom.ox, intrCustom.oy);
 
 			// If rendering successful and objects visible
 			if (X_RenderObjsDepth() && X_CvComputeObjsMask())
