@@ -8,7 +8,7 @@
 
 #define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
 
-#define PX_EXPORT_TO_OBJ
+//#define PX_EXPORT_TO_OBJ
 
 using namespace physx;
 

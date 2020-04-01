@@ -34,6 +34,7 @@ ELSE(WIN32)
             /usr/local/include
             /opt/local/include
             /usr/local/include/ai
+            /home/fabi/Downloads/Arnold-6.0/Arnold-6.0.2.0-linux/include
             /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/include
             /home/fabi/Downloads/Arnold-4.2/Arnold-4.2.9.0-linux/include
     )
@@ -47,6 +48,7 @@ ELSE(WIN32)
                 /opt/local/lib
                 /usr/local/lib
                 /usr/local/lib64
+                /home/fabi/Downloads/Arnold-6.0/Arnold-6.0.2.0-linux/bin
                 /home/fabi/Downloads/Arnold-5.4/Arnold-5.4.0.2-linux/bin
                 /home/fabi/Downloads/Arnold-4.2/Arnold-4.2.9.0-linux/bin
     )

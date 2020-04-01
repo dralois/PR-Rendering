@@ -5,7 +5,7 @@
 
 # Required Libraries & Setup (Linux)
 
-## [Arnold Renderer 6.2](https://www.arnoldrenderer.com/arnold/download/archive/arnold-sdk/6.0.2.0/)
+## [Arnold Renderer 6.0](https://www.arnoldrenderer.com/arnold/download/archive/arnold-sdk/6.0.2.0/)
 - Add the contents of the include directory to the gcc default include directory
 
     `echo | gcc -Wp,-v -x c++ - -fsyntax-only` can be used to list the default include directories

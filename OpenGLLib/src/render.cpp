@@ -10,9 +10,6 @@ namespace Renderer
 	{
 		vector<tuple<cv::Mat, cv::Mat> > renderings;
 
-		// Make window visible
-		glfwSetWindowOpacity(window, 1.0f);
-
 		// Setup shader & load model
 		Shader shader(shaderPath + "/textured3D.vs", shaderPath + "/textured3D.frag");
 		Model model(scenePath, "mesh.refined.obj", "mesh.refined_0.png");
@@ -27,6 +24,9 @@ namespace Renderer
 		camRender.imgHeight = height;
 		// An corresponding matrix
 		projection = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, NearPlane, FarPlane);
+
+		// Make window visible
+		glfwSetWindowOpacity(window, 1.0f);
 
 		// For each pose
 		for (string& currPose : camPoses)

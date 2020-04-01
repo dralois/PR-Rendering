@@ -194,7 +194,6 @@ void SceneManager::X_PxSaveSimResults()
 		currInfo.pos = pos;
 		currInfo.rot = rot;
 		vecCurrObjs.push_back(currInfo);
-		obj.second->setGlobalPose(tempTrans, false);
 	}
 }
 
@@ -673,6 +672,7 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 	Matrix3f rotExt = matCamera.block<3, 3>(0, 0).transpose();
 	Vector3f posExt = -100.0f * rotExt * matCamera.block<3, 1>(0, 3);
 
+	// Convert
 	AtMatrix aiMatRot = AiM4Identity();
 	for (int i = 0; i < 3; i++)
 	{
@@ -689,9 +689,9 @@ void SceneManager::X_LoadCamMat(float fx, float fy, float ox, float oy)
 	AiNodeSetMatrix(aiCamera, "matrix", aiMatTrans);
 
 	// Calculate fov and save
-	float fovx = 2.0f * atan(960.0f / (2.0f * fx));
-	float fovy = 2.0f * atan(540.0f / (2.0f * fy));
-	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx * 180.f / 3.14f, fovy * 180.f / 3.14f);
+	float fovx = 2.0f * atan(960.0f / (2.0f * fx)) * (180.0f / AI_PI);
+	float fovy = 2.0f * atan(540.0f / (2.0f * fy)) * (180.0f / AI_PI);
+	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx, fovy);
 	AiNodeSetArray(aiCamera, "fov", fovArr);
 
 	// Calculate NDC coordinates
@@ -725,7 +725,8 @@ void SceneManager::X_LoadCamIntrinsics()
 	while (std::getline(inFile, line))
 	{
 		// If it contains intrinsics
-		if (line.find("m_calibrationColorIntrinsic") != std::string::npos) {
+		if (line.find("m_calibrationColorIntrinsic") != std::string::npos)
+		{
 			std::vector<std::string> entries = split(line, ' ');
 			// Save them
 			intrCameraScene.fx = std::stof(entries[2]);
@@ -835,7 +836,7 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		for (poseCount = 0; poseCount < vecCameraPoses.size(); poseCount++)
 		{
 			// Load camera matrix
-			X_LoadCamMat(intrCameraRender.fx, intrCameraRender.fy, intrCameraRender.ox, intrCameraRender.oy);
+			X_LoadCamMat(intrCameraScene.fx, intrCameraScene.fy, intrCameraScene.ox, intrCameraScene.oy);
 
 			// If rendering successful and objects visible
 			if (X_RenderObjsDepth() && X_CvComputeObjsMask())
