@@ -865,7 +865,7 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 				cv::resize(cvRend, cvRend, cv::Size(cvScene.cols, cvScene.rows));
 
 				// Final image blend
-				//X_RenderImageBlend();
+				X_RenderImageBlend();
 				imageCount++;
 			}
 
