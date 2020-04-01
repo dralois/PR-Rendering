@@ -26,7 +26,6 @@ private:
 	PxScene* pPxScene;
 	PxCooking* pPxCooking;
 	PxMaterial* pPxMaterial;
-	PxDefaultCpuDispatcher* pPxDispatcher;
 	PxDefaultAllocator pxAllocator;
 	PxDefaultErrorCallback pxErrorCallback;
 

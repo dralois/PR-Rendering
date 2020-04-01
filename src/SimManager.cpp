@@ -26,8 +26,7 @@ void SimManager::InitPhysx()
 	// Set up scene
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	pPxDispatcher = PxDefaultCpuDispatcherCreate(2);
-	sceneDesc.cpuDispatcher = pPxDispatcher;
+	sceneDesc.cpuDispatcher = PxDefaultCpuDispatcherCreate(4);
 	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
 	pPxScene = PxGetPhysics().createScene(sceneDesc);
 
@@ -288,11 +287,10 @@ SimManager::~SimManager()
 		pPxPvdServer->disconnect();
 		pPxPvdServer->getTransport()->release();
 #endif
-		pPxPvdServer->release();
-		pPxDispatcher->release();
-		pPxCooking->release();
-		pPxScene->release();
-		pPxMaterial->release();
+		PX_RELEASE(pPxPvdServer);
+		PX_RELEASE(pPxCooking);
+		PX_RELEASE(pPxScene);
+		PX_RELEASE(pPxMaterial);
 		PxGetPhysics().release();
 		PxGetFoundation().release();
 	}

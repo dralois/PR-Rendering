@@ -8,8 +8,6 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/Exporter.hpp>
-
-#include <eigen3/Eigen/Dense>
 #pragma warning(pop)
 
 //---------------------------------------
