@@ -52,7 +52,7 @@ SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial*
 	vecpPxMeshObjs(vecPhysxObjs), vecpAiMeshObjs(vecArnoldObjs),
 	imageCount(startCount), objsPerSim(objPerSim), CONFIG_FILE(CONFIG_FILE),
 	aiShaderDepthObj(aiShaderObjDepth), aiShaderDepthScene(aiShaderSceneDepth), aiShaderBlendImage(aiShaderBlend),
-	intrOriginal(), pPxSceneRigidbody(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0)
+	intrOriginal(), pPxActorScene(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0)
 {
 	// Fetch path to output location and meshes
 	FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
@@ -94,7 +94,7 @@ void SceneManager::X_PxCreateScene()
 	// Mesh needs to be rotated 90* around X for the simulation
 	PxVec3 pos(0, 0, 0);
 	PxQuat rot(-AI_PIOVER2, PxVec3(1, 0, 0));
-	pPxSceneRigidbody = (PxRigidStatic*) pPxMeshScene->AddRigidActor(pos, rot);
+	pPxActorScene = (PxRigidStatic*) pPxMeshScene->AddRigidActor(pos, rot);
 }
 
 //---------------------------------------
@@ -104,7 +104,7 @@ void SceneManager::X_PxCreateObjs()
 {
 	// Seed & setup
 	srand(time(NULL) % 1000);
-	vecpPxMeshCurrObjs.reserve(objsPerSim);
+	vecpPxActorCurrObjs.reserve(objsPerSim);
 
 	// For each object
 	for (PxU32 i = 0; i < objsPerSim; i++)
@@ -123,7 +123,7 @@ void SceneManager::X_PxCreateObjs()
 
 		// Save rigidbody and mesh in vector
 		PxRigidActor* body = currObj->AddRigidActor(pos, rot);
-		vecpPxMeshCurrObjs.push_back(make_pair(currObj, (PxRigidDynamic*)body));
+		vecpPxActorCurrObjs.push_back(make_pair(currObj, (PxRigidDynamic*)body));
 	}
 }
 
@@ -135,17 +135,17 @@ void SceneManager::X_PxDestroy()
 	// Cleanup scene
 	if (pPxMeshScene != NULL)
 	{
-		PxMesh::DestroyRigidbody(pPxSceneRigidbody);
+		PxMesh::DestroyRigidbody(pPxActorScene);
 		delete pPxMeshScene;
 	}
 	// Cleanup random objects
-	for (auto obj : vecpPxMeshCurrObjs)
+	for (auto obj : vecpPxActorCurrObjs)
 	{
 		PxMesh::DestroyRigidbody(obj.second);
 		delete obj.first;
 	}
 	// As well as vector
-	vecpPxMeshCurrObjs.clear();
+	vecpPxActorCurrObjs.clear();
 }
 
 //---------------------------------------
@@ -172,7 +172,7 @@ void SceneManager::X_PxSaveSimResults()
 	int i = 0;
 	PxTransform tempTrans;
 	// For each physx object
-	for (auto obj : vecpPxMeshCurrObjs)
+	for (auto obj : vecpPxActorCurrObjs)
 	{
 		// Get position
 		tempTrans = obj.second->getGlobalPose();
@@ -194,7 +194,18 @@ void SceneManager::X_PxSaveSimResults()
 		currInfo.pos = pos;
 		currInfo.rot = rot;
 		vecCurrObjs.push_back(currInfo);
+#if DEBUG || _DEBUG
+		// Object transform update for pvd
+		obj.second->setGlobalPose(tempTrans, false);
 	}
+	// Scene transform update for pvd
+	pPxActorScene->setGlobalPose(PxTransform(PxIDENTITY::PxIdentity));
+	// Simulate once for pvd
+	pPxScene->simulate(0.1f);
+	pPxScene->fetchResults(true);
+#else
+}
+#endif
 }
 
 //---------------------------------------
@@ -854,7 +865,7 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 				cv::resize(cvRend, cvRend, cv::Size(cvScene.cols, cvScene.rows));
 
 				// Final image blend
-				X_RenderImageBlend();
+				//X_RenderImageBlend();
 				imageCount++;
 			}
 

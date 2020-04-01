@@ -78,7 +78,6 @@ private:
 	PxScene* pPxScene;
 	PxCooking* pPxCooking;
 	PxMaterial* pPxMaterial;
-	PxRigidStatic* pPxSceneRigidbody;
 
 	// Rendering
 	Renderer::Render* pRenderer;
@@ -95,9 +94,10 @@ private:
 	vector<AiMesh*> vecpAiMeshObjs;
 
 	// Meshes (Copies)
-	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxMeshCurrObjs;
-	vector<AiMesh*> vecpAiMeshCurrObj;
+	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxActorCurrObjs;
 	PxMeshTriangle* pPxMeshScene;
+	PxRigidStatic* pPxActorScene;
+	vector<AiMesh*> vecpAiMeshCurrObj;
 	AiMesh* pAiMeshScene;
 
 	// Camera
