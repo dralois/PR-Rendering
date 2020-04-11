@@ -3,7 +3,7 @@
 #include "PxMesh.h"
 
 //---------------------------------------
-// Convex meshes, limited to 255 tris
+// Convex mesh, limited to 256 tris
 //---------------------------------------
 class PxMeshConvex : public PxMesh
 {
@@ -11,19 +11,25 @@ private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	PxConvexMesh* pPxMesh;
+	PxConvexMesh* pPxMesh = NULL;
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+	virtual void X_CookMesh() override;
+	virtual void X_ExportCookedMesh() override;
+	virtual void X_CreateShape() override;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh(bool saveBounds, float scale) override;
-	virtual PxRigidActor* AddRigidActor(const PxVec3& pos, const PxQuat& rot) const override;
+	virtual void CreateMesh(float scale) override;
+	virtual void AddRigidActor(const PxTransform& pose, PxScene* scene) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 	using PxMesh::PxMesh;
-	PxMeshConvex(const PxMeshConvex& copy);
 	~PxMeshConvex();
 };

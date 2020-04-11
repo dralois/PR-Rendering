@@ -1,63 +1,120 @@
 #include "PxMesh.h"
 
 //---------------------------------------
-// Create rigidbody
+// Create rigidbody & shape
 //---------------------------------------
-PxRigidActor* PxMesh::CreateRigidActor(const PxVec3& pos, const PxQuat& rot, bool isStatic) const
+PxRigidActor* PxMesh::X_CreateRigidActor(const PxTransform& pose, bool isStatic)
 {
-	// Create transform with provided position and rotation
-	PxTransform currT(pos, rot);
-	// Create and return rigidbody
+	// Create either static or dynamic actor
 	if (isStatic)
 	{
-		PxRigidStatic* body = PxGetPhysics().createRigidStatic(currT);
-		return body;
+		// Create static rigidbody
+		pPxActor = PxGetPhysics().createRigidStatic(pose);
+		pPxActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+		pPxActor->setName(GetName().c_str());
 	}
 	else
 	{
-		PxRigidDynamic* body = PxGetPhysics().createRigidDynamic(currT);
-		return body;
+		// Create dynamic rigidbody
+		pPxActor = PxGetPhysics().createRigidDynamic(pose);
+		pPxActor->setName(GetName().c_str());
+		// Setup mass & enabled continuous collision detection
+		PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)pPxActor), 10.f);
+		((PxRigidDynamic*)pPxActor)->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+	}
+
+	// Create the shape & add actor
+	X_CreateShape();
+
+	// Return actor
+	return pPxActor;
+}
+
+//---------------------------------------
+// Remove rigidbody from scene
+//---------------------------------------
+void PxMesh::RemoveRigidActor(PxScene* scene)
+{
+	scene->removeActor(*pPxActor);
+}
+
+//---------------------------------------
+// Changes the scale of the shape
+//---------------------------------------
+void PxMesh::X_UpdateScale()
+{
+	// Depending on geometry type
+	switch (pPxShape->getGeometryType())
+	{
+	case PxGeometryType::eCONVEXMESH:
+	{
+		PxConvexMeshGeometry geom;
+		// Retrieve convex mesh & change scale
+		if (pPxShape->getConvexMeshGeometry(geom))
+		{
+			geom.scale = PxMeshScale(meshScale);
+			pPxShape->setGeometry(geom);
+		}
+		break;
+	}
+	case PxGeometryType::eTRIANGLEMESH:
+	{
+		PxTriangleMeshGeometry geom;
+		// Retrieve triangle mesh & change scale
+		if(pPxShape->getTriangleMeshGeometry(geom))
+		{
+			geom.scale = PxMeshScale(meshScale);
+			pPxShape->setGeometry(geom);
+		}
+		break;
+	}
+	default:
+	{
+		// Everything else is unsupported
+		std::cout << "Change scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
+		break;
+	}
 	}
 }
 
 //---------------------------------------
-// Cleanup rigidbody
-//---------------------------------------
-void PxMesh::DestroyRigidbody(PxRigidActor* curr)
-{
-	PX_RELEASE(curr);
-}
-
-//---------------------------------------
-// New physx mesh manager
+// Create physx mesh
 //---------------------------------------
 PxMesh::PxMesh(const string& meshPath, int meshId, int objId,
-	PxScene* scene, PxCooking* cooking, PxMaterial* material) :
+	const PxCooking* cooking, const PxMaterial* material):
 	MeshBase(meshPath, meshId, objId),
-	pPxScene(scene),
 	pPxCooking(cooking),
 	pPxMaterial(material),
-	pPxShape(NULL)
+	pPxShape(NULL),
+	pPxActor(NULL)
 {
 }
 
 //---------------------------------------
-// Copy constructor, increases reference count
+// Copy construtor
 //---------------------------------------
 PxMesh::PxMesh(const PxMesh& copy):
+	pPxShape(copy.pPxShape),
+	pPxActor(copy.pPxActor),
 	pPxCooking(copy.pPxCooking),
 	pPxMaterial(copy.pPxMaterial),
-	pPxScene(copy.pPxScene),
-	pPxShape(copy.pPxShape),
+	minimum(copy.minimum),
+	maximum(copy.maximum),
 	MeshBase(copy)
 {
-	pPxShape->acquireReference();
 }
 
 //---------------------------------------
-// Cleanup mesh manager
+// Cleanup mesh
 //---------------------------------------
 PxMesh::~PxMesh()
 {
-	PX_RELEASE(pPxShape);
+	if (pPxActor)
+	{
+		// Remove shape
+		if(pPxShape)
+			pPxActor->detachShape(*pPxShape);
+		// Delete actor
+		PX_RELEASE(pPxActor);
+	}
 }

@@ -14,8 +14,6 @@
 #include "PxPhysicsAPI.h"
 
 #include <ai.h>
-
-#include <dirent.h>
 #pragma warning(pop)
 
 #include "../OpenGLLib/include/render.h"
@@ -33,10 +31,12 @@ using namespace std;
 //---------------------------------------
 struct Intrinsics
 {
-	float fx;
-	float fy;
-	float ox;
-	float oy;
+	float fx{ 0 };
+	float fy{ 0 };
+	float ox{ 0 };
+	float oy{ 0 };
+	int w{ 0 };
+	int h{ 0 };
 };
 
 //---------------------------------------
@@ -44,12 +44,11 @@ struct Intrinsics
 //---------------------------------------
 struct BodyAnnotation
 {
-	int meshId;
-	int labelId;
-	char* name;
-	std::vector<float> vecBBox;
-	std::vector<float> vecPos;
-	std::vector<float> vecRot;
+	int meshId{ 0 };
+	int labelId{ 0 };
+	std::vector<float> vecBBox{ };
+	std::vector<float> vecPos{ };
+	std::vector<float> vecRot{ };
 };
 
 //---------------------------------------
@@ -57,11 +56,12 @@ struct BodyAnnotation
 //---------------------------------------
 struct ObjectInfo
 {
-	int meshId;
-	int objId;
-	string objName;
-	Vector3f pos;
-	Quaternionf rot;
+	int meshId{ 0 };
+	int objId{ 0 };
+	string objName{ "" };
+	Vector3f pos{ };
+	Quaternionf rot{ };
+	Eigen::Matrix4f mat{ };
 };
 
 //---------------------------------------
@@ -76,8 +76,9 @@ private:
 
 	// PhysX
 	PxScene* pPxScene;
-	PxCooking* pPxCooking;
-	PxMaterial* pPxMaterial;
+	PxCpuDispatcher* pPxDispatcher;
+	const PxCooking* pPxCooking;
+	const PxMaterial* pPxMaterial;
 
 	// Rendering
 	Renderer::Render* pRenderer;
@@ -90,14 +91,13 @@ private:
 	AtNode* aiShaderBlendImage;
 
 	// Meshes (Reference)
-	vector<PxMeshConvex*> vecpPxMeshObjs;
-	vector<AiMesh*> vecpAiMeshObjs;
+	const vector<PxMeshConvex*> vecpPxMeshObjs;
+	const vector<AiMesh*> vecpAiMeshObjs;
 
 	// Meshes (Copies)
-	vector<pair<PxMeshConvex*, PxRigidDynamic*>> vecpPxActorCurrObjs;
+	vector<PxMeshConvex*> vecpPxMeshCurrObjs;
+	vector<AiMesh*> vecpAiMeshCurrObjs;
 	PxMeshTriangle* pPxMeshScene;
-	PxRigidStatic* pPxActorScene;
-	vector<AiMesh*> vecpAiMeshCurrObj;
 	AiMesh* pAiMeshScene;
 
 	// Camera
@@ -105,7 +105,8 @@ private:
 	vector<string> vecCameraPoses;
 	vector<string> vecCameraImages;
 	Matrix4f matCamera;
-	Vector3f posCamera;
+	float nearClip, farClip;
+	bool useCustomIntr = false;
 
 	// Objects
 	vector<ObjectInfo> vecCurrObjs;
@@ -115,12 +116,12 @@ private:
 
 	// Files
 	std::ofstream ANNOTATIONS_FILE;
-	rapidjson::Document* CONFIG_FILE;
+	const rapidjson::Document* CONFIG_FILE;
 
 	// Other
+	int poseCount;
 	int imageCount;
 	int objsPerSim;
-	int poseCount;
 	string scenePath;
 
 	//---------------------------------------
@@ -130,7 +131,7 @@ private:
 	// PhysX
 	void X_PxCreateScene();
 	void X_PxCreateObjs();
-	void X_PxRunSim();
+	void X_PxRunSim(float timestep, int stepCount) const;
 	void X_PxSaveSimResults();
 	void X_PxDestroy();
 
@@ -147,8 +148,8 @@ private:
 	// Helpers
 	void X_GetImagesToProcess(const string& dir, float varThreshold);
 	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
-	void X_LoadCameraMatrix(float fx, float fy, float ox, float oy);
-	void X_LoadSceneIntrinsics();
+	void X_LoadCameraExtrinsics(const Intrinsics& intr);
+	void X_LoadCameraIntrinsics();
 
 	// Image processing
 	float X_CvComputeImageVariance(const cv::Mat& image) const;
@@ -174,10 +175,10 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial* pPxMaterial,
-							AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
-							vector<PxMeshConvex*> vecPhysxObjs, vector<AiMesh*> vecArnoldObjs,
-							int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
-							AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
+	SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxCooking, const PxMaterial* pPxMaterial,
+		AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
+		const vector<PxMeshConvex*> vecPhysxObjs, const vector<AiMesh*> vecArnoldObjs,
+		int startCount, int objPerSim, const rapidjson::Document* CONFIG_FILE,
+		AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
 	~SceneManager();
 };

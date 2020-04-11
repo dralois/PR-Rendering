@@ -7,7 +7,9 @@
 #include <rapidjson/filereadstream.h>
 #pragma warning(pop)
 
+//---------------------------------------
 // Manages loading and simulation
+//---------------------------------------
 class SimManager
 {
 private:
@@ -15,17 +17,15 @@ private:
 	// Fields
 	//---------------------------------------
 
-	// Meshes
-	vector<PxMeshConvex*> vecpPxMesh;
-	vector<AiMesh*> vecpAiMesh;
-
 	// PhysX
-#ifdef  _DEBUG
-	PxPvd* pPxPvdServer;
+#ifdef _DEBUG || DEBUG
+	PxPvd* pPxPvd;
 #endif
-	PxScene* pPxScene;
+	PxPhysics* pPxPhysics;
 	PxCooking* pPxCooking;
 	PxMaterial* pPxMaterial;
+	PxFoundation* pPxFoundation;
+	PxDefaultCpuDispatcher* pPxDispatcher;
 	PxDefaultAllocator pxAllocator;
 	PxDefaultErrorCallback pxErrorCallback;
 
@@ -38,6 +38,10 @@ private:
 	AtNode* aiShaderSceneDepth;
 	AtNode* aiShaderBlend;
 
+	// Meshes
+	vector<PxMeshConvex*> vecpPxMesh;
+	vector<AiMesh*> vecpAiMesh;
+
 	// Other
 	rapidjson::Document CONFIG_FILE;
 	vector<string> vecSceneFolders;
@@ -48,15 +52,15 @@ private:
 	// Methods
 	//---------------------------------------
 	void X_SaveSceneFolders(const string& path);
+	void X_InitPhysx();
+	void X_InitArnold();
+	void X_LoadConfig(const string& configPath);
+	void X_LoadMeshes();
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	void InitPhysx();
-	void InitArnold();
-	void LoadConfig(const string& configPath);
-	void LoadMeshes();
 	int RunSimulation();
 
 	//---------------------------------------
@@ -68,5 +72,6 @@ public:
 	//---------------------------------------
 	// Construtors
 	//---------------------------------------
+	SimManager(const string& configPath);
 	~SimManager();
 };

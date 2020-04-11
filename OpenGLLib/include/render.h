@@ -11,7 +11,6 @@
 
 #include "camera.h"
 #include "model.h"
-#include "pose.h"
 #include "shader.h"
 
 namespace Renderer
@@ -26,11 +25,10 @@ namespace Renderer
 		// Fields
 		//---------------------------------------
 		int width, height;
+		float nearClip, farClip;
 		GLFWwindow* window;
 		std::string shaderPath;
 		Eigen::Matrix4f projection;
-		const float NearPlane = 0.1f;
-		const float FarPlane = 10.0f;
 
 		//---------------------------------------
 		// Methods
@@ -58,9 +56,9 @@ namespace Renderer
 		// Constructors
 		//---------------------------------------
 #if WIN32
-		__declspec(dllexport) Render(const std::string& shaderPath, int width, int height);
+		__declspec(dllexport) Render(const std::string& shaderPath, int width, int height, float near, float far);
 #else
-		__attribute__((visibility("default"))) Render(const std::string& shaderPath, int width, int height);
+		__attribute__((visibility("default"))) Render(const std::string& shaderPath, int width, int height, float near, float far);
 #endif
 	};
 }

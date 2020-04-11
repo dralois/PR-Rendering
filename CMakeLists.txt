@@ -121,7 +121,6 @@ ADD_LIBRARY(OpenGLLib SHARED
             OpenGLLib/include/render.h
             OpenGLLib/include/shader.h
             OpenGLLib/include/camera.h
-            OpenGLLib/include/pose.h
             OpenGLLib/src/mesh.cpp
             OpenGLLib/src/model.cpp
             OpenGLLib/src/render.cpp

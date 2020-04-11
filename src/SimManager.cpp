@@ -7,51 +7,42 @@
 //---------------------------------------
 // Initialize physx runtime
 //---------------------------------------
-void SimManager::InitPhysx()
+void SimManager::X_InitPhysx()
 {
-	// Foundation Singleton
-	PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
+	// Create foundation
+	pPxFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
+	pPxFoundation->setErrorLevel(PxErrorCode::eMASK_ALL);
 
-#ifdef _DEBUG
-	// Debug: Visual Debugger
-	pPxPvdServer = PxCreatePvd(PxGetFoundation());
+#ifdef _DEBUG || DEBUG
+	// Setup Physx Visual Debugger
+	pPxPvd = PxCreatePvd(*pPxFoundation);
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
-	pPxPvdServer->connect(*transport, PxPvdInstrumentationFlag::eALL);
+	pPxPvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
 #endif
 
-	// PhysX API & Extensions
-	PxCreateBasePhysics(PX_PHYSICS_VERSION, PxGetFoundation(), PxTolerancesScale(), true, pPxPvdServer);
-	PxInitExtensions(PxGetPhysics(), pPxPvdServer);
+	// Create API
+	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, pPxPvd);
 
-	// Set up scene
-	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
-	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	sceneDesc.cpuDispatcher = PxDefaultCpuDispatcherCreate(4);
-	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-	pPxScene = PxGetPhysics().createScene(sceneDesc);
+	// Create mesh cooking
+	PxCookingParams params(pPxPhysics->getTolerancesScale());
+	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES;
+	params.meshWeldTolerance = 0.01f;
+	params.midphaseDesc = PxMeshMidPhase::eBVH34;
+	pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, *pPxFoundation, params);
 
-	// Set up mesh cooking
-	pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, PxGetFoundation(), PxCookingParams(PxTolerancesScale()));
+	// Enable extensions & create dispatcher
+	PxInitExtensions(*pPxPhysics, pPxPvd);
+	pPxDispatcher = PxDefaultCpuDispatcherCreate(4);
 
-#ifdef _DEBUG
-	// Set up visual debugger
-	PxPvdSceneClient* pvdClient = pPxScene->getScenePvdClient();
-	if (pvdClient)
-	{
-		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
-		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
-		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
-	}
-#endif
-
-	// Default physics material
-	pPxMaterial = PxGetPhysics().createMaterial(0.6f, 0.6f, 0.f);
+	// Create default material
+	pPxMaterial = pPxPhysics->createMaterial(0.6f, 0.6f, 0.0f);
 }
 
 //---------------------------------------
 // Initialize Arnold for rendering
 //---------------------------------------
-void SimManager::InitArnold()
+void SimManager::X_InitArnold()
 {
 	// Start arnold & load shader library
 	AiBegin(AI_SESSION_INTERACTIVE);
@@ -85,7 +76,7 @@ void SimManager::InitArnold()
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
-void SimManager::LoadConfig(const string& configPath)
+void SimManager::X_LoadConfig(const string& configPath)
 {
 	cout << "Reading config file:\t" << configPath << endl;
 
@@ -101,7 +92,7 @@ void SimManager::LoadConfig(const string& configPath)
 //---------------------------------------
 // Load all required meshes (physx, rendering)
 //---------------------------------------
-void SimManager::LoadMeshes()
+void SimManager::X_LoadMeshes()
 {
 	DIR* dir;
 	// Path to 3D models
@@ -147,15 +138,15 @@ void SimManager::LoadMeshes()
 			}
 
 			// Create and save physx mesh
-			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, pPxScene, pPxCooking, pPxMaterial);
-			pxCurr->CreateMesh(false, CONFIG_FILE["obj_scale"].GetFloat());
-			pxCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
+			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, pPxCooking, pPxMaterial);
+			pxCurr->CreateMesh(CONFIG_FILE["obj_scale"].GetFloat());
 			vecpPxMesh.push_back(pxCurr);
 
-			// Create and save arnold mesh
 			string texturePath(meshPath);
 			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
+			// Create and save arnold mesh
 			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i, -1);
+			aiCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
 			vecpAiMesh.push_back(aiCurr);
 		}
 		// Finally close
@@ -213,7 +204,7 @@ int SimManager::RunSimulation()
 	X_SaveSceneFolders(CONFIG_FILE["3RScan_path"].GetString());
 
 	// Create mananger
-	SceneManager curr(pPxScene, pPxCooking, pPxMaterial,
+	SceneManager curr(pPxDispatcher, pPxCooking, pPxMaterial,
 		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOutputArray,
 		vecpPxMesh, vecpAiMesh,
 		0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
@@ -269,38 +260,51 @@ int SimManager::RunSimulation()
 }
 
 //---------------------------------------
+// Creates new simulation
+//---------------------------------------
+SimManager::SimManager(const string& configPath)
+{
+	X_LoadConfig(configPath);
+	X_InitPhysx();
+	X_InitArnold();
+	X_LoadMeshes();
+}
+
+//---------------------------------------
 // Cleanup simulation
 //---------------------------------------
 SimManager::~SimManager()
 {
-	if (pPxScene != NULL)
+	// Cleanup physx meshes
+	for (auto curr : vecpPxMesh)
 	{
-		// Cleanup physx meshes
-		for (auto curr : vecpPxMesh)
-		{
-			delete curr;
-		}
-		vecpPxMesh.clear();
-		// Free physics
-#ifdef _DEBUG
-		PxCloseExtensions();
-		pPxPvdServer->disconnect();
-		pPxPvdServer->getTransport()->release();
-#endif
-		PX_RELEASE(pPxPvdServer);
-		PX_RELEASE(pPxCooking);
-		PX_RELEASE(pPxScene);
-		PX_RELEASE(pPxMaterial);
-		PxGetPhysics().release();
-		PxGetFoundation().release();
+		delete curr;
 	}
+	vecpPxMesh.clear();
+
+	// Free physics
+	PX_RELEASE(pPxMaterial);
+	PX_RELEASE(pPxDispatcher);
+	PxCloseExtensions();
+	PX_RELEASE(pPxPhysics);
+	PX_RELEASE(pPxCooking);
+#ifdef _DEBUG || DEBUG
+	if (pPxPvd)
+	{
+		PxPvdTransport* transp = pPxPvd->getTransport();
+		PX_RELEASE(pPxPvd);
+		PX_RELEASE(transp);
+	}
+#endif
+	PX_RELEASE(pPxFoundation);
 
 	// Cleanup arnold meshes
 	for (auto curr : vecpAiMesh)
 	{
 		delete curr;
 	}
+	vecpAiMesh.clear();
 
-	// Shutdown arnold, automatically frees everything
+	// Shutdown arnold
 	AiEnd();
 }

@@ -21,12 +21,8 @@ int main(int argc, char** argv)
 	// Config file path in args
 	string config_path = argv[1];
 
-	SimManager man;
-	// Load configuration
-	man.LoadConfig(config_path);
-	// Init PhysX and Arnold
-	man.InitPhysx();
-	man.InitArnold();
+	// Create simulation manager
+	SimManager man(config_path);
 
 	// Save the paths
 	boost::filesystem::path final_dir(man.GetFinalPath());
@@ -52,9 +48,8 @@ int main(int argc, char** argv)
 		boost::filesystem::create_directories(temp_dir / "rgb");
 	}
 
-	// Load meshes and run simulation
-	man.LoadMeshes();
-	man.RunSimulation();
+	// Run the simulation
+	int exit = man.RunSimulation();
 
 	std::cout << "Deleting Temp Directories" << std::endl;
 
@@ -64,5 +59,5 @@ int main(int argc, char** argv)
 		boost::filesystem::remove_all(temp_dir);
 	}
 
-	return 0;
+	return exit;
 }

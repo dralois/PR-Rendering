@@ -13,7 +13,7 @@
 //---------------------------------------
 // Try to load the mesh
 //---------------------------------------
-bool MeshBase::LoadFile(float scale)
+bool MeshBase::X_LoadFile()
 {
 	Assimp::Importer importer;
 
@@ -43,7 +43,7 @@ bool MeshBase::LoadFile(float scale)
 	vecVertices.reserve(mesh->mNumVertices);
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
-		aiVector3D pos = mesh->mVertices[i] * scale;
+		aiVector3D pos = mesh->mVertices[i];
 		// Scale
 		vecVertices.push_back(pos.x);
 		vecVertices.push_back(pos.y);
@@ -76,6 +76,7 @@ bool MeshBase::LoadFile(float scale)
 	}
 
 	// Load index buffer
+	vecIndices.reserve(mesh->mNumFaces * mesh->mFaces[0].mNumIndices);
 	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 	{
 		for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
@@ -92,7 +93,7 @@ bool MeshBase::LoadFile(float scale)
 //---------------------------------------
 // Stores a provided mesh
 //---------------------------------------
-void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const
+void MeshBase::X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const
 {
 	Assimp::Exporter exporter;
 
@@ -148,6 +149,8 @@ void MeshBase::StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>
 
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath);
+
+	std::cout << "Exported mesh:" << savePath << std::endl;
 }
 
 //---------------------------------------

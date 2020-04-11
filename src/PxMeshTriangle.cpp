@@ -1,19 +1,22 @@
 #include "PxMeshTriangle.h"
 
-#include <fstream>
-
 //---------------------------------------
-// Creates triangle based physx mesh
+// Cooks or loads a mesh
 //---------------------------------------
-bool PxMeshTriangle::CreateMesh(bool saveBounds, float scale)
+void PxMeshTriangle::X_CookMesh()
 {
+	// Return if mesh already loaded
+	if (pPxMesh)
+		return;
+
 	// Path to cooked mesh
 	std::ifstream cookedMesh(meshPath + "px");
 	// If cooked mesh not on disk
 	if (!cookedMesh.good())
 	{
 		// Load mesh file
-		LoadFile(scale);
+		X_LoadFile();
+
 		// Create triangle mesh object
 		PxTriangleMeshDesc triangleDesc;
 		triangleDesc.points.count = vecVertices.size() / 3;
@@ -24,10 +27,15 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, float scale)
 		triangleDesc.triangles.data = X_GetIndices();
 
 		// Cook the mesh
+		PxTriangleMeshCookingResult::Enum result;
 		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
-		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeOutBuffer))
+		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
 		{
-			return false;
+			std::cout << GetName() << " cooking error:" << result << std::endl;
+		}
+		else
+		{
+			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << meshPath + "px" << std::endl;
 		}
 	}
 
@@ -35,8 +43,15 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, float scale)
 	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
 	// Create the mesh from buffer
 	pPxMesh = PxGetPhysics().createTriangleMesh(readInBuffer);
+	// This mesh has to release the mesh
+	firstInstance = true;
+}
 
-#ifdef PX_EXPORT_TO_OBJ
+//---------------------------------------
+// Exports the cooked mesh to a obj file
+//---------------------------------------
+void PxMeshTriangle::X_ExportCookedMesh()
+{
 	// Save pointers to vertices and triangles
 	const void* trisBuff = pPxMesh->getTriangles();
 	const PxVec3* vertsBuff = pPxMesh->getVertices();
@@ -48,53 +63,64 @@ bool PxMeshTriangle::CreateMesh(bool saveBounds, float scale)
 	vector<float> verts((float*)vertsBuff, (float*)vertsBuff + (vertsNum * 3));
 
 	// Create obj file
-	StoreFile(tris, trisNum, verts, vertsNum, "_px");
+	X_StoreFile(tris, trisNum, verts, vertsNum, "_px");
+}
+
+//---------------------------------------
+// Create shape and attach to actor
+//---------------------------------------
+void PxMeshTriangle::X_CreateShape()
+{
+	// Create mesh descriptor
+	PxTriangleMeshGeometry meshGeom;
+	meshGeom.triangleMesh = pPxMesh;
+	meshGeom.meshFlags = PxMeshGeometryFlag::eDOUBLE_SIDED;
+	meshGeom.scale = PxMeshScale(meshScale);
+
+	// Create shape from the descriptor
+	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *pPxMaterial);
+	pPxShape->setName(GetName().c_str());
+}
+
+//---------------------------------------
+// Creates physx mesh
+//---------------------------------------
+void PxMeshTriangle::CreateMesh(float scale)
+{
+	// Cook / load mesh
+	X_CookMesh();
+
+#ifdef PX_EXPORT_TO_OBJ
+	// Export cooked mesh to file
+	X_ExportCookedMesh();
 #endif
 
+	// Save scale
+	meshScale = scale;
+
 	// Save extends
-	if (saveBounds)
-	{
-		xMax = pPxMesh->getLocalBounds().maximum.x;
-		yMax = pPxMesh->getLocalBounds().maximum.y;
-		xMin = pPxMesh->getLocalBounds().minimum.x;
-		yMin = pPxMesh->getLocalBounds().minimum.y;
-	}
-
-	// Create collision detection capable shape from mesh
-	pPxShape = PxGetPhysics().createShape(PxTriangleMeshGeometry(pPxMesh), *pPxMaterial);
-	return true;
+	maximum = pPxMesh->getLocalBounds().maximum * meshScale;
+	minimum = pPxMesh->getLocalBounds().minimum * meshScale;
 }
 
 //---------------------------------------
-// Create and add triangle rigidbody
+// Create and add rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshTriangle::AddRigidActor(const PxVec3& pos, const PxQuat& rot) const
+void PxMeshTriangle::AddRigidActor(const PxTransform& pose, PxScene* scene)
 {
-	// Create rigidbody
-	PxRigidStatic* body = (PxRigidStatic*)CreateRigidActor(pos, rot, true);
-	// Update
-	pPxShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
-	// Attach rigidbody to shape
-	body->attachShape(*pPxShape);
-	// Add to scene and return
-	pPxScene->addActor(*body);
-	return body;
+	// Create statuc rigidbody & add to scene
+	PxRigidActor* body = X_CreateRigidActor(pose, true);
+	scene->addActor(*body);
 }
 
 //---------------------------------------
-// Copy constructor, increases reference count
-//---------------------------------------
-PxMeshTriangle::PxMeshTriangle(const PxMeshTriangle& copy):
-	pPxMesh(copy.pPxMesh),
-	PxMesh(copy)
-{
-	pPxMesh->acquireReference();
-}
-
-//---------------------------------------
-// Cleanup triangle mesh manager
+// Cleanup mesh
 //---------------------------------------
 PxMeshTriangle::~PxMeshTriangle()
 {
-	PX_RELEASE(pPxMesh);
+	// Release mesh if this is the first instance
+	if (firstInstance)
+	{
+		PX_RELEASE(pPxMesh);
+	}
 }

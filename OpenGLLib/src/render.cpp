@@ -16,14 +16,14 @@ namespace Renderer
 
 		// Calculate intrinsics
 		Intrinsics camRender;
-		camRender.fx = fx * 2.0;
-		camRender.fy = fy * 2.0;
-		camRender.ox = width / 2.0 + (ox - (width / 4)) * 2.0;
-		camRender.oy = height / 2.0 + (oy - (height / 4)) * 2.0;
-		camRender.imgWidth = width;
-		camRender.imgHeight = height;
+		camRender.fx = 2.0f * fx;
+		camRender.fy = 2.0f * fy;
+		camRender.ox = 2.0f * ox;
+		camRender.oy = 2.0f * oy;
+		camRender.w = width;
+		camRender.h = height;
 		// An corresponding matrix
-		projection = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, NearPlane, FarPlane);
+		projection = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, nearClip, farClip);
 
 		// Make window visible
 		glfwSetWindowOpacity(window, 1.0f);
@@ -34,7 +34,7 @@ namespace Renderer
 			cv::Mat col, dep;
 
 			// Load camera matrix
-			Eigen::Matrix4f camMat = Pose::LoadViewMatrix(currPose);
+			Eigen::Matrix4f camMat = Camera::LoadViewMatrix(currPose);
 
 			glfwPollEvents();
 			// Clear buffer
@@ -67,8 +67,8 @@ namespace Renderer
 	{
 		shader.Use();
 		// Bind mvp matrix
-		Eigen::Matrix4f model_view_projection = projection * pose;
-		glUniformMatrix4fv(glGetUniformLocation(shader.GetProgram(), "model_view_projection"), 1, GL_FALSE, model_view_projection.data());
+		Eigen::Matrix4f mvp = projection * pose;
+		glUniformMatrix4fv(glGetUniformLocation(shader.GetProgram(), "model_view_projection"), 1, GL_FALSE, mvp.data());
 		// Draw the model
 		model.Draw(shader);
 	}
@@ -138,8 +138,8 @@ namespace Renderer
 				const float depthBufferValue = data[static_cast<int>(i * width + j)];
 				// Convert from [0,1] to z distance
 				const float zn = (2 * depthBufferValue - 1);
-				const float ze = (2 * FarPlane * NearPlane) /
-					(FarPlane + NearPlane + zn * (NearPlane - FarPlane));
+				const float ze = (2 * farClip * nearClip) /
+					(farClip + nearClip + zn * (nearClip - farClip));
 				// Save as OpenCV pixel
 				image.at<unsigned short>(height - i - 1, j) = 1000 * ze;
 			}
@@ -152,10 +152,12 @@ namespace Renderer
 	//---------------------------------------
 	// Create new OpenGL renderer
 	//---------------------------------------
-	Render::Render(const std::string& shaderPath, int width, int height) :
+	Render::Render(const std::string& shaderPath, int width, int height, float near, float far) :
 		shaderPath(shaderPath),
 		width(width),
-		height(height)
+		height(height),
+		nearClip(near),
+		farClip(far)
 	{
 		// Initialize & setup glfw
 		if (!glfwInit())

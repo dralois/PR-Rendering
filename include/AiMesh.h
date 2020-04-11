@@ -4,7 +4,11 @@
 
 #pragma warning(push, 0)
 #include <ai.h>
+
+#include <eigen3/Eigen/Dense>
 #pragma warning(pop)
+
+using namespace Eigen;
 
 //---------------------------------------
 // Arnold meshes, used for rendering
@@ -21,16 +25,15 @@ private:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	template <class T>
-	AtArray* X_VectorToAiArray(const vector<T>& input, const size_t size, const uint8_t type);
 	void X_CreateBaseNode();
+	virtual void X_UpdateScale() override;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	void CreateMesh(const vector<float>& pos, const vector<float>& rot, float scale);
-	static void DestroyMesh(const string& nodeName);
+	void CreateMesh(const Matrix4f& mat);
+	void DestroyMesh();
 
 	//---------------------------------------
 	// Properties
@@ -42,4 +45,5 @@ public:
 	//---------------------------------------
 	AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId);
 	AiMesh(const string& meshPath, int meshId, int objId);
+	~AiMesh();
 };

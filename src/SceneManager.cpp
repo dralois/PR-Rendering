@@ -1,5 +1,9 @@
 #include "SceneManager.h"
 
+#pragma warning(push, 0)
+#include <dirent.h>
+#pragma warning(pop)
+
 string FILE_TEMP_PATH = "";
 string FILE_FINAL_PATH = "";
 string FILE_OBJ_PATH = "";
@@ -40,128 +44,99 @@ void SetBBox(BodyAnnotation& ann, const cv::Mat& mask)
 }
 
 //---------------------------------------
-// Create new scene manager
-//---------------------------------------
-SceneManager::SceneManager(PxScene* pPxScene, PxCooking* pPxCooking, PxMaterial* pPxMaterial,
-	AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
-	vector<PxMeshConvex*> vecPhysxObjs, vector<AiMesh*> vecArnoldObjs,
-	int startCount, int objPerSim, rapidjson::Document* CONFIG_FILE,
-	AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend) :
-	pPxScene(pPxScene), pPxCooking(pPxCooking), pPxMaterial(pPxMaterial),
-	aiCamera(aiCamera), aiOptions(aiOptions), aiDriver(aiDriver), aiArrOutputs(aiOutputArray),
-	vecpPxMeshObjs(vecPhysxObjs), vecpAiMeshObjs(vecArnoldObjs),
-	imageCount(startCount), objsPerSim(objPerSim), CONFIG_FILE(CONFIG_FILE),
-	aiShaderDepthObj(aiShaderObjDepth), aiShaderDepthScene(aiShaderSceneDepth), aiShaderBlendImage(aiShaderBlend),
-	intrOriginal(), pPxActorScene(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0)
-{
-	// Fetch path to output location and meshes
-	FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
-	FILE_TEMP_PATH = (*CONFIG_FILE)["temp_files_path"].GetString();
-	FILE_FINAL_PATH = (*CONFIG_FILE)["final_imgs_path"].GetString();
-
-	// Load intrinsics
-	intrCustom.fx = (*CONFIG_FILE)["fx"].GetFloat();
-	intrCustom.fy = (*CONFIG_FILE)["fy"].GetFloat();
-	intrCustom.ox = (*CONFIG_FILE)["ox"].GetFloat();
-	intrCustom.oy = (*CONFIG_FILE)["oy"].GetFloat();
-
-	// Create renderer
-	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString(), 1920, 1080);
-}
-
-//---------------------------------------
-// Cleanup scene
-//---------------------------------------
-SceneManager::~SceneManager()
-{
-	delete pRenderer;
-	// Scene physx cleanup
-	if (pPxMeshScene != NULL)
-	{
-		delete pPxMeshScene;
-	}
-}
-
-//---------------------------------------
-// Create physx representation of scan scene
+// Create physx scan scene mesh
 //---------------------------------------
 void SceneManager::X_PxCreateScene()
 {
-	string mesh_path = scenePath + "/mesh.refined.obj";
-	// Create physx mesh, shape and rigidbody of scan scene
-	pPxMeshScene = new PxMeshTriangle(mesh_path, 0, 0, pPxScene, pPxCooking, pPxMaterial);
-	pPxMeshScene->CreateMesh(true, (*CONFIG_FILE)["scene_scale"].GetFloat());
-	// Mesh needs to be rotated 90* around X for the simulation
-	PxVec3 pos(0, 0, 0);
-	PxQuat rot(-AI_PIOVER2, PxVec3(1, 0, 0));
-	pPxActorScene = (PxRigidStatic*) pPxMeshScene->AddRigidActor(pos, rot);
+	// Create physx mesh of scan scene
+	string path = scenePath + "/mesh.refined.obj";
+	pPxMeshScene = new PxMeshTriangle(path, 0, 0, pPxCooking, pPxMaterial);
+	pPxMeshScene->CreateMesh((*CONFIG_FILE)["scene_scale"].GetFloat());
+
+	// Standart gravity & continuous collision detection
+	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
+	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	sceneDesc.cpuDispatcher = pPxDispatcher;
+	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+	sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
+	// Objects should never be outside twice the scene bounds
+	sceneDesc.sanityBounds = PxBounds3(pPxMeshScene->GetMinimum() * 2.0f, pPxMeshScene->GetMaximum() * 2.0f);
+
+	// Create scene
+	pPxScene = PxGetPhysics().createScene(sceneDesc);
+
+	// Scene meshes need to be rotated 90* around X during the simulation
+	PxTransform pose(PxVec3(0, 0, 0), PxQuat(-AI_PIOVER2, PxVec3(1, 0, 0)));
+	pPxMeshScene->AddRigidActor(pose, pPxScene);
 }
 
 //---------------------------------------
-// Create random physx objects to drop into scene
+// Create physx object meshes
 //---------------------------------------
 void SceneManager::X_PxCreateObjs()
 {
 	// Seed & setup
 	srand(time(NULL) % 1000);
-	vecpPxActorCurrObjs.reserve(objsPerSim);
+	vecpPxMeshCurrObjs.reserve(objsPerSim);
 
 	// For each object
 	for (PxU32 i = 0; i < objsPerSim; i++)
 	{
-		// Fetch random object
 		int currPos = rand() % vecpPxMeshObjs.size();
+		// Fetch random object & create instance with new id
 		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs.at(currPos));
 		currObj->SetObjId(i);
 
-		// Random position, same rotation
+		// Random position in scene
 		float y = (rand() % 10) + 1;
-		float x = (rand() % ((int)(pPxMeshScene->GetXMax() - pPxMeshScene->GetXMin()))) + pPxMeshScene->GetXMin();
-		float z = (rand() % ((int)(pPxMeshScene->GetYMax() - pPxMeshScene->GetYMin()))) + pPxMeshScene->GetYMin();
-		PxVec3 pos(x, y, z);
-		PxQuat rot(-0.7071068, 0, 0, 0.7071068);
+		float x = (rand() % ((int)(pPxMeshScene->GetMaximum().x - pPxMeshScene->GetMinimum().x))) + pPxMeshScene->GetMinimum().x;
+		float z = (rand() % ((int)(pPxMeshScene->GetMaximum().z - pPxMeshScene->GetMinimum().z))) + pPxMeshScene->GetMinimum().z;
 
 		// Save rigidbody and mesh in vector
-		PxRigidActor* body = currObj->AddRigidActor(pos, rot);
-		vecpPxActorCurrObjs.push_back(make_pair(currObj, (PxRigidDynamic*)body));
+		PxTransform pose(PxVec3(x, y, z), PxQuat(-0.7071068, 0, 0, 0.7071068));
+		currObj->AddRigidActor(pose, pPxScene);
+		vecpPxMeshCurrObjs.push_back(currObj);
 	}
 }
 
 //---------------------------------------
-// Cleanup physx meshes
+// Cleanup physx
 //---------------------------------------
 void SceneManager::X_PxDestroy()
 {
-	// Cleanup scene
+	// Cleanup scene mesh
 	if (pPxMeshScene != NULL)
 	{
-		PxMesh::DestroyRigidbody(pPxActorScene);
 		delete pPxMeshScene;
+		pPxMeshScene = NULL;
 	}
-	// Cleanup random objects
-	for (auto obj : vecpPxActorCurrObjs)
+
+	// Cleanup objects meshes
+	for (auto obj : vecpPxMeshCurrObjs)
 	{
-		PxMesh::DestroyRigidbody(obj.second);
-		delete obj.first;
+		delete obj;
 	}
-	// As well as vector
-	vecpPxActorCurrObjs.clear();
+	vecpPxMeshCurrObjs.clear();
+
+	// Cleanup physx
+	if (pPxScene != NULL)
+	{
+		pPxScene->flushSimulation();
+		PX_RELEASE(pPxScene);
+	}
 }
 
 //---------------------------------------
 // Run physx simulation
 //---------------------------------------
-void SceneManager::X_PxRunSim()
+void SceneManager::X_PxRunSim(float timestep, int stepCount) const
 {
-	// Simulate in 16ms steps
-	for (PxU32 i = 0; i < 300; i++)
+	// Simulate in steps
+	for (PxU32 i = 0; i < stepCount; i++)
 	{
-		pPxScene->simulate(1.0f / 30.0f);
+		pPxScene->simulate(timestep);
 		pPxScene->fetchResults(true);
-
 	}
-	// Save results
-	X_PxSaveSimResults();
 }
 
 //---------------------------------------
@@ -169,84 +144,77 @@ void SceneManager::X_PxRunSim()
 //---------------------------------------
 void SceneManager::X_PxSaveSimResults()
 {
-	int i = 0;
-	PxTransform tempTrans;
+	float undoScale = 1.0f / (*CONFIG_FILE)["scene_scale"].GetFloat();
 	// For each physx object
-	for (auto obj : vecpPxActorCurrObjs)
+	for (auto obj : vecpPxMeshCurrObjs)
 	{
 		// Get position
-		tempTrans = obj.second->getGlobalPose();
-		// Create pose struct
-		ObjectInfo currInfo;
+		PxTransform pose = obj->GetPose();
 		// Undo 90* around X rotation
-		PxQuat undo(AI_PIOVER2, PxVec3(1, 0, 0));
-		tempTrans.q *= undo;
-		tempTrans.p = undo.rotate(tempTrans.p);
-		// Fetch and convert physx position & rotation
-		PxQuat pxRot = tempTrans.q.getNormalized();
-		PxVec3 pxPos = tempTrans.p;
-		Vector3f pos(pxPos.x, pxPos.z, pxPos.y);
-		Quaternionf rot(pxRot.w, pxRot.x, pxRot.y, pxRot.z);
+		PxQuat undoRot(AI_PIOVER2, PxVec3(1, 0, 0));
+		pose.q = (pose.q * undoRot).getNormalized();
+		pose.p = undoRot.rotate(pose.p);
+		// Undo scene scaling
+		pose.p *= undoScale;
+
+		// Convert physx position & rotation
+		PxMat44 pxmat(pose);
+		Matrix4f mat(pxmat.front());
+		Vector3f pos(pose.p.x, pose.p.y, pose.p.z);
+		Quaternionf rot(pose.q.w, pose.q.x, pose.q.y, pose.q.z);
+
 		// Save poses in vector
-		currInfo.meshId = obj.first->GetMeshId();
-		currInfo.objId = obj.first->GetObjId();
-		currInfo.objName = obj.first->GetName();
+		ObjectInfo currInfo;
+		currInfo.meshId = obj->GetMeshId();
+		currInfo.objId = obj->GetObjId();
+		currInfo.objName = obj->GetName();
 		currInfo.pos = pos;
 		currInfo.rot = rot;
+		currInfo.mat = mat;
 		vecCurrObjs.push_back(currInfo);
 #if DEBUG || _DEBUG
 		// Object transform update for pvd
-		obj.second->setGlobalPose(tempTrans, false);
+		obj->SetPose(pose);
+		obj->SetScale(obj->GetScale() * undoScale);
 	}
 	// Scene transform update for pvd
-	pPxActorScene->setGlobalPose(PxTransform(PxIDENTITY::PxIdentity));
+	pPxMeshScene->SetPose(PxTransform(PxIDENTITY::PxIdentity));
+	pPxMeshScene->SetScale(pPxMeshScene->GetScale() * undoScale);
 	// Simulate once for pvd
-	pPxScene->simulate(0.1f);
+	pPxScene->simulate(0.001f);
 	pPxScene->fetchResults(true);
 #else
-}
+	}
 #endif
 }
 
 //---------------------------------------
-// Create arnold meshes
+// Create arnold object meshes
 //---------------------------------------
 void SceneManager::X_AiCreateObjs()
 {
 	// For each created object
 	for (auto body : vecCurrObjs)
 	{
-		// Fetch pose
-		Vector3f p = body.pos;
-		Quaternionf q = body.rot;
-		vector<float> pos{ p.x(), p.y(), p.z() };
-		vector<float> rot{ q.w(), q.x(), q.y(), q.z() };
-
 		// Create the mesh & save in vector
 		AiMesh* mesh = new AiMesh(*vecpAiMeshObjs[body.meshId]);
 		mesh->SetObjId(body.objId);
-		mesh->CreateMesh(pos, rot, (*CONFIG_FILE)["obj_scale"].GetFloat());
-		vecpAiMeshCurrObj.push_back(mesh);
+		mesh->CreateMesh(body.mat);
+		vecpAiMeshCurrObjs.push_back(mesh);
 	}
 }
 
 //---------------------------------------
-// Cleanup arnold meshes
+// Cleanup arnold object meshes
 //---------------------------------------
 void SceneManager::X_AiDestroy()
 {
-	// Destroy nodes
-	for (auto curr : vecCurrObjs)
-	{
-		AiMesh::DestroyMesh(curr.objName);
-	}
-	// Destroy meshes
-	for (auto curr : vecpAiMeshCurrObj)
+	// Destroy arnold nodes
+	for (auto curr : vecpAiMeshCurrObjs)
 	{
 		delete curr;
 	}
-	// Cleanup vector
-	vecpAiMeshCurrObj.clear();
+	vecpAiMeshCurrObjs.clear();
 }
 
 //---------------------------------------
@@ -257,8 +225,10 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 	// Render depth with OpenGL
 	vector<tuple<cv::Mat, cv::Mat> > renderings =
 		pRenderer->RenderScenes(scenePath, vecCameraPoses,
-			intrOriginal.fx, intrOriginal.fy,
-			intrOriginal.ox, intrOriginal.oy);
+			useCustomIntr ? intrCustom.fx : intrOriginal.fx,
+			useCustomIntr ? intrCustom.fy : intrOriginal.fy,
+			useCustomIntr ? intrCustom.ox : intrOriginal.ox,
+			useCustomIntr ? intrCustom.oy : intrOriginal.oy);
 
 	// For each image
 	for (int render_count = 0; render_count < renderings.size(); render_count++)
@@ -271,8 +241,6 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 		// Write rgb and depth out
 		cv::imwrite(tmp_rgb_path, get<0>(renderings[render_count]));
 		cv::imwrite(tmp_depth_path, get<1>(renderings[render_count]));
-
-		cv::waitKey(10);
 	}
 
 	return renderings;
@@ -280,6 +248,7 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 
 //---------------------------------------
 // Saves world position and rotation of annotation
+// FIXME: Might be broken now
 //---------------------------------------
 void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const
 {
@@ -304,6 +273,7 @@ void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos
 
 //---------------------------------------
 // Write out annotation file for rendered objects
+// FIXME: Might be broken now
 //---------------------------------------
 void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked)
 {
@@ -352,6 +322,7 @@ void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMaske
 
 //---------------------------------------
 // Check if pose is close to camera center
+// FIXME: Improve this?
 //---------------------------------------
 bool SceneManager::X_CheckIfImageCenter(const ObjectInfo& body) const
 {
@@ -370,15 +341,15 @@ bool SceneManager::X_CheckIfImageCenter(const ObjectInfo& body) const
 	bRotMat = matCamera.transpose().inverse() * bRotMat;
 
 	// Some kind of camera to screen space transform
-	int width = 960;
-	int height = 540;
-	float x = width / 2.f + bRotMat(0, 3) * 756 / bRotMat(2, 3);
-	float y = height / 2.f + bRotMat(1, 3) * 756 / bRotMat(2, 3);
+	int width = (useCustomIntr ? intrCustom.w : intrOriginal.w) / 2;
+	int height = (useCustomIntr ? intrCustom.h : intrOriginal.h) / 2;
+	float x = width / 2.0f + bRotMat(0, 3) * 756 / bRotMat(2, 3);
+	float y = height / 2.0f + bRotMat(1, 3) * 756 / bRotMat(2, 3);
 	x += 20;
 	y += 20;
 
 	// Determine if object center at least 20 pixels from the egde
-	return (x > 40 && x < width && y > 40 && y < height);
+	return (x > 40 && x < width&& y > 40 && y < height);
 }
 
 //---------------------------------------
@@ -392,6 +363,7 @@ bool SceneManager::X_RenderObjsDepth()
 	{
 		AtNode* curr = AiNodeLookUpByName(body.objName.c_str());
 		AiNodeSetPtr(curr, "shader", aiShaderDepthObj);
+		AiNodeSetDisabled(curr, true);
 		valid = true;
 	}
 
@@ -416,8 +388,8 @@ bool SceneManager::X_RenderObjsDepth()
 	// Render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
 	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", 1920);
-	AiNodeSetInt(aiOptions, "yres", 1080);
+	AiNodeSetInt(aiOptions, "xres", useCustomIntr ? intrCustom.w : intrOriginal.w);
+	AiNodeSetInt(aiOptions, "yres", useCustomIntr ? intrCustom.h : intrOriginal.h);
 	AiNodeSetInt(aiOptions, "AA_samples", 1);
 	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
 	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
@@ -507,8 +479,8 @@ void SceneManager::X_RenderObjsLabel()
 	// Setup render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
 	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", 1920);
-	AiNodeSetInt(aiOptions, "yres", 1080);
+	AiNodeSetInt(aiOptions, "xres", useCustomIntr ? intrCustom.w : intrOriginal.w);
+	AiNodeSetInt(aiOptions, "yres", useCustomIntr ? intrCustom.h : intrOriginal.h);
 	AiNodeSetInt(aiOptions, "AA_samples", 1);
 	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
 	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
@@ -595,7 +567,7 @@ void SceneManager::X_RenderImageBlend()
 			continue;
 		}
 
-		// Image node and object material (?)
+		// Texture and object shader nodes
 		AtNode* shaderMaterial = AiNode("standard");
 		AtNode* image = AiNode("image");
 
@@ -605,7 +577,7 @@ void SceneManager::X_RenderImageBlend()
 		string imgbuffer = "obj_" + out.str() + "_color.png";
 		string imgPath = FILE_OBJ_PATH + "/" + imgbuffer;
 
-		// Setup image node
+		// Setup texture node and link it
 		AiNodeSetStr(image, "filename", imgPath.c_str());
 		AiNodeLink(image, "Kd_color", shaderMaterial);
 
@@ -616,7 +588,7 @@ void SceneManager::X_RenderImageBlend()
 		AiNodeSetPtr(shader_blend, "blend_image", (void*)&cvScene);
 		AiNodeSetPtr(shader_blend, "rend_image", (void*)&cvRend);
 		AiNodeSetBool(shader_blend, "force_scene", false);
-		// Setup object material
+		// Setup object shader node
 		AiNodeSetFlt(shaderMaterial, "diffuse_roughness", 0.5);
 		AiNodeSetFlt(shaderMaterial, "Ks", ks);
 		AiNodeLink(shaderMaterial, "Kd_bcolor", shader_blend);
@@ -645,8 +617,8 @@ void SceneManager::X_RenderImageBlend()
 	// Setup render settings
 	AiNodeSetStr(aiDriver, "filename", buf.c_str());
 	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", 960);
-	AiNodeSetInt(aiOptions, "yres", 540);
+	AiNodeSetInt(aiOptions, "xres", (useCustomIntr ? intrCustom.w : intrOriginal.w) / 2);
+	AiNodeSetInt(aiOptions, "yres", (useCustomIntr ? intrCustom.h : intrOriginal.h) / 2);
 	AiNodeSetInt(aiOptions, "AA_samples", 6);
 	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 6);
 	AiNodeSetInt(aiOptions, "GI_specular_samples", 6);
@@ -660,9 +632,8 @@ void SceneManager::X_RenderImageBlend()
 //---------------------------------------
 // Loads camera matrix with fov
 //---------------------------------------
-void SceneManager::X_LoadCameraMatrix(float fx, float fy, float ox, float oy)
+void SceneManager::X_LoadCameraExtrinsics(const Intrinsics& intr)
 {
-	std::string line;
 	std::ifstream inFile;
 
 	// Setup camera
@@ -678,48 +649,37 @@ void SceneManager::X_LoadCameraMatrix(float fx, float fy, float ox, float oy)
 		inFile.close();
 	}
 
-	// Extract rotation & position from extrinsics
-	matCamera.transposeInPlace();
-	Matrix3f rotExt = matCamera.block<3, 3>(0, 0).transpose();
-	Vector3f posExt = -100.0f * rotExt * matCamera.block<3, 1>(0, 3);
+	// Calculate & save view vectors
+	Vector3f forward = matCamera.block<3, 3>(0, 0) * Eigen::Vector3f(0, 0, 1);
+	Vector3f right = matCamera.block<3, 3>(0, 0) * Eigen::Vector3f(1, 0, 0);
+	Vector3f up = right.cross(forward);
+	Vector3f position = matCamera.block<3, 1>(0, 3);
+	Vector3f lookat = position + 1 * forward;
+	AiNodeSetVec(aiCamera, "position", position.x(), position.y(), position.z());
+	AiNodeSetVec(aiCamera, "look_at", lookat.x(), lookat.y(), lookat.z());
+	AiNodeSetVec(aiCamera, "up", up.x(), up.y(), up.z());
 
-	// Convert
-	AtMatrix aiMatRot = AiM4Identity();
-	for (int i = 0; i < 3; i++)
-	{
-		for (int j = 0; j < 3; j++)
-		{
-			aiMatRot[i][j] = rotExt(j, i);
-		}
-	}
+	// Save clipping planes
+	AiNodeSetFlt(aiCamera, "near_clip", 0.1f);
+	AiNodeSetFlt(aiCamera, "far_clip", 10.0f);
 
-	// Save in camera
-	AtVector pos(posExt.x(), posExt.y(), posExt.z());
-	AtMatrix aiMatPos = AiM4Translation(pos);
-	AtMatrix aiMatTrans = AiM4Mult(aiMatRot, aiMatPos);
-	AiNodeSetMatrix(aiCamera, "matrix", aiMatTrans);
-
-	// Calculate fov and save
-	float fovx = 2.0f * atan(960.0f / (2.0f * fx)) * (180.0f / AI_PI);
-	float fovy = 2.0f * atan(540.0f / (2.0f * fy)) * (180.0f / AI_PI);
+	// Calculate & save fov
+	float fovx = 2.0f * atan(intr.w / (4.0f * intr.fx)) * (180.0f / AI_PI);
+	float fovy = 2.0f * atan(intr.h / (4.0f * intr.fy)) * (180.0f / AI_PI);
 	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx, fovy);
 	AiNodeSetArray(aiCamera, "fov", fovArr);
 
-	// Calculate NDC coordinates
-	float min_x = (ox - (960 / 2)) / (960 / 2) - 1;
-	float max_x = (ox - (960 / 2)) / (960 / 2) + 1;
-	float min_y = (oy - (540 / 2)) / (540 / 2) - 1;
-	float max_y = (oy - (540 / 2)) / (540 / 2) + 1;
-
-	// Save
-	AiNodeSetVec2(aiCamera, "screen_window_min", min_x, min_y);
-	AiNodeSetVec2(aiCamera, "screen_window_max", max_x, max_y);
+	// Calculate & save lens shift
+	float shiftx = ((4.0f * intr.ox) - intr.w) / intr.w;
+	float shifty = ((4.0f * intr.oy) - intr.h) / intr.h;
+	AtArray* shiftArr = AiArray(2, 1, AI_TYPE_FLOAT, shiftx, shifty);
+	AiNodeSetArray(aiCamera, "lens_shift", shiftArr);
 }
 
 //---------------------------------------
 // Loads camera intrinsics
 //---------------------------------------
-void SceneManager::X_LoadSceneIntrinsics()
+void SceneManager::X_LoadCameraIntrinsics()
 {
 	std::string line;
 	std::ifstream inFile;
@@ -744,6 +704,8 @@ void SceneManager::X_LoadSceneIntrinsics()
 			intrOriginal.fy = std::stof(entries[7]);
 			intrOriginal.ox = std::stof(entries[4]);
 			intrOriginal.oy = std::stof(entries[8]);
+			intrOriginal.h = (*CONFIG_FILE)["render_height"].GetInt();
+			intrOriginal.w = (*CONFIG_FILE)["render_width"].GetInt();
 			break;
 		}
 	}
@@ -817,7 +779,7 @@ void SceneManager::X_GetImagesToProcess(const string& path, float varThreshold)
 bool SceneManager::Run(int sceneIters, int maxImages)
 {
 	// Load camera intrinsics (fov)
-	X_LoadSceneIntrinsics();
+	X_LoadCameraIntrinsics();
 
 	// Get non blurry images
 	X_GetImagesToProcess(scenePath + "/rgbd", 400.f);
@@ -835,7 +797,9 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		// Create physx objects
 		X_PxCreateObjs();
 		// Run the simulation
-		X_PxRunSim();
+		X_PxRunSim(1.0f / 50.0f, 400);
+		// Save results
+		X_PxSaveSimResults();
 		// Create arnold meshes
 		X_AiCreateObjs();
 
@@ -846,10 +810,13 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		// For each camera pose
 		for (poseCount = 0; poseCount < vecCameraPoses.size(); poseCount++)
 		{
-			// Load camera matrix with custom intrinsics
-			X_LoadCameraMatrix(intrCustom.fx, intrCustom.fy, intrCustom.ox, intrCustom.oy);
+			// Load camera matrix for pose
+			if(useCustomIntr)
+				X_LoadCameraExtrinsics(intrCustom);
+			else
+				X_LoadCameraExtrinsics(intrOriginal);
 
-			// If rendering successful and objects visible
+			// If object depths rendered and visible
 			if (X_RenderObjsDepth() && X_CvComputeObjsMask())
 			{
 				// Render object labels (IDs as color)
@@ -886,7 +853,59 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		X_AiDestroy();
 		vecCurrObjs.clear();
 		ANNOTATIONS_FILE.close();
+
+		return false;
 	}
 
 	return true;
+}
+
+//---------------------------------------
+// Create new scene manager
+//---------------------------------------
+SceneManager::SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxCooking, const PxMaterial* pPxMaterial,
+	AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
+	const vector<PxMeshConvex*> vecPhysxObjs, const vector<AiMesh*> vecArnoldObjs,
+	int startCount, int objPerSim, const rapidjson::Document* CONFIG_FILE,
+	AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend) :
+	pPxDispatcher(pPxDispatcher), pPxCooking(pPxCooking), pPxMaterial(pPxMaterial),
+	aiCamera(aiCamera), aiOptions(aiOptions), aiDriver(aiDriver), aiArrOutputs(aiOutputArray),
+	vecpPxMeshObjs(vecPhysxObjs), vecpAiMeshObjs(vecArnoldObjs),
+	imageCount(startCount), objsPerSim(objPerSim), CONFIG_FILE(CONFIG_FILE),
+	aiShaderDepthObj(aiShaderObjDepth), aiShaderDepthScene(aiShaderSceneDepth), aiShaderBlendImage(aiShaderBlend),
+	pPxScene(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0), intrCustom(), intrOriginal()
+{
+	// Fetch path to output location and meshes
+	FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
+	FILE_TEMP_PATH = (*CONFIG_FILE)["temp_files_path"].GetString();
+	FILE_FINAL_PATH = (*CONFIG_FILE)["final_imgs_path"].GetString();
+
+	// Load intrinsics
+	intrCustom.fx = (*CONFIG_FILE)["fx"].GetFloat();
+	intrCustom.fy = (*CONFIG_FILE)["fy"].GetFloat();
+	intrCustom.ox = (*CONFIG_FILE)["ox"].GetFloat();
+	intrCustom.oy = (*CONFIG_FILE)["oy"].GetFloat();
+	intrCustom.w = (*CONFIG_FILE)["render_width"].GetInt();
+	intrCustom.h = (*CONFIG_FILE)["render_height"].GetInt();
+
+	// Determine if intrinsics are used
+	useCustomIntr = (*CONFIG_FILE)["use_custom_intrinsics"].GetBool();
+
+	// Load clipping planes
+	nearClip = (*CONFIG_FILE)["clip_near"].GetFloat();
+	farClip = (*CONFIG_FILE)["clip_far"].GetFloat();
+
+	// Create renderer
+	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString(),
+		intrCustom.w, intrCustom.h, nearClip, farClip);
+}
+
+//---------------------------------------
+// Cleanup scene
+//---------------------------------------
+SceneManager::~SceneManager()
+{
+	X_AiDestroy();
+	X_PxDestroy();
+	delete pRenderer;
 }

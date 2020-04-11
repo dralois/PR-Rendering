@@ -1,31 +1,39 @@
 #include "PxMeshConvex.h"
 
-#include <fstream>
-
 //---------------------------------------
-// Creates convex physx mesh
+// Cooks or loads a mesh
 //---------------------------------------
-bool PxMeshConvex::CreateMesh(bool saveBounds, float scale)
+void PxMeshConvex::X_CookMesh()
 {
+	// Return if mesh already loaded
+	if (pPxMesh)
+		return;
+
 	// Path to cooked mesh
 	std::ifstream cookedMesh(meshPath + "px");
 	// If cooked mesh not on disk
 	if (!cookedMesh.good())
 	{
 		// Load mesh file
-		LoadFile(scale);
+		X_LoadFile();
+
 		// Create convex mesh
 		PxConvexMeshDesc convDesc;
 		convDesc.points.count = vecVertices.size() / 3;
 		convDesc.points.stride = sizeof(PxVec3);
 		convDesc.points.data = X_GetVertices();
-		convDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+		convDesc.flags |= PxConvexFlag::eCOMPUTE_CONVEX;
 
 		// Cook the mesh
+		PxConvexMeshCookingResult::Enum result;
 		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
-		if (!pPxCooking->cookConvexMesh(convDesc, writeOutBuffer))
+		if (!pPxCooking->cookConvexMesh(convDesc, writeOutBuffer, &result))
 		{
-			return false;
+			std::cout << GetName() << " cooking error:" << result << std::endl;
+		}
+		else
+		{
+			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << meshPath + "px" << std::endl;
 		}
 	}
 
@@ -33,8 +41,19 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, float scale)
 	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
 	// Create the mesh from buffer
 	pPxMesh = PxGetPhysics().createConvexMesh(readInBuffer);
+	// This mesh has to release the mesh
+	firstInstance = true;
+}
 
-#ifdef PX_EXPORT_TO_OBJ
+//---------------------------------------
+// Exports the cooked mesh to a obj file
+//---------------------------------------
+void PxMeshConvex::X_ExportCookedMesh()
+{
+	// Return if no mesh
+	if (!pPxMesh)
+		return;
+
 	// Triangles and vertices buffers
 	vector<int> tris;
 	vector<float> verts;
@@ -72,61 +91,68 @@ bool PxMeshConvex::CreateMesh(bool saveBounds, float scale)
 	}
 
 	// Create obj file
-	StoreFile(tris, tris.size() / 3, verts, verts.size() / 3, "_px");
+	X_StoreFile(tris, tris.size() / 3, verts, verts.size() / 3, "_px");
 
 	// Cleanup
 	tris.clear();
 	verts.clear();
+}
 
+//---------------------------------------
+// Create shape and attach to actor
+//---------------------------------------
+void PxMeshConvex::X_CreateShape()
+{
+	// Create mesh descriptor
+	PxConvexMeshGeometry meshGeom;
+	meshGeom.convexMesh = pPxMesh;
+	meshGeom.meshFlags = PxConvexMeshGeometryFlag::eTIGHT_BOUNDS;
+	meshGeom.scale = PxMeshScale(meshScale);
+
+	// Create shape from the descriptor
+	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *pPxMaterial);
+	pPxShape->setName(GetName().c_str());
+}
+
+//---------------------------------------
+// Creates physx mesh
+//---------------------------------------
+void PxMeshConvex::CreateMesh(float scale)
+{
+	// Cook / load mesh
+	X_CookMesh();
+
+#ifdef PX_EXPORT_TO_OBJ
+	// Export cooked mesh to file
+	X_ExportCookedMesh();
 #endif
 
+	// Save scale
+	meshScale = scale;
+
 	// Save extends
-	if (saveBounds)
-	{
-		xMax = pPxMesh->getLocalBounds().maximum.x;
-		yMax = pPxMesh->getLocalBounds().maximum.y;
-		xMin = pPxMesh->getLocalBounds().minimum.x;
-		yMin = pPxMesh->getLocalBounds().minimum.y;
-	}
-
-	// Create collision detection capable shape from mesh
-	pPxShape = PxGetPhysics().createShape(PxConvexMeshGeometry(pPxMesh), *pPxMaterial);
-	pPxShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
-
-	return true;
+	maximum = pPxMesh->getLocalBounds().maximum * meshScale;
+	minimum = pPxMesh->getLocalBounds().minimum * meshScale;
 }
 
 //---------------------------------------
-// Create and add convex rigidbody
+// Create and add rigidbody
 //---------------------------------------
-PxRigidActor* PxMeshConvex::AddRigidActor(const PxVec3& pos, const PxQuat& rot) const
+void PxMeshConvex::AddRigidActor(const PxTransform& pose, PxScene* scene)
 {
-	// Create rigidbody
-	PxRigidDynamic* body = (PxRigidDynamic*)CreateRigidActor(pos, rot, false);
-	// Update
-	PxRigidBodyExt::updateMassAndInertia(*body, 10.f);
-	body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
-	// Attach rigidbody to shape
-	body->attachShape(*pPxShape);
-	// Add to scene and return
-	pPxScene->addActor(*body);
-	return body;
+	// Create dynamic rigidbody & add to scene
+	PxRigidActor* body = X_CreateRigidActor(pose, false);
+	scene->addActor(*body);
 }
 
 //---------------------------------------
-// Copy constructor, increases reference count
-//---------------------------------------
-PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy):
-	pPxMesh(copy.pPxMesh),
-	PxMesh(copy)
-{
-	pPxMesh->acquireReference();
-}
-
-//---------------------------------------
-// Cleanup convex mesh manager
+// Cleanup mesh
 //---------------------------------------
 PxMeshConvex::~PxMeshConvex()
 {
-	PX_RELEASE(pPxMesh);
+	// Release mesh if this is the first instance
+	if(firstInstance)
+	{
+		PX_RELEASE(pPxMesh);
+	}
 }

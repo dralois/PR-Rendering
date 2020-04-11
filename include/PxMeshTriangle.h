@@ -3,7 +3,7 @@
 #include "PxMesh.h"
 
 //---------------------------------------
-// Triangle meshes, to be used sparingly
+// Triangle mesh, to be used sparingly
 //---------------------------------------
 class PxMeshTriangle : public PxMesh
 {
@@ -11,19 +11,25 @@ private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	PxTriangleMesh* pPxMesh;
+	PxTriangleMesh* pPxMesh = NULL;
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+	virtual void X_CookMesh() override;
+	virtual void X_ExportCookedMesh() override;
+	virtual void X_CreateShape() override;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual bool CreateMesh(bool saveBounds, float scale) override;
-	virtual PxRigidActor* AddRigidActor(const PxVec3& pos, const PxQuat& rot) const override;
+	virtual void CreateMesh(float scale) override;
+	virtual void AddRigidActor(const PxTransform& pose, PxScene* scene) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 	using PxMesh::PxMesh;
-	PxMeshTriangle(const PxMeshTriangle& copy);
 	~PxMeshTriangle();
 };
