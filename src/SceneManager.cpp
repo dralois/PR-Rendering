@@ -50,8 +50,10 @@ void SceneManager::X_PxCreateScene()
 {
 	// Create physx mesh of scan scene
 	string path = scenePath + "/mesh.refined.obj";
-	pPxMeshScene = new PxMeshTriangle(path, 0, 0, pPxCooking, pPxMaterial);
-	pPxMeshScene->CreateMesh((*CONFIG_FILE)["scene_scale"].GetFloat());
+	pPxMeshScene = new PxMeshTriangle(path, 0, pPxCooking, pPxMaterial);
+	pPxMeshScene->SetScale((*CONFIG_FILE)["scene_scale"].GetFloat());
+	pPxMeshScene->SetObjId(0);
+	pPxMeshScene->CreateMesh();
 
 	// Standart gravity & continuous collision detection
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
@@ -67,7 +69,8 @@ void SceneManager::X_PxCreateScene()
 
 	// Scene meshes need to be rotated 90* around X during the simulation
 	PxTransform pose(PxVec3(0, 0, 0), PxQuat(-AI_PIOVER2, PxVec3(1, 0, 0)));
-	pPxMeshScene->AddRigidActor(pose, pPxScene);
+	pPxMeshScene->SetTransform(pose);
+	pPxMeshScene->AddRigidActor(pPxScene);
 }
 
 //---------------------------------------
@@ -86,15 +89,17 @@ void SceneManager::X_PxCreateObjs()
 		// Fetch random object & create instance with new id
 		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs.at(currPos));
 		currObj->SetObjId(i);
+		currObj->CreateMesh();
 
 		// Random position in scene
 		float y = (rand() % 10) + 1;
 		float x = (rand() % ((int)(pPxMeshScene->GetMaximum().x - pPxMeshScene->GetMinimum().x))) + pPxMeshScene->GetMinimum().x;
 		float z = (rand() % ((int)(pPxMeshScene->GetMaximum().z - pPxMeshScene->GetMinimum().z))) + pPxMeshScene->GetMinimum().z;
 
-		// Save rigidbody and mesh in vector
+		// Set pose and save mesh in vector
 		PxTransform pose(PxVec3(x, y, z), PxQuat(-0.7071068, 0, 0, 0.7071068));
-		currObj->AddRigidActor(pose, pPxScene);
+		currObj->SetTransform(pose);
+		currObj->AddRigidActor(pPxScene);
 		vecpPxMeshCurrObjs.push_back(currObj);
 	}
 }
@@ -149,7 +154,7 @@ void SceneManager::X_PxSaveSimResults()
 	for (auto obj : vecpPxMeshCurrObjs)
 	{
 		// Get position
-		PxTransform pose = obj->GetPose();
+		PxTransform pose = obj->GetTransform();
 		// Undo 90* around X rotation
 		PxQuat undoRot(AI_PIOVER2, PxVec3(1, 0, 0));
 		pose.q = (pose.q * undoRot).getNormalized();
@@ -174,11 +179,11 @@ void SceneManager::X_PxSaveSimResults()
 		vecCurrObjs.push_back(currInfo);
 #if DEBUG || _DEBUG
 		// Object transform update for pvd
-		obj->SetPose(pose);
+		obj->SetTransform(pose);
 		obj->SetScale(obj->GetScale() * undoScale);
 	}
 	// Scene transform update for pvd
-	pPxMeshScene->SetPose(PxTransform(PxIDENTITY::PxIdentity));
+	pPxMeshScene->SetTransform(PxTransform(PxIDENTITY::PxIdentity));
 	pPxMeshScene->SetScale(pPxMeshScene->GetScale() * undoScale);
 	// Simulate once for pvd
 	pPxScene->simulate(0.001f);
@@ -199,7 +204,8 @@ void SceneManager::X_AiCreateObjs()
 		// Create the mesh & save in vector
 		AiMesh* mesh = new AiMesh(*vecpAiMeshObjs[body.meshId]);
 		mesh->SetObjId(body.objId);
-		mesh->CreateMesh(body.mat);
+		mesh->CreateMesh();
+		mesh->SetTransform(body.mat);
 		vecpAiMeshCurrObjs.push_back(mesh);
 	}
 }

@@ -1,24 +1,22 @@
 #pragma once
 
 #include "MeshBase.h"
+#include "Transformable.h"
 
 #pragma warning(push, 0)
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
-#include <iostream>
-#include <fstream>
+//#define PX_EXPORT_TO_OBJ
 
 #define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
-
-//#define PX_EXPORT_TO_OBJ
 
 using namespace physx;
 
 //---------------------------------------
 // Base class for physx meshes
 //---------------------------------------
-class PxMesh : public MeshBase
+class PxMesh : public MeshBase, Transformable<PxTransform>
 {
 protected:
 	//---------------------------------------
@@ -36,11 +34,11 @@ protected:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+	virtual bool X_IsStatic() = 0;
 	virtual void X_CookMesh() = 0;
 	virtual void X_ExportCookedMesh() = 0;
+	virtual void X_CreateMesh() = 0;
 	virtual void X_CreateShape() = 0;
-	PxRigidActor* X_CreateRigidActor(const PxTransform& pose, bool isStatic);
-	virtual void X_UpdateScale() override;
 
 	//---------------------------------------
 	// Properties
@@ -52,23 +50,23 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	virtual void CreateMesh(float scale) = 0;
-	virtual void AddRigidActor(const PxTransform& pose, PxScene* scene) = 0;
+	virtual void CreateMesh() override;
+	void AddRigidActor(PxScene* scene);
 	void RemoveRigidActor(PxScene* scene);
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline const PxVec3 GetMinimum() { return minimum; };
-	inline const PxVec3 GetMaximum() { return maximum; };
-	inline const PxTransform GetPose() { return pPxActor->getGlobalPose().getNormalized(); };
-	inline void SetPose(const PxTransform& pose) { pPxActor->setGlobalPose(pose, true); };
+	inline const PxVec3 GetMinimum() { return minimum * meshScale; };
+	inline const PxVec3 GetMaximum() { return maximum * meshScale; };
+	virtual void SetScale(float scale) override;
+	virtual const PxTransform GetTransform() override;
+	virtual void SetTransform(PxTransform trans) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	PxMesh(const string& meshPath, int meshId, int objId,
-		const PxCooking* cooking, const PxMaterial* material);
+	PxMesh(const string& meshPath, int meshId, const PxCooking* cooking, const PxMaterial* material);
 	PxMesh(const PxMesh& copy);
 	~PxMesh();
 };

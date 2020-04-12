@@ -1,49 +1,52 @@
 #pragma once
 
 #include "MeshBase.h"
+#include "Transformable.h"
 
 #pragma warning(push, 0)
-#include <ai.h>
-
 #include <eigen3/Eigen/Dense>
+
+#include <ai.h>
 #pragma warning(pop)
 
 using namespace Eigen;
 
 //---------------------------------------
-// Arnold meshes, used for rendering
+// Arnold mesh, used for rendering
 //---------------------------------------
-class AiMesh : public MeshBase
+class AiMesh : public MeshBase, Transformable<Matrix4f>
 {
 private:
 	//---------------------------------------
 	// Field
 	//---------------------------------------
-	bool isScene = false;
 	AtNode* baseNode = NULL;
+	AtNode* meshNode = NULL;
+	bool isScene = false;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 	void X_CreateBaseNode();
-	virtual void X_UpdateScale() override;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	void CreateMesh(const Matrix4f& mat);
-	void DestroyMesh();
+	virtual void CreateMesh() override;
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
 	const string GetBaseName();
+	virtual void SetScale(float scale) override;
+	virtual const Matrix4f GetTransform() override;
+	virtual void SetTransform(Matrix4f trans) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	AiMesh(const string& meshPath, const string& texturePath, int meshId, int objId);
-	AiMesh(const string& meshPath, int meshId, int objId);
+	AiMesh(const string& meshPath, const string& texturePath, int meshId);
+	AiMesh(const string& meshPath, int meshId);
 	~AiMesh();
 };

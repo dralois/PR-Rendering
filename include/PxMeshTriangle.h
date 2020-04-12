@@ -16,17 +16,13 @@ private:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+	virtual bool X_IsStatic() override;
 	virtual void X_CookMesh() override;
 	virtual void X_ExportCookedMesh() override;
+	virtual void X_CreateMesh() override;
 	virtual void X_CreateShape() override;
 
 public:
-	//---------------------------------------
-	// Methods
-	//---------------------------------------
-	virtual void CreateMesh(float scale) override;
-	virtual void AddRigidActor(const PxTransform& pose, PxScene* scene) override;
-
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------

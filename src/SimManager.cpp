@@ -138,14 +138,15 @@ void SimManager::X_LoadMeshes()
 			}
 
 			// Create and save physx mesh
-			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, -1, pPxCooking, pPxMaterial);
-			pxCurr->CreateMesh(CONFIG_FILE["obj_scale"].GetFloat());
+			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, pPxCooking, pPxMaterial);
+			pxCurr->SetScale(CONFIG_FILE["obj_scale"].GetFloat());
+			pxCurr->CreateMesh();
 			vecpPxMesh.push_back(pxCurr);
 
 			string texturePath(meshPath);
 			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
 			// Create and save arnold mesh
-			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i, -1);
+			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i);
 			aiCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
 			vecpAiMesh.push_back(aiCurr);
 		}

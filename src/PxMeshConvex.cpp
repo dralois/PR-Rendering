@@ -1,6 +1,14 @@
 #include "PxMeshConvex.h"
 
 //---------------------------------------
+// Convex meshes may be dynamic
+//---------------------------------------
+bool PxMeshConvex::X_IsStatic()
+{
+	return false;
+}
+
+//---------------------------------------
 // Cooks or loads a mesh
 //---------------------------------------
 void PxMeshConvex::X_CookMesh()
@@ -50,7 +58,7 @@ void PxMeshConvex::X_CookMesh()
 //---------------------------------------
 void PxMeshConvex::X_ExportCookedMesh()
 {
-	// Return if no mesh
+	// Mesh needs to exist
 	if (!pPxMesh)
 		return;
 
@@ -103,6 +111,10 @@ void PxMeshConvex::X_ExportCookedMesh()
 //---------------------------------------
 void PxMeshConvex::X_CreateShape()
 {
+	// Mesh needs to exist
+	if (!pPxMesh)
+		return;
+
 	// Create mesh descriptor
 	PxConvexMeshGeometry meshGeom;
 	meshGeom.convexMesh = pPxMesh;
@@ -117,7 +129,7 @@ void PxMeshConvex::X_CreateShape()
 //---------------------------------------
 // Creates physx mesh
 //---------------------------------------
-void PxMeshConvex::CreateMesh(float scale)
+void PxMeshConvex::X_CreateMesh()
 {
 	// Cook / load mesh
 	X_CookMesh();
@@ -127,31 +139,18 @@ void PxMeshConvex::CreateMesh(float scale)
 	X_ExportCookedMesh();
 #endif
 
-	// Save scale
-	meshScale = scale;
-
 	// Save extends
-	maximum = pPxMesh->getLocalBounds().maximum * meshScale;
-	minimum = pPxMesh->getLocalBounds().minimum * meshScale;
+	maximum = pPxMesh->getLocalBounds().maximum;
+	minimum = pPxMesh->getLocalBounds().minimum;
 }
 
 //---------------------------------------
-// Create and add rigidbody
-//---------------------------------------
-void PxMeshConvex::AddRigidActor(const PxTransform& pose, PxScene* scene)
-{
-	// Create dynamic rigidbody & add to scene
-	PxRigidActor* body = X_CreateRigidActor(pose, false);
-	scene->addActor(*body);
-}
-
-//---------------------------------------
-// Cleanup mesh
+// Cleanup physx mesh
 //---------------------------------------
 PxMeshConvex::~PxMeshConvex()
 {
 	// Release mesh if this is the first instance
-	if(firstInstance)
+	if (firstInstance)
 	{
 		PX_RELEASE(pPxMesh);
 	}

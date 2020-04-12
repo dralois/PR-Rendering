@@ -39,6 +39,7 @@ ADD_EXECUTABLE(PRRendering
                 src/SceneManager.cpp
                 src/SimManager.cpp
                 include/MeshBase.h
+                include/Transformable.h
                 include/AiMesh.h
                 include/PxMesh.h
                 include/PxMeshConvex.h

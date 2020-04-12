@@ -1,8 +1,5 @@
 #include "MeshBase.h"
 
-#include <iostream>
-#include <fstream>
-
 #pragma warning(push, 0)
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -154,20 +151,45 @@ void MeshBase::X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<floa
 }
 
 //---------------------------------------
-// Default constructor
+// Base constructor
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId, int objId) :
-	meshPath(meshPath),
-	texturePath(texturePath),
+MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId) :
 	meshId(meshId),
-	objId(objId)
+	objId(-1),
+	meshPath(meshPath),
+	texturePath(texturePath)
 {
-};
+}
 
 //---------------------------------------
-// Without texture
+// Constructor without texture
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, int meshId, int objId) :
-	MeshBase(meshPath, "", meshId, objId)
+MeshBase::MeshBase(const string& meshPath, int meshId) :
+	MeshBase(meshPath, "", meshId)
 {
-};
+}
+
+//---------------------------------------
+// Copy constructor
+//---------------------------------------
+MeshBase::MeshBase(const MeshBase& copy) :
+	meshId(copy.meshId),
+	objId(-1),
+	meshPath(copy.meshPath),
+	texturePath(copy.texturePath),
+	metalness(copy.metalness),
+	meshScale(copy.meshScale)
+{
+}
+
+//---------------------------------------
+// Mesh cleanup
+//---------------------------------------
+MeshBase::~MeshBase()
+{
+	// Cleanup vectors
+	vecVertices.clear();
+	vecIndices.clear();
+	vecNormals.clear();
+	vecUVs.clear();
+}

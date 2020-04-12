@@ -1,6 +1,14 @@
 #include "PxMeshTriangle.h"
 
 //---------------------------------------
+// Triangle meshes can not be dynamic
+//---------------------------------------
+bool PxMeshTriangle::X_IsStatic()
+{
+	return true;
+}
+
+//---------------------------------------
 // Cooks or loads a mesh
 //---------------------------------------
 void PxMeshTriangle::X_CookMesh()
@@ -52,6 +60,10 @@ void PxMeshTriangle::X_CookMesh()
 //---------------------------------------
 void PxMeshTriangle::X_ExportCookedMesh()
 {
+	// Mesh needs to exist
+	if (!pPxMesh)
+		return;
+
 	// Save pointers to vertices and triangles
 	const void* trisBuff = pPxMesh->getTriangles();
 	const PxVec3* vertsBuff = pPxMesh->getVertices();
@@ -67,10 +79,32 @@ void PxMeshTriangle::X_ExportCookedMesh()
 }
 
 //---------------------------------------
+// Creates physx mesh
+//---------------------------------------
+void PxMeshTriangle::X_CreateMesh()
+{
+	// Cook / load mesh
+	X_CookMesh();
+
+#ifdef PX_EXPORT_TO_OBJ
+	// Export cooked mesh to file
+	X_ExportCookedMesh();
+#endif
+
+	// Save extends
+	maximum = pPxMesh->getLocalBounds().maximum;
+	minimum = pPxMesh->getLocalBounds().minimum;
+}
+
+//---------------------------------------
 // Create shape and attach to actor
 //---------------------------------------
 void PxMeshTriangle::X_CreateShape()
 {
+	// Mesh needs to exist
+	if (!pPxMesh)
+		return;
+
 	// Create mesh descriptor
 	PxTriangleMeshGeometry meshGeom;
 	meshGeom.triangleMesh = pPxMesh;
@@ -83,38 +117,7 @@ void PxMeshTriangle::X_CreateShape()
 }
 
 //---------------------------------------
-// Creates physx mesh
-//---------------------------------------
-void PxMeshTriangle::CreateMesh(float scale)
-{
-	// Cook / load mesh
-	X_CookMesh();
-
-#ifdef PX_EXPORT_TO_OBJ
-	// Export cooked mesh to file
-	X_ExportCookedMesh();
-#endif
-
-	// Save scale
-	meshScale = scale;
-
-	// Save extends
-	maximum = pPxMesh->getLocalBounds().maximum * meshScale;
-	minimum = pPxMesh->getLocalBounds().minimum * meshScale;
-}
-
-//---------------------------------------
-// Create and add rigidbody
-//---------------------------------------
-void PxMeshTriangle::AddRigidActor(const PxTransform& pose, PxScene* scene)
-{
-	// Create statuc rigidbody & add to scene
-	PxRigidActor* body = X_CreateRigidActor(pose, true);
-	scene->addActor(*body);
-}
-
-//---------------------------------------
-// Cleanup mesh
+// Cleanup physx mesh
 //---------------------------------------
 PxMeshTriangle::~PxMeshTriangle()
 {

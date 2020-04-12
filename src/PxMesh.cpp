@@ -1,37 +1,37 @@
 #include "PxMesh.h"
 
 //---------------------------------------
-// Create rigidbody & shape
+// Create & add actor to scene
 //---------------------------------------
-PxRigidActor* PxMesh::X_CreateRigidActor(const PxTransform& pose, bool isStatic)
+void PxMesh::AddRigidActor(PxScene* scene)
 {
 	// Create either static or dynamic actor
-	if (isStatic)
+	if (X_IsStatic())
 	{
 		// Create static rigidbody
-		pPxActor = PxGetPhysics().createRigidStatic(pose);
+		pPxActor = PxGetPhysics().createRigidStatic(meshTrans);
 		pPxActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
 		pPxActor->setName(GetName().c_str());
 	}
 	else
 	{
 		// Create dynamic rigidbody
-		pPxActor = PxGetPhysics().createRigidDynamic(pose);
+		pPxActor = PxGetPhysics().createRigidDynamic(meshTrans);
 		pPxActor->setName(GetName().c_str());
 		// Setup mass & enabled continuous collision detection
 		PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)pPxActor), 10.f);
 		((PxRigidDynamic*)pPxActor)->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
 	}
 
-	// Create the shape & add actor
+	// Create & add the shape
 	X_CreateShape();
 
-	// Return actor
-	return pPxActor;
+	// Add actor to scene
+	scene->addActor(*pPxActor);
 }
 
 //---------------------------------------
-// Remove rigidbody from scene
+// Remove actor from scene
 //---------------------------------------
 void PxMesh::RemoveRigidActor(PxScene* scene)
 {
@@ -39,10 +39,26 @@ void PxMesh::RemoveRigidActor(PxScene* scene)
 }
 
 //---------------------------------------
-// Changes the scale of the shape
+// Create physx mesh
 //---------------------------------------
-void PxMesh::X_UpdateScale()
+void PxMesh::CreateMesh()
 {
+	// Delegate to sub class
+	X_CreateMesh();
+}
+
+//---------------------------------------
+// Set scale of physx mesh
+//---------------------------------------
+void PxMesh::SetScale(float scale)
+{
+	// Save
+	meshScale = scale;
+
+	// Shape has to exist
+	if (!pPxShape)
+		return;
+
 	// Depending on geometry type
 	switch (pPxShape->getGeometryType())
 	{
@@ -61,7 +77,7 @@ void PxMesh::X_UpdateScale()
 	{
 		PxTriangleMeshGeometry geom;
 		// Retrieve triangle mesh & change scale
-		if(pPxShape->getTriangleMeshGeometry(geom))
+		if (pPxShape->getTriangleMeshGeometry(geom))
 		{
 			geom.scale = PxMeshScale(meshScale);
 			pPxShape->setGeometry(geom);
@@ -78,26 +94,56 @@ void PxMesh::X_UpdateScale()
 }
 
 //---------------------------------------
-// Create physx mesh
+// Set transform of physx mesh
 //---------------------------------------
-PxMesh::PxMesh(const string& meshPath, int meshId, int objId,
-	const PxCooking* cooking, const PxMaterial* material):
-	MeshBase(meshPath, meshId, objId),
+void PxMesh::SetTransform(PxTransform trans)
+{
+	// Save
+	meshTrans = trans;
+
+	// If rigid actor attached
+	if (pPxActor)
+	{
+		// Move actor
+		pPxActor->setGlobalPose(meshTrans);
+	}
+}
+
+//---------------------------------------
+// Get transform of physx mesh
+//---------------------------------------
+const PxTransform PxMesh::GetTransform()
+{
+	// Actor must exist
+	if (!pPxActor)
+		return meshTrans;
+
+	// Fetch & return pose
+	meshTrans = pPxActor->getGlobalPose();
+	return meshTrans;
+}
+
+//---------------------------------------
+// Base constructor
+//---------------------------------------
+PxMesh::PxMesh(const string& meshPath, int meshId, const PxCooking* cooking, const PxMaterial* material) :
 	pPxCooking(cooking),
 	pPxMaterial(material),
 	pPxShape(NULL),
-	pPxActor(NULL)
+	pPxActor(NULL),
+	MeshBase(meshPath, meshId)
 {
 }
 
 //---------------------------------------
 // Copy construtor
 //---------------------------------------
-PxMesh::PxMesh(const PxMesh& copy):
+PxMesh::PxMesh(const PxMesh& copy) :
 	pPxShape(copy.pPxShape),
 	pPxActor(copy.pPxActor),
 	pPxCooking(copy.pPxCooking),
 	pPxMaterial(copy.pPxMaterial),
+	firstInstance(false),
 	minimum(copy.minimum),
 	maximum(copy.maximum),
 	MeshBase(copy)
@@ -105,14 +151,15 @@ PxMesh::PxMesh(const PxMesh& copy):
 }
 
 //---------------------------------------
-// Cleanup mesh
+// Physx mesh cleanup
 //---------------------------------------
 PxMesh::~PxMesh()
 {
+	// If mesh was created
 	if (pPxActor)
 	{
 		// Remove shape
-		if(pPxShape)
+		if (pPxShape)
 			pPxActor->detachShape(*pPxShape);
 		// Delete actor
 		PX_RELEASE(pPxActor);
