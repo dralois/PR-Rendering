@@ -8,7 +8,7 @@
 #pragma warning(pop)
 
 //---------------------------------------
-// Try to load the mesh
+// Try to load mesh from disk
 //---------------------------------------
 bool MeshBase::X_LoadFile()
 {
@@ -88,9 +88,9 @@ bool MeshBase::X_LoadFile()
 }
 
 //---------------------------------------
-// Stores a provided mesh
+// Store internal mesh to disk
 //---------------------------------------
-void MeshBase::X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const
+void MeshBase::X_StoreFile(const string& ext) const
 {
 	Assimp::Exporter exporter;
 
@@ -118,26 +118,51 @@ void MeshBase::X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<floa
 	auto pMesh = scene.mMeshes[0];
 
 	// Save vertices
-	pMesh->mVertices = new aiVector3D[nVerts];
-	pMesh->mNumVertices = nVerts;
-	for (int i = 0; i < nVerts; i++)
+	int numVerts = vecVertices.size() / 3;
+	pMesh->mVertices = new aiVector3D[numVerts];
+	pMesh->mNumVertices = numVerts;
+	for (int i = 0; i < numVerts; i++)
 	{
-		pMesh->mVertices[i] = aiVector3D(verts[(i * 3)], verts[(i * 3) + 1], verts[(i * 3) + 2]);
+		pMesh->mVertices[i] = aiVector3D(vecVertices[(i * 3)], vecVertices[(i * 3) + 1], vecVertices[(i * 3) + 2]);
+	}
+
+	// Save UVs if there are any
+	if(vecUVs.size() > 0)
+	{
+		int numUVs = vecUVs.size() / 2;
+		pMesh->mTextureCoords[0] = new aiVector3D[numUVs];
+		pMesh->mNumUVComponents[0] = 2;
+		for (unsigned int i = 0; i < numUVs; i++)
+		{
+			pMesh->mTextureCoords[0][i] = aiVector3D(vecUVs[(i * 2)], vecUVs[(i * 2) + 1], 0);
+		}
+	}
+
+	// Save normals if there are any
+	if (vecNormals.size() > 0)
+	{
+		int numNormals = vecNormals.size() / 3;
+		pMesh->mNormals = new aiVector3D[numNormals];
+		for (int i = 0; i < numNormals; i++)
+		{
+			pMesh->mNormals[i] = aiVector3D(vecNormals[(i * 3)], vecNormals[(i * 3) + 1], vecNormals[(i * 3) + 2]);
+		}
 	}
 
 	// Save faces
-	pMesh->mFaces = new aiFace[nIdxs];
-	pMesh->mNumFaces = nIdxs;
-	for (int i = 0; i < nIdxs; i++)
+	int numFaces = vecIndices.size() / 3;
+	pMesh->mFaces = new aiFace[numFaces];
+	pMesh->mNumFaces = numFaces;
+	for (int i = 0; i < numFaces; i++)
 	{
 		aiFace& face = pMesh->mFaces[i];
 		// Create index buffer
 		face.mIndices = new unsigned int[3];
 		face.mNumIndices = 3;
 		// Save indices
-		face.mIndices[0] = idxs[(i * 3)];
-		face.mIndices[1] = idxs[(i * 3) + 1];
-		face.mIndices[2] = idxs[(i * 3) + 2];
+		face.mIndices[0] = vecIndices[(i * 3)];
+		face.mIndices[1] = vecIndices[(i * 3) + 1];
+		face.mIndices[2] = vecIndices[(i * 3) + 2];
 	}
 
 	// Append prefix to path
@@ -146,7 +171,6 @@ void MeshBase::X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<floa
 
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath);
-
 	std::cout << "Exported mesh:" << savePath << std::endl;
 }
 

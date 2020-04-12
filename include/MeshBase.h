@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 
+//#define EXPORT_TO_FILE
+
 using namespace std;
 
 //---------------------------------------
@@ -33,7 +35,8 @@ protected:
 	// Methods
 	//---------------------------------------
 	bool X_LoadFile();
-	void X_StoreFile(const vector<int>& idxs, int nIdxs, const vector<float>& verts, int nVerts, const string& ext) const;
+	void X_StoreFile(const string& ext) const;
+	virtual void X_ExportMesh() = 0;
 
 public:
 	//---------------------------------------

@@ -18,7 +18,7 @@ private:
 	//---------------------------------------
 	virtual bool X_IsStatic() override;
 	virtual void X_CookMesh() override;
-	virtual void X_ExportCookedMesh() override;
+	virtual void X_ExportMesh() override;
 	virtual void X_CreateMesh() override;
 	virtual void X_CreateShape() override;
 

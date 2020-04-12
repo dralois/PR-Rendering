@@ -7,7 +7,7 @@
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
-//#define PX_EXPORT_TO_OBJ
+//#define PX_EXTRACT_INTERNAL
 
 #define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
 
@@ -36,7 +36,7 @@ protected:
 	//---------------------------------------
 	virtual bool X_IsStatic() = 0;
 	virtual void X_CookMesh() = 0;
-	virtual void X_ExportCookedMesh() = 0;
+	virtual void X_ExportMesh() = 0;
 	virtual void X_CreateMesh() = 0;
 	virtual void X_CreateShape() = 0;
 

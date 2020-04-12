@@ -9,6 +9,8 @@
 #include <ai.h>
 #pragma warning(pop)
 
+//#define AI_EXTRACT_INTERNAL
+
 using namespace Eigen;
 
 //---------------------------------------
@@ -28,6 +30,7 @@ private:
 	// Methods
 	//---------------------------------------
 	void X_CreateBaseNode();
+	virtual void X_ExportMesh() override;
 
 public:
 	//---------------------------------------

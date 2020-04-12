@@ -58,24 +58,38 @@ void PxMeshTriangle::X_CookMesh()
 //---------------------------------------
 // Exports the cooked mesh to a obj file
 //---------------------------------------
-void PxMeshTriangle::X_ExportCookedMesh()
+void PxMeshTriangle::X_ExportMesh()
 {
 	// Mesh needs to exist
 	if (!pPxMesh)
 		return;
 
 	// Save pointers to vertices and triangles
-	const void* trisBuff = pPxMesh->getTriangles();
-	const PxVec3* vertsBuff = pPxMesh->getVertices();
+	int* trisBuff = (int*)pPxMesh->getTriangles();
+	PxVec3* vertsBuff = (PxVec3*)pPxMesh->getVertices();
 	PxU32 trisNum = pPxMesh->getNbTriangles();
 	PxU32 vertsNum = pPxMesh->getNbVertices();
 
-	// Triangles and vertices buffers
-	vector<int> tris((int*)trisBuff, (int*)trisBuff + (trisNum * 3));
-	vector<float> verts((float*)vertsBuff, (float*)vertsBuff + (vertsNum * 3));
+	// Copy vertices into vector
+	for(int i = 0; i < vertsNum; i++)
+	{
+		vecVertices.push_back(vertsBuff[i].x);
+		vecVertices.push_back(vertsBuff[i].y);
+		vecVertices.push_back(vertsBuff[i].z);
+	}
 
-	// Create obj file
-	X_StoreFile(tris, trisNum, verts, vertsNum, "_px");
+	// Copy indices into vector
+	for(int i = 0; i < trisNum; i++)
+	{
+		vecIndices.push_back(trisBuff[(i * 3)]);
+		vecIndices.push_back(trisBuff[(i * 3) + 1]);
+		vecIndices.push_back(trisBuff[(i * 3) + 2]);
+	}
+
+#ifdef EXPORT_TO_FILE
+	// Store to obj file
+	X_StoreFile("_px");
+#endif // EXPORT_TO_FILE
 }
 
 //---------------------------------------
@@ -86,10 +100,10 @@ void PxMeshTriangle::X_CreateMesh()
 	// Cook / load mesh
 	X_CookMesh();
 
-#ifdef PX_EXPORT_TO_OBJ
+#ifdef PX_EXTRACT_INTERNAL
 	// Export cooked mesh to file
-	X_ExportCookedMesh();
-#endif
+	X_ExportMesh();
+#endif // PX_EXTRACT_INTERNAL
 
 	// Save extends
 	maximum = pPxMesh->getLocalBounds().maximum;

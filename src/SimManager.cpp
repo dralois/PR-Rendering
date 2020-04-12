@@ -18,7 +18,7 @@ void SimManager::X_InitPhysx()
 	pPxPvd = PxCreatePvd(*pPxFoundation);
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
 	pPxPvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
-#endif
+#endif // DEBUG || _DEBUG
 
 	// Create API
 	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, pPxPvd);
@@ -296,7 +296,7 @@ SimManager::~SimManager()
 		PX_RELEASE(pPxPvd);
 		PX_RELEASE(transp);
 	}
-#endif
+#endif // DEBUG || _DEBUG
 	PX_RELEASE(pPxFoundation);
 
 	// Cleanup arnold meshes

@@ -56,15 +56,11 @@ void PxMeshConvex::X_CookMesh()
 //---------------------------------------
 // Exports the cooked mesh to a obj file
 //---------------------------------------
-void PxMeshConvex::X_ExportCookedMesh()
+void PxMeshConvex::X_ExportMesh()
 {
 	// Mesh needs to exist
 	if (!pPxMesh)
 		return;
-
-	// Triangles and vertices buffers
-	vector<int> tris;
-	vector<float> verts;
 
 	// Get polygons and buffers
 	PxU32 polyNum = pPxMesh->getNbPolygons();
@@ -83,27 +79,25 @@ void PxMeshConvex::X_ExportCookedMesh()
 		const PxU8* faceIndices = idxBuff + face.mIndexBase;
 		for (PxU32 j = 0; j < face.mNbVerts; j++)
 		{
-			verts.push_back(vertsBuff[faceIndices[j]].x);
-			verts.push_back(vertsBuff[faceIndices[j]].y);
-			verts.push_back(vertsBuff[faceIndices[j]].z);
+			vecVertices.push_back(vertsBuff[faceIndices[j]].x);
+			vecVertices.push_back(vertsBuff[faceIndices[j]].y);
+			vecVertices.push_back(vertsBuff[faceIndices[j]].z);
 		}
 		// Save indices
 		for (PxU32 j = 2; j < face.mNbVerts; j++)
 		{
-			tris.push_back(PxU32(offset));
-			tris.push_back(PxU32(offset + j));
-			tris.push_back(PxU32(offset + j - 1));
+			vecIndices.push_back((int) offset);
+			vecIndices.push_back((int) offset + j);
+			vecIndices.push_back((int) offset + j - 1);
 		}
 		// Update counter
 		offset += face.mNbVerts;
 	}
 
-	// Create obj file
-	X_StoreFile(tris, tris.size() / 3, verts, verts.size() / 3, "_px");
-
-	// Cleanup
-	tris.clear();
-	verts.clear();
+#ifdef EXPORT_TO_FILE
+	// Store to obj file
+	X_StoreFile("_px");
+#endif // EXPORT_TO_FILE
 }
 
 //---------------------------------------
@@ -134,10 +128,10 @@ void PxMeshConvex::X_CreateMesh()
 	// Cook / load mesh
 	X_CookMesh();
 
-#ifdef PX_EXPORT_TO_OBJ
+#ifdef PX_EXTRACT_INTERNAL
 	// Export cooked mesh to file
-	X_ExportCookedMesh();
-#endif
+	X_ExportMesh();
+#endif // PX_EXTRACT_INTERNAL
 
 	// Save extends
 	maximum = pPxMesh->getLocalBounds().maximum;

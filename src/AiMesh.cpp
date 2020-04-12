@@ -16,8 +16,64 @@ void AiMesh::X_CreateBaseNode()
 		AiNodeSetStr(baseNode, "filename", meshPath.c_str());
 	}
 
+#ifdef AI_EXTRACT_INTERNAL
+	// Export loaded base node to file
+	X_ExportMesh();
+#endif // AI_EXPORT_TO_OBJ
+
 	// Disable the base mesh node
 	AiNodeSetDisabled(baseNode, true);
+}
+
+//---------------------------------------
+// Export loaded node to obj file
+//---------------------------------------
+void AiMesh::X_ExportMesh()
+{
+	// Clone and save vertices into vector
+	AtArray* aiVerts = AiArrayCopy((AiNodeGetArray(baseNode, "vlist")));
+	int vertsNum = AiArrayGetNumElements(aiVerts);
+	float* pVerts = (float*)AiArrayMap(aiVerts);
+	vecVertices = vector<float>(pVerts, pVerts + (vertsNum * 3));
+
+	// Clone and save indices into vector
+	AtArray* aiIndices = AiArrayCopy((AiNodeGetArray(baseNode, "vidxs")));
+	int indicesNum = AiArrayGetNumElements(aiIndices);
+	unsigned int* pIndices = (unsigned int*)AiArrayMap(aiIndices);
+	vecIndices = vector<int>(pIndices, pIndices + indicesNum);
+
+	// Clone and save normals into vector
+	AtArray* aiNormals = AiArrayCopy((AiNodeGetArray(baseNode, "nlist")));
+	int normalsNum = AiArrayGetNumElements(aiNormals);
+	float* pNormals = (float*)AiArrayMap(aiNormals);
+	vecNormals = vector<float>(pNormals, pNormals + (normalsNum * 3));
+
+	// Clone UVs + indices
+	AtArray* aiUVs = AiArrayCopy((AiNodeGetArray(baseNode, "uvlist")));
+	float* pUVs = (float*)AiArrayMap(aiUVs);
+	// Save UVs according to indices in vector
+	vecUVs.resize(vertsNum * 2);
+	for(int i = 0; i < indicesNum; i++)
+	{
+		int idx = vecIndices[i];
+		vecUVs[idx] = *(pUVs + i);
+		vecUVs[idx + 1] = *(pUVs + i + 1);
+	}
+
+#ifdef EXPORT_TO_FILE
+	// Store to obj file
+	X_StoreFile("_ai");
+#endif // EXPORT_TO_FILE
+
+	// Cleanup arrays
+	AiArrayUnmap(aiVerts);
+	AiArrayDestroy(aiVerts);
+	AiArrayUnmap(aiIndices);
+	AiArrayDestroy(aiIndices);
+	AiArrayUnmap(aiNormals);
+	AiArrayDestroy(aiNormals);
+	AiArrayUnmap(aiUVs);
+	AiArrayDestroy(aiUVs);
 }
 
 //---------------------------------------
