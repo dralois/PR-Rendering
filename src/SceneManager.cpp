@@ -190,7 +190,7 @@ void SceneManager::X_PxSaveSimResults()
 	pPxScene->fetchResults(true);
 #else
 	}
-#endif
+#endif // DEBUG || _DEBUG
 }
 
 //---------------------------------------

@@ -67,8 +67,14 @@ _deps
 
 # End of https://www.gitignore.io/api/c++,cmake,visualstudiocode
 
-*test.cpp
-*test.h
+### Custom ###
+
+# Files
+*.zip
+*.png
+
+#Folders
 [Bb]uild/*
 [Ll]ibs/*
 [Dd]ependencies/*
+*/[Bb]lenderseed/*
