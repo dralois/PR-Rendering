@@ -54,13 +54,14 @@ ADD_EXECUTABLE(PRRendering
 
 # Packages
 FIND_PACKAGE(Assimp 4.1 REQUIRED)
-FIND_PACKAGE(Eigen3 3.3 REQUIRED)
+FIND_PACKAGE(EIGEN3 3.3 REQUIRED)
 FIND_PACKAGE(AI 6.0 REQUIRED)
-FIND_PACKAGE(OpenCV 4.2 REQUIRED core highgui imgproc objdetect)
-FIND_PACKAGE(RapidJSON 1.1 REQUIRED)
+FIND_PACKAGE(OPENCV2 4.2 REQUIRED core highgui imgproc objdetect)
+FIND_PACKAGE(RAPIDJSON 1.1 REQUIRED)
 FIND_PACKAGE(glm REQUIRED)
-FIND_PACKAGE(GLFW3 REQUIRED)
+FIND_PACKAGE(GLFW REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
+FIND_PACKAGE(Python3 3.7 REQUIRED Development)
 
 # Defines for boost and glew on windows
 IF(WIN32)
@@ -70,7 +71,7 @@ IF(WIN32)
 ENDIF(WIN32)
 
 # FindBoost is shipped with CMake
-FIND_PACKAGE(Boost REQUIRED system thread filesystem)
+FIND_PACKAGE(Boost REQUIRED system thread filesystem python38)
 
 # Include dirs
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
@@ -82,6 +83,7 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
                     ${AI_INCLUDE_DIRS}
                     ${Assimp_INCLUDE_DIRS}
                     ${EIGEN3_INCLUDE_DIRS}
+                    ${Python3_INCLUDE_DIRS}
 )
 
 # Link to executable
@@ -93,6 +95,7 @@ TARGET_LINK_LIBRARIES(PRRendering
                     ${OPENCV2_LIBRARIES}
                     ${AI_LIBRARIES}
                     ${Assimp_LIBRARIES}
+                    ${Python3_LIBRARIES}
 )
 
 ###########################################################################################
