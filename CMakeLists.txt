@@ -18,7 +18,7 @@ SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 INCLUDE_DIRECTORIES("include")
 
 # Visual Studio only: Change include directory
-IF(MSVC)
+IF(WIN32 AND MSVC)
     INCLUDE_DIRECTORIES(dependencies/include/dirent)
     SET(CMAKE_VS_SDK_INCLUDE_DIRECTORIES
         "${PROJECT_SOURCE_DIR}/dependencies/include;"
@@ -26,7 +26,7 @@ IF(MSVC)
         "${PROJECT_SOURCE_DIR}/dependencies/extra/pxshared;"
         "${PROJECT_SOURCE_DIR}/dependencies/extra/arnold;"
         "$(VC_IncludePath);$(WindowsSDK_IncludePath);")
-ENDIF(MSVC)
+ENDIF(WIN32 AND MSVC)
 
 # Add source files
 ADD_EXECUTABLE(PRRendering
@@ -61,17 +61,13 @@ FIND_PACKAGE(RAPIDJSON 1.1 REQUIRED)
 FIND_PACKAGE(glm REQUIRED)
 FIND_PACKAGE(GLFW REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
-FIND_PACKAGE(Python3 3.7 REQUIRED Development)
 
-# Defines for boost and glew on windows
-IF(WIN32)
-    SET(BOOST_INCLUDEDIR ${PROJECT_SOURCE_DIR}/dependencies/include)
-    SET(BOOST_LIBRARYDIR ${PROJECT_SOURCE_DIR}/dependencies/lib)
-    SET(Boost_NAMESPACE "libboost")
-ENDIF(WIN32)
+# Disable python debug libraries
+SET(Boost_USE_DEBUG_PYTHON OFF)
 
-# FindBoost is shipped with CMake
-FIND_PACKAGE(Boost REQUIRED system thread filesystem python38)
+# Boost / Python modules are included in cmake
+FIND_PACKAGE(Python 3.7 REQUIRED Development)
+FIND_PACKAGE(Boost REQUIRED system thread filesystem python37)
 
 # Include dirs
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
@@ -83,7 +79,7 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
                     ${AI_INCLUDE_DIRS}
                     ${Assimp_INCLUDE_DIRS}
                     ${EIGEN3_INCLUDE_DIRS}
-                    ${Python3_INCLUDE_DIRS}
+                    ${Python_INCLUDE_DIRS}
 )
 
 # Link to executable
@@ -95,8 +91,14 @@ TARGET_LINK_LIBRARIES(PRRendering
                     ${OPENCV2_LIBRARIES}
                     ${AI_LIBRARIES}
                     ${Assimp_LIBRARIES}
-                    ${Python3_LIBRARIES}
 )
+
+# Enforce no python debug libraries on Windows
+IF(WIN32)
+    TARGET_LINK_LIBRARIES(PRRendering ${Python_LIBRARY_RELEASE})
+ELSE(WIN32)
+    TARGET_LINK_LIBRARIES(PRRendering ${Python_LIBRARIES})
+ENDIF(WIN32)
 
 ###########################################################################################
 # Shader Library
@@ -149,7 +151,7 @@ INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
 IF(WIN32)
     TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES})
 ELSE(WIN32)
-    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} pthread dl -lboost_system -lboost_thread -lboost_filesystem -Wl,-rpath='${ORIGIN}')
+    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} pthread dl -lboost_system -lboost_thread -lboost_filesystem -lboost_python -Wl,-rpath='${ORIGIN}')
 ENDIF(WIN32)
 
 ###########################################################################################
