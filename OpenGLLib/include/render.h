@@ -1,17 +1,20 @@
 #pragma once
 
-#ifndef WIN32
-#define GLEW_STATIC
-#endif
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 
 #include "camera.h"
 #include "model.h"
 #include "shader.h"
+
+#ifdef WIN32
+#define EXPORT_THIS __declspec(dllexport)
+#else
+#define EXPORT_THIS __attribute__((visibility("default")))
+#endif
 
 namespace Renderer
 {
@@ -46,19 +49,11 @@ namespace Renderer
 		//---------------------------------------
 		// Methods
 		//---------------------------------------
-#if WIN32
-		__declspec(dllexport) vector<tuple<cv::Mat, cv::Mat> > RenderScenes(const std::string& scenePath, vector<string>camPoses, float fx, float fy, float ox, float oy);
-#else
-		__attribute__((visibility("default"))) vector<tuple<cv::Mat, cv::Mat> > RenderScenes(const std::string& scenePath, vector<string>camPoses, float fx, float fy, float ox, float oy);
-#endif
+		EXPORT_THIS vector<tuple<cv::Mat, cv::Mat> > RenderScenes(const std::string& scenePath, vector<string>camPoses, float fx, float fy, float ox, float oy);
 
 		//---------------------------------------
 		// Constructors
 		//---------------------------------------
-#if WIN32
-		__declspec(dllexport) Render(const std::string& shaderPath, int width, int height, float near, float far);
-#else
-		__attribute__((visibility("default"))) Render(const std::string& shaderPath, int width, int height, float near, float far);
-#endif
+		EXPORT_THIS Render(const std::string& shaderPath, int width, int height, float near, float far);
 	};
 }
