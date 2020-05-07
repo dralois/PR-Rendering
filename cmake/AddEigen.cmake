@@ -1,14 +1,15 @@
-function(AddEigen targetProject modulePath installPath)
+function(AddEigen TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME eigen)
 
     # Check if package available
-    CheckEigen(found)
+    CheckEigen(CHECK_FOUND)
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
@@ -20,33 +21,32 @@ function(AddEigen targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Configure eigen
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR} ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${installPath}
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
                         BUILD_TESTING=OFF
             )
             # Build eigen
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
         endif()
         # Load package
-        CheckEigen(found)
+        CheckEigen(CHECK_FOUND)
     endif()
 
     # Link and include components
-    target_link_libraries(${targetProject} PRIVATE Eigen3::Eigen)
+    target_link_libraries(${TO_TARGET} PRIVATE Eigen3::Eigen)
 endfunction()
 
-function(CheckEigen found)
+function(CheckEigen CHECK_FOUND)
     # Try to load package
     find_package(Eigen3
                 PATHS
-                ${installPath}
+                ${INSTALL_PATH}
                 NO_DEFAULT_PATH
     )
     # Return result
-    set(found ${Eigen3_FOUND} PARENT_SCOPE)
+    set(CHECK_FOUND ${Eigen3_FOUND} PARENT_SCOPE)
 endfunction()

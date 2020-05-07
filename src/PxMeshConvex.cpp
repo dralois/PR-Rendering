@@ -1,4 +1,4 @@
-#include "PxMeshConvex.h"
+#include <PxMeshConvex.h>
 
 //---------------------------------------
 // Convex meshes may be dynamic

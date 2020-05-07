@@ -1,4 +1,4 @@
-#include "SimManager.h"
+#include <SimManager.h>
 
 #pragma warning(push, 0)
 #include <dirent.h>
@@ -21,7 +21,12 @@ void SimManager::X_InitPhysx()
 #endif // DEBUG || _DEBUG
 
 	// Create API
+#ifdef _DEBUG || DEBUG
 	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, pPxPvd);
+#else
+	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, NULL);
+#endif // DEBUG || _DEBUG
+
 
 	// Create mesh cooking
 	PxCookingParams params(pPxPhysics->getTolerancesScale());
@@ -32,7 +37,11 @@ void SimManager::X_InitPhysx()
 	pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, *pPxFoundation, params);
 
 	// Enable extensions & create dispatcher
+#ifdef _DEBUG || DEBUG
 	PxInitExtensions(*pPxPhysics, pPxPvd);
+#else
+	PxInitExtensions(*pPxPhysics, NULL);
+#endif // DEBUG || _DEBUG
 	pPxDispatcher = PxDefaultCpuDispatcherCreate(4);
 
 	// Create default material

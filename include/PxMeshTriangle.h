@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PxMesh.h"
+#include <PxMesh.h>
 
 //---------------------------------------
 // Triangle mesh, to be used sparingly

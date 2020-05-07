@@ -1,14 +1,22 @@
-function(AddOpenCV targetProject modulePath installPath)
+function(AddOpenCV TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME opencv)
 
-    # Check if package available
-    CheckOpenCV(found)
+    # Parse components
+    if(${ARGC} GREATER 2)
+        foreach(CURR_COMP ${ARGN})
+            set(COMPONENTS ${COMPONENTS} ${CURR_COMP})
+        endforeach()
+    endif()
+
+    # Check if package with components available
+    CheckOpenCV(CHECK_FOUND ${COMPONENTS})
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/opencv/opencv.git
@@ -20,10 +28,9 @@ function(AddOpenCV targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Configure opencv
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR} ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${installPath}
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
                         WITH_OPENCL=OFF
                         WITH_QUIRC=OFF
                         WITH_OPENCL_D3D11_NV=OFF
@@ -61,31 +68,39 @@ function(AddOpenCV targetProject modulePath installPath)
             # Build opencv
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
         endif()
-        # Load package
-        CheckOpenCV(found)
+        # Load package with components
+        CheckOpenCV(CHECK_FOUND ${COMPONENTS})
     endif()
 
-    # Parse components
-    if(${ARGC} GREATER 3)
-        foreach(comp ${ARGN})
-            set(COMPONENTS ${COMPONENTS} ${comp})
-        endforeach()
+    # Copy required dlls
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/x64/vc16/bin ${INSTALL_PATH}/x64/vc16/bin true)
     endif()
 
     # Link and include components
-    target_link_libraries(${targetProject} PRIVATE ${COMPONENTS})
+    target_link_libraries(${TO_TARGET} PRIVATE ${COMPONENTS})
 endfunction()
 
-function(CheckOpenCV found)
-    # Try to load package
-    find_package(OpenCV
-                PATHS
-                ${installPath}
-                NO_DEFAULT_PATH
-    )
+function(CheckOpenCV CHECK_FOUND)
+    # Search for components or in general
+    if(${ARGC} GREATER 1)
+        find_package(OpenCV
+                    COMPONENTS
+                    ${ARGN}
+                    PATHS
+                    ${INSTALL_PATH}
+                    NO_DEFAULT_PATH
+        )
+    else()
+        find_package(OpenCV
+                    PATHS
+                    ${INSTALL_PATH}
+                    NO_DEFAULT_PATH
+        )
+    endif()
     # Return result
-    set(found ${OpenCV_FOUND} PARENT_SCOPE)
+    set(CHECK_FOUND ${OpenCV_FOUND} PARENT_SCOPE)
 endfunction()

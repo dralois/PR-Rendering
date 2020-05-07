@@ -6,7 +6,7 @@
 #include <boost/filesystem.hpp>
 #pragma warning(pop)
 
-#include "SimManager.h"
+#include <SimManager.h>
 
 // Entry point
 int main(int argc, char** argv)
@@ -15,6 +15,10 @@ int main(int argc, char** argv)
 	if (argc != 2)
 	{
 		std::cerr << "Please provide only the path to the config file." << std::endl;
+		for (size_t i = 0; i < argc; i++)
+		{
+			std::cerr << argv[i] << std::endl;
+		}
 		return -1;
 	}
 

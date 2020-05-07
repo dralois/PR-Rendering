@@ -1,14 +1,15 @@
-function(AddAssimp targetProject modulePath installPath)
+function(AddAssimp TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME assimp)
 
     # Check if package available
-    CheckAssimp(found)
+    CheckAssimp(CHECK_FOUND)
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/assimp/assimp.git
@@ -20,37 +21,44 @@ function(AddAssimp targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Configure assimp
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR} ${${CONTENT_NAME}_BINARY_DIR}
-                        ASSIMP_BUILD_TESTS=OFF
-                        ASSIMP_BUILD_ASSIMP_TOOLS=OFF
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+                        BUILD_SHARED_LIBS=1
                         ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT=OFF
                         ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT=OFF
                         ASSIMP_BUILD_OBJ_EXPORTER=ON
                         ASSIMP_BUILD_OBJ_IMPORTER=ON
+                        ASSIMP_BUILD_ASSIMP_TOOLS=OFF
+                        ASSIMP_BUILD_TESTS=OFF
+                        ASSIMP_INSTALL=OFF
             )
             # Build assimp
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
         endif()
         # Load package
-        CheckAssimp(found)
+        CheckAssimp(CHECK_FOUND)
+    endif()
+
+    # Copy required dlls
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin true)
     endif()
 
     # Link and include components
-    target_link_libraries(${targetProject} PRIVATE assimp::assimp)
+    target_link_libraries(${TO_TARGET} PRIVATE assimp::assimp)
 endfunction()
 
-function(CheckAssimp found)
+function(CheckAssimp CHECK_FOUND)
     # Try to load package
     find_package(assimp
                 PATHS
-                ${installPath}
+                ${INSTALL_PATH}
                 NO_DEFAULT_PATH
     )
     # Return result
-    set(found ${assimp_FOUND} PARENT_SCOPE)
+    set(CHECK_FOUND ${assimp_FOUND} PARENT_SCOPE)
 endfunction()

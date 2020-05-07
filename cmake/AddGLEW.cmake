@@ -1,14 +1,15 @@
-function(AddGLEW targetProject modulePath installPath)
+function(AddGLEW TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME glew)
 
     # Check if package available
-    CheckGLEW(found)
+    CheckGLEW(CHECK_FOUND)
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code (complete release)
         FetchContent_Declare(${CONTENT_NAME}
                             URL https://github.com/nigels-com/glew/releases/download/glew-2.1.0/glew-2.1.0.zip
@@ -18,41 +19,44 @@ function(AddGLEW targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Update default CMakeLists.txt (-> MSVC compile bug)
-            file(STRINGS ${${CONTENT_NAME}_SOURCE_DIR}/build/cmake/CMakeLists.txt LINES)
-            file(WRITE ${${CONTENT_NAME}_SOURCE_DIR}/build/cmake/CMakeLists.txt "")
-            foreach(LINE IN LISTS LINES)
-                string(REPLACE "target_link_libraries (glew LINK_PRIVATE -nodefaultlib -noentry)" "" STRIPPED "${LINE}")
-                string(REPLACE "target_link_libraries (glew LINK_PRIVATE -BASE:0x62AA0000)" "" STRIPPED "${LINE}")
+            file(STRINGS ${${CONTENT_NAME}_SOURCE_DIR}/build/cmake/CMakeLists.txt FILE_LINES)
+            file(WRITE ${${CONTENT_NAME}_SOURCE_DIR}//build/cmake/CMakeLists.txt "")
+            foreach(LINE IN LISTS FILE_LINES)
+                string(REGEX REPLACE "(.*-nodefaultlib.*)|(.*-noentry.*)|(.*-BASE:0x62AA0000.*)" "" STRIPPED "${LINE}")
                 file(APPEND ${${CONTENT_NAME}_SOURCE_DIR}/build/cmake/CMakeLists.txt "${STRIPPED}\n")
             endforeach()
             # Configure GLEW
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR}/build/cmake ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${installPath}
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
                         BUILD_UTILS=OFF
             )
             # Build GLEW
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
         endif()
         # Load package
-        CheckGLEW(found)
+        CheckGLEW(CHECK_FOUND)
+    endif()
+
+    # Copy required dlls
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin true)
     endif()
 
     # Link and include components
-    target_link_libraries(${targetProject} PRIVATE GLEW::glew)
+    target_link_libraries(${TO_TARGET} PRIVATE GLEW::glew)
 endfunction()
 
-function(CheckGLEW found)
+function(CheckGLEW CHECK_FOUND)
     # Try to load package
     find_package(GLEW
                 PATHS
-                ${installPath}
+                ${INSTALL_PATH}
                 NO_DEFAULT_PATH
     )
     # Return result
-    set(found ${GLEW_FOUND} PARENT_SCOPE)
+    set(CHECK_FOUND ${GLEW_FOUND} PARENT_SCOPE)
 endfunction()

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "MeshBase.h"
-#include "Transformable.h"
+#include <MeshBase.h>
+#include <Transformable.h>
 
 #pragma warning(push, 0)
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 #include <ai.h>
 #pragma warning(pop)

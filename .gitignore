@@ -75,12 +75,12 @@ _deps
 
 #Folders
 [Bb]uild/*
-*/[Bb]uild/*
+**/[Bb]uild/*
 [Ll]ibs/*
-*/[Ll]ibs/*
+**/[Ll]ibs/*
 [Dd]ependencies/*
-*/[Dd]ependencies/*
+**/[Dd]ependencies/*
 [Bb]lenderseed/*
-*/[Bb]lenderseed/*
-[Ee]xternals/*
-*/[Ee]xternals/*
+**/[Bb]lenderseed/*
+[Ee]xternal/*
+**/[Ee]xternal/*

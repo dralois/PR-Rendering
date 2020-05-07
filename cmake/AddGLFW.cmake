@@ -1,14 +1,15 @@
-function(AddGLFW targetProject modulePath installPath)
+function(AddGLFW TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME glfw)
     
     # Check if package available
-    CheckGLFW(found)
+    CheckGLFW(CHECK_FOUND)
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -20,10 +21,9 @@ function(AddGLFW targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Configure GLFW
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR} ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${installPath}
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
                         BUILD_SHARED_LIBS=ON
                         GLFW_BUILD_DOCS=OFF
                         GLFW_BUILD_EXAMPLES=OFF
@@ -32,30 +32,35 @@ function(AddGLFW targetProject modulePath installPath)
             # Build GLFW
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath}/release)
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath}/debug)
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH}/release)
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH}/debug)
         endif()
         # Load package
-        CheckGLFW(found)
+        CheckGLFW(CHECK_FOUND)
+    endif()
+
+    # Copy required dlls
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/debug/bin ${INSTALL_PATH}/release/bin false)
     endif()
 
     # Link and include components
-    target_link_libraries(${targetProject} PRIVATE glfw)
+    target_link_libraries(${TO_TARGET} PRIVATE glfw)
 endfunction()
 
-function(CheckGLFW found)
+function(CheckGLFW CHECK_FOUND)
     # Determine if GLFW is installed
-    if((EXISTS ${installPath}/release/lib/cmake/glfw3/glfw3Targets.cmake) AND
-        (EXISTS ${installPath}/debug/lib/cmake/glfw3/glfw3Targets-debug.cmake))
+    if((EXISTS ${INSTALL_PATH}/release/lib/cmake/glfw3/glfw3Targets.cmake) AND
+        (EXISTS ${INSTALL_PATH}/debug/lib/cmake/glfw3/glfw3Targets-debug.cmake))
         # Load packages (-> Hack, GLFW does not properly implement configs)
-        include(${installPath}/release/lib/cmake/glfw3/glfw3Targets.cmake)
-        set(_IMPORT_PREFIX ${installPath}/debug)
-        include(${installPath}/debug/lib/cmake/glfw3/glfw3Targets-debug.cmake)
+        include(${INSTALL_PATH}/release/lib/cmake/glfw3/glfw3Targets.cmake)
+        set(_IMPORT_PREFIX ${INSTALL_PATH}/debug)
+        include(${INSTALL_PATH}/debug/lib/cmake/glfw3/glfw3Targets-debug.cmake)
         set(_IMPORT_PREFIX)
         # Return result
-        set(found 1 PARENT_SCOPE)
+        set(CHECK_FOUND 1 PARENT_SCOPE)
     else()
         # Return result
-        set(found 0 PARENT_SCOPE)
+        set(CHECK_FOUND 0 PARENT_SCOPE)
     endif()
 endfunction()

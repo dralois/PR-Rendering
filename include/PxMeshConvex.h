@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PxMesh.h"
+#include <PxMesh.h>
 
 //---------------------------------------
 // Convex mesh, limited to 256 tris

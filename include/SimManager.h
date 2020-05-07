@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SceneManager.h"
+#include <SceneManager.h>
 
 #pragma warning(push, 0)
 #include <rapidjson/document.h>

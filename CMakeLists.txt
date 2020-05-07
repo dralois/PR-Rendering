@@ -1,175 +1,100 @@
-# CMake version
-CMAKE_MINIMUM_REQUIRED (VERSION 3.15)
-# Project name
-PROJECT (PRRendering CXX)
+# Check cmake version
+cmake_minimum_required(VERSION 3.15...3.18)
 
 ###########################################################################################
 # Setup project
 ###########################################################################################
 
-# CMake paths
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../Dependencies/eigen3-3.3.7/cmake)
+# Create project
+project(PRRendering
+        VERSION 1.0
+        DESCRIPTION "PR Rendering"
+        LANGUAGES CXX)
+
+# Append module paths
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 # C++ 14 standards
-SET(CMAKE_CXX_STANDARD 14)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
-# Header files
-INCLUDE_DIRECTORIES("include")
-
-# Visual Studio only: Change include directory
-IF(WIN32 AND MSVC)
-    INCLUDE_DIRECTORIES(dependencies/include/dirent)
-    SET(CMAKE_VS_SDK_INCLUDE_DIRECTORIES
-        "${PROJECT_SOURCE_DIR}/dependencies/include;"
-        "${PROJECT_SOURCE_DIR}/dependencies/extra/physx;"
-        "${PROJECT_SOURCE_DIR}/dependencies/extra/pxshared;"
-        "${PROJECT_SOURCE_DIR}/dependencies/extra/arnold;"
-        "$(VC_IncludePath);$(WindowsSDK_IncludePath);")
-ENDIF(WIN32 AND MSVC)
-
-# Add source files
-ADD_EXECUTABLE(PRRendering
-                main.cpp
-                src/Meshbase.cpp
-                src/AiMesh.cpp
-                src/PxMesh.cpp
-                src/PxMeshConvex.cpp
-                src/PxMeshTriangle.cpp
-                src/SceneManager.cpp
-                src/SimManager.cpp
-                include/MeshBase.h
-                include/Transformable.h
-                include/AiMesh.h
-                include/PxMesh.h
-                include/PxMeshConvex.h
-                include/PxMeshTriangle.h
-                include/SceneManager.h
-                include/SimManager.h
-)
+# Enable folders in IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 ###########################################################################################
-# Find and link necessary packages
+# Main executable
 ###########################################################################################
 
-# Packages
-FIND_PACKAGE(Assimp 4.1 REQUIRED)
-FIND_PACKAGE(EIGEN3 3.3 REQUIRED)
-FIND_PACKAGE(AI 6.0 REQUIRED)
-FIND_PACKAGE(OPENCV2 4.2 REQUIRED core highgui imgproc objdetect)
-FIND_PACKAGE(RAPIDJSON 1.1 REQUIRED)
-FIND_PACKAGE(glm REQUIRED)
-FIND_PACKAGE(GLFW REQUIRED)
-FIND_PACKAGE(GLEW REQUIRED)
+# Remove dirent on Linux
+if(NOT WIN32)
+    file(REMOVE ${CMAKE_SOURCE_DIR}/include/dirent.h)
+endif()
 
-# Disable python debug libraries
-SET(Boost_USE_DEBUG_PYTHON OFF)
+# Generate code file lists
+file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/*.h")
+list(FILTER HEADER_LIST EXCLUDE REGEX "dirent.h")
+file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
-# Boost / Python modules are included in cmake
-FIND_PACKAGE(Python 3.7 REQUIRED Development)
-FIND_PACKAGE(Boost REQUIRED system thread filesystem python37)
+# Set IDE folder structure
+source_group(TREE "${CMAKE_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})
+source_group(TREE "${CMAKE_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${SOURCE_LIST})
+source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${CMAKE_SOURCE_DIR}/main.cpp)
 
-# Include dirs
-INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}
-                    ${GLEW_INCLUDE_DIRS}
-                    ${GLFW_INCLUDE_DIRS}
-                    ${glm_INCLUDE_DIRS}
-                    ${RAPIDJSON_INCLUDE_DIRS}
-                    ${OPENCV2_INCLUDE_DIRS}
-                    ${AI_INCLUDE_DIRS}
-                    ${Assimp_INCLUDE_DIRS}
-                    ${EIGEN3_INCLUDE_DIRS}
-                    ${Python_INCLUDE_DIRS}
-)
+# Create project executable
+add_executable(PRRendering ${HEADER_LIST} ${SOURCE_LIST} ${CMAKE_SOURCE_DIR}/main.cpp)
+if(WIN32 AND MSVC)
+    file(RELATIVE_PATH CONFIG_PATH ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/config_alex.json)
+    set_target_properties(PRRendering PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "${CONFIG_PATH}")
+endif()
 
-# Link to executable
-TARGET_LINK_LIBRARIES(PRRendering
-                    ${Boost_LIBRARIES}
-                    ${GLEW_LIBRARIES}
-                    ${GLFW_LIBRARIES}
-                    ${glm_LIBRARIES}
-                    ${OPENCV2_LIBRARIES}
-                    ${AI_LIBRARIES}
-                    ${Assimp_LIBRARIES}
-)
-
-# Enforce no python debug libraries on Windows
-IF(WIN32)
-    TARGET_LINK_LIBRARIES(PRRendering ${Python_LIBRARY_RELEASE})
-ELSE(WIN32)
-    TARGET_LINK_LIBRARIES(PRRendering ${Python_LIBRARIES})
-ENDIF(WIN32)
+# Make includes available
+target_include_directories(PRRendering PRIVATE include)
 
 ###########################################################################################
-# Shader Library
+# External packages
 ###########################################################################################
 
-# Create shader library
-ADD_LIBRARY(ShadersLib SHARED
-            ShadersLib/nodeLoader.cpp
-            ShadersLib/blendShader.cpp
-            ShadersLib/depthShader.cpp
-            ShadersLib/labelShader.cpp
-            ShadersLib/nullFilter.cpp
-)
+# Find & add boost
+find_package(Boost REQUIRED system thread filesystem)
+target_link_libraries(PRRendering PRIVATE Boost::thread Boost::filesystem)
 
-# Link to shader library
-TARGET_LINK_LIBRARIES(ShadersLib ${OPENCV2_LIBRARIES} ${AI_LIBRARIES})
+# Find & add Arnold
+find_package(AI REQUIRED MODULE)
+target_link_libraries(PRRendering PRIVATE AI::AI)
 
-###########################################################################################
-# OpenGL library
-###########################################################################################
+# Set external path
+set(PROJECT_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 
-# Create OpenGL library
-ADD_LIBRARY(OpenGLLib SHARED
-            OpenGLLib/include/mesh.h
-            OpenGLLib/include/model.h
-            OpenGLLib/include/render.h
-            OpenGLLib/include/shader.h
-            OpenGLLib/include/camera.h
-            OpenGLLib/src/mesh.cpp
-            OpenGLLib/src/model.cpp
-            OpenGLLib/src/render.cpp
-            OpenGLLib/src/shader.cpp
-)
+# Include cmake files
+include(AddEigen)
+include(AddAssimp)
+include(AddOpenCV)
+include(AddPhysX)
+include(AddRapidJSON)
 
-# Link to OpenGL library
-IF(WIN32)
-    TARGET_LINK_LIBRARIES(OpenGLLib ${OPENCV2_LIBRARIES} ${glm_LIBRARIES} ${GLFW_LIBRARIES} ${GLEW_LIBRARIES} ${Assimp_LIBRARIES} opengl32)
-ELSE(WIN32)
-    TARGET_LINK_LIBRARIES(OpenGLLib ${OPENGL_LIBRARIES} ${OPENCV2_LIBRARIES} ${glm_LIBRARIES} ${GLFW_LIBRARIES} ${GLEW_LIBRARIES} ${Assimp_LIBRARIES})
-ENDIF(WIN32)
+# Add dependencies
+AddEigen(PRRendering ${PROJECT_EXTERNAL_DIR}/eigen)
+AddAssimp(PRRendering ${PROJECT_EXTERNAL_DIR}/assimp)
+AddOpenCV(PRRendering ${PROJECT_EXTERNAL_DIR}/opencv
+    opencv_core opencv_highgui opencv_imgproc opencv_objdetect)
+AddPhysX(PRRendering ${PROJECT_EXTERNAL_DIR}/physx
+    PhysX::PhysX PhysX::PhysXCommon PhysX::PhysXCooking PhysX::PhysXExtensions PhysX::PhysXFoundation PhysX::PhysXPvdSDK)
+AddRapidJSON(PRRendering ${PROJECT_EXTERNAL_DIR}/rapidjson)
+
+# Finally add linker flags on Linux
+if(UNIX)
+    target_link_options(PRRendering PRIVATE pthread dl -lboost_system -lboost_thread -lboost_filesystem)
+endif()
 
 ###########################################################################################
-# Finally setup PhysX
+# Additional libraries
 ###########################################################################################
 
-FIND_PACKAGE(PhysX 4.0 REQUIRED Common Cooking Extensions Foundation PvdSDK)
-# Include dirs
-INCLUDE_DIRECTORIES(${PhysX_INCLUDE_DIRS})
-# pthread etc. only on Linux
-IF(WIN32)
-    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES})
-ELSE(WIN32)
-    TARGET_LINK_LIBRARIES(PRRendering ${PhysX_LIBRARIES} pthread dl -lboost_system -lboost_thread -lboost_filesystem -lboost_python -Wl,-rpath='${ORIGIN}')
-ENDIF(WIN32)
+# add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
+add_subdirectory(${CMAKE_SOURCE_DIR}/OpenGLLib)
+add_subdirectory(${CMAKE_SOURCE_DIR}/ShadersLib)
 
-###########################################################################################
-# Combine and add libs
-###########################################################################################
-
-ADD_LIBRARY(combinedLib INTERFACE)
-# Combine into one as interface
-TARGET_LINK_LIBRARIES(combinedLib INTERFACE OpenGLLib ShadersLib)
-# Add to executable
-TARGET_LINK_LIBRARIES(PRRendering combinedLib)
-
-###########################################################################################
-# Debug
-###########################################################################################
-
-# Print included directories
-GET_PROPERTY(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-FOREACH(dir ${dirs})
-    MESSAGE(STATUS "dir='${dir}'")
-ENDFOREACH()
+# target_link_libraries(PRRendering PRIVATE BlenderLib)
+target_link_libraries(PRRendering PRIVATE OpenGLLib)
+target_link_libraries(PRRendering PRIVATE ShadersLib)

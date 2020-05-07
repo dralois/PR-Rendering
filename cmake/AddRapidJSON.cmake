@@ -1,18 +1,18 @@
-function(AddRapidJSON targetProject modulePath installPath)
+function(AddRapidJSON TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME rapidjson)
 
     # Check if package available
-    CheckRapidJSON(found)
+    CheckRapidJSON(CHECK_FOUND)
 
     # Load and build if not so
-    if(NOT ${found})
+    if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
+        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-                            GIT_TAG v1.1.0
                             GIT_SHALLOW True
                             GIT_PROGRESS True
         )
@@ -20,35 +20,32 @@ function(AddRapidJSON targetProject modulePath installPath)
         FetchContent_GetProperties(${CONTENT_NAME})
         if(NOT ${CONTENT_NAME}_POPULATED)
             FetchContent_Populate(${CONTENT_NAME})
-            include(${modulePath}/ContentHelpers.cmake)
             # Configure content
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR} ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${installPath}
+                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
                         RAPIDJSON_BUILD_DOC=OFF
                         RAPIDJSON_BUILD_EXAMPLES=OFF
                         RAPIDJSON_BUILD_TESTS=OFF
             )
             # Build content
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${installPath})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${installPath})
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH} dev)
+            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH} dev)
         endif()
         # Load package
-        CheckRapidJSON(found)
+        CheckRapidJSON(CHECK_FOUND)
     endif()
 
-    # Link and include directory
-    target_include_directories(${targetProject} PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
+    # Link and include library
+    target_link_libraries(${TO_TARGET} PRIVATE rapidjson)
 endfunction()
 
-function(CheckRapidJSON found)
+function(CheckRapidJSON CHECK_FOUND)
     # Try to load package
     find_package(RapidJSON
                 PATHS
-                ${installPath}
+                ${INSTALL_PATH}
                 NO_DEFAULT_PATH
     )
     # Return result
-    set(found ${RapidJSON_FOUND} PARENT_SCOPE)
+    set(CHECK_FOUND ${RapidJSON_FOUND} PARENT_SCOPE)
 endfunction()

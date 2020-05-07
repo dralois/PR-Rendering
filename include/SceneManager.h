@@ -1,12 +1,10 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <eigen3/Eigen/Dense>
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
@@ -16,8 +14,7 @@
 #include <ai.h>
 #pragma warning(pop)
 
-#include "../OpenGLLib/include/render.h"
-
+#include <render.h>
 #include <AiMesh.h>
 #include <PxMeshConvex.h>
 #include <PxMeshTriangle.h>

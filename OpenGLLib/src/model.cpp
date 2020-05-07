@@ -1,4 +1,4 @@
-#include "../include/model.h"
+#include <model.h>
 
 #include <fstream>
 #include <sstream>

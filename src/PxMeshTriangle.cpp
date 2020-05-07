@@ -1,4 +1,4 @@
-#include "PxMeshTriangle.h"
+#include <PxMeshTriangle.h>
 
 //---------------------------------------
 // Triangle meshes can not be dynamic

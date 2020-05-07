@@ -1,4 +1,4 @@
-#include "PxMesh.h"
+#include <PxMesh.h>
 
 //---------------------------------------
 // Create & add actor to scene
