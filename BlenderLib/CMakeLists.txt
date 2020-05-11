@@ -20,6 +20,12 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 # Enable nice folder structure
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+# Set external path if not already set
+if(NOT EXISTS ${PROJECT_EXTERNAL_DIR})
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
+    set(PROJECT_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external)
+endif()
+
 ###########################################################################################
 # Main library
 ###########################################################################################
@@ -55,8 +61,14 @@ target_link_libraries(BlenderLib PRIVATE Python::Python)
 find_package(Boost REQUIRED thread python37)
 target_link_libraries(BlenderLib PRIVATE Boost::thread Boost::python37)
 
-# TODO: Find & add Blender
-# TODO: Find & add Blenderseed
+# Include cmake modules
+include(AddBlender)
+include(AddAppleseed)
+
+# TODO
+# Add dependencies
+# AddBlender(BlenderLib ${PROJECT_EXTERNAL_DIR}/blender)
+# AddAppleseed(BlenderLib ${PROJECT_EXTERNAL_DIR}/appleseed)
 
 # Finally add linker flags on Linux and dll copy on Windows
 if(UNIX)
