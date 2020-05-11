@@ -8,7 +8,9 @@
 
 #include <SimManager.h>
 
+//---------------------------------------
 // Entry point
+//---------------------------------------
 int main(int argc, char** argv)
 {
 	// Only one input argument (path to the config file) allowed

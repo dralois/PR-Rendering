@@ -53,8 +53,16 @@ target_include_directories(BlenderLib PUBLIC include)
 # Disable python debug libraries
 set(Boost_USE_DEBUG_PYTHON OFF)
 
-# Find & add python
+# Find python for development
 find_package(Python 3.7 REQUIRED Development)
+# Bug: Enforce no debug on Windows
+if(WIN32)
+    set_target_properties(Python::Python
+                        PROPERTIES
+                        IMPORTED_IMPLIB_DEBUG "${Python_LIBRARY_RELEASE}"
+                        IMPORTED_LOCATION_DEBUG "${Python_RUNTIME_LIBRARY_RELEASE}")
+endif()
+# Add python development library
 target_link_libraries(BlenderLib PRIVATE Python::Python)
 
 # Find & add boost
