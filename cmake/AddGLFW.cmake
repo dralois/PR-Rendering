@@ -41,7 +41,7 @@ function(AddGLFW TO_TARGET INSTALL_PATH)
 
     # Copy required dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/debug/bin ${INSTALL_PATH}/release/bin false)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/debug/bin ${INSTALL_PATH}/release/bin)
     endif()
 
     # Link and include components

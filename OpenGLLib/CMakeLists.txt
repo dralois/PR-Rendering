@@ -38,7 +38,7 @@ file(GLOB SHADER_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.*
 # Set IDE folder structure
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${SOURCE_LIST})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shaders" FILES ${SHADER_LIST})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shader Files" FILES ${SHADER_LIST})
 
 # Create library
 add_library(OpenGLLib SHARED ${HEADER_LIST} ${SOURCE_LIST} ${SHADER_LIST})

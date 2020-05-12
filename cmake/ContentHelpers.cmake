@@ -66,23 +66,43 @@ function(CopyContent TO_TARGET DLL_DEBUG DLL_RELEASE)
     # Gather dll files
     if(${IN_SAME_DIR})
         # Same directory -> Find by using dlls with "d" suffix
-        file(GLOB DLL_LIST RELATIVE ${DLL_DEBUG} "${DLL_DEBUG}/*.dll")
+        file(GLOB DLL_LIST RELATIVE ${DLL_DEBUG} CONFIGURE_DEPENDS "${DLL_DEBUG}/*.dll")
         set(DLL_LIST_DEBUG ${DLL_LIST})
         set(DLL_LIST_RELEASE ${DLL_LIST})
         list(FILTER DLL_LIST_DEBUG INCLUDE REGEX ".*d\.dll")
         list(FILTER DLL_LIST_RELEASE EXCLUDE REGEX ".*d\.dll")
+        # Override list if no debug dlls found
+        list(LENGTH DLL_LIST_DEBUG DEBUG_COUNT)
+        if(${DEBUG_COUNT} EQUAL 0)
+            set(DLL_LIST_DEBUG ${DLL_LIST_RELEASE})
+        endif()
     else()
         # Otherwise find all dlls in the directories
-        file(GLOB DLL_LIST_DEBUG RELATIVE ${DLL_DEBUG} "${DLL_DEBUG}/*.dll")
-        file(GLOB DLL_LIST_RELEASE RELATIVE ${DLL_RELEASE} "${DLL_RELEASE}/*.dll")
+        file(GLOB DLL_LIST_DEBUG RELATIVE ${DLL_DEBUG} CONFIGURE_DEPENDS "${DLL_DEBUG}/*.dll")
+        file(GLOB DLL_LIST_RELEASE RELATIVE ${DLL_RELEASE} CONFIGURE_DEPENDS "${DLL_RELEASE}/*.dll")
     endif()
+    # Add debug info files
+    if(EXISTS ${DLL_DEBUG}/../lib)
+        set(PDB_DIR ${DLL_DEBUG}/../lib)
+    else()
+        set(PDB_DIR ${DLL_DEBUG})
+    endif()
+    file(GLOB PDB_LIST RELATIVE ${PDB_DIR} CONFIGURE_DEPENDS "${PDB_DIR}/*.pdb")
     # Some info output
     message(STATUS "DLLs (debug) copied for ${TO_TARGET}: ${DLL_LIST_DEBUG}")
     message(STATUS "DLLs (release) copied for ${TO_TARGET}: ${DLL_LIST_RELEASE}")
-    # Add post-build copy commands to target
+    message(STATUS "Additional debug info copied for ${TO_TARGET}: ${PDB_LIST}")
+    # Add post-build debug version copy commands to target
     foreach(DLL ${DLL_LIST_DEBUG})
         add_custom_command(TARGET ${TO_TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${DLL_DEBUG}/${DLL}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${DLL}"
+            VERBATIM
+        )
+    endforeach()
+    # Same for debug info
+    foreach(PDB ${PDB_LIST})
+        add_custom_command(TARGET ${TO_TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${PDB_DIR}/${PDB}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${PDB}"
             VERBATIM
         )
     endforeach()

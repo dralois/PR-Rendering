@@ -66,7 +66,7 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
 
     # Copy required dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release false)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
     endif()
 
     # Link and include components

@@ -39,7 +39,7 @@ list(FILTER PYTHON_LIST EXCLUDE REGEX ".*blenderseed.*")
 # Set IDE folder structure
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${SOURCE_LIST})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/python" PREFIX "Python Module" FILES ${PYTHON_LIST})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/python" PREFIX "Python Files" FILES ${PYTHON_LIST})
 
 # Create library
 add_library(BlenderLib SHARED ${HEADER_LIST} ${SOURCE_LIST} ${PYTHON_LIST})
@@ -58,8 +58,7 @@ set(Boost_USE_DEBUG_PYTHON OFF)
 find_package(Python 3.7 REQUIRED Development)
 # Bug: Enforce no debug on Windows
 if(WIN32)
-    set_target_properties(Python::Python
-                        PROPERTIES
+    set_target_properties(Python::Python PROPERTIES
                         IMPORTED_IMPLIB_DEBUG "${Python_LIBRARY_RELEASE}"
                         IMPORTED_LOCATION_DEBUG "${Python_RUNTIME_LIBRARY_RELEASE}")
 endif()

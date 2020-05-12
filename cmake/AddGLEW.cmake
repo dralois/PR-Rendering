@@ -43,7 +43,7 @@ function(AddGLEW TO_TARGET INSTALL_PATH)
 
     # Copy required dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin true)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
     endif()
 
     # Link and include components

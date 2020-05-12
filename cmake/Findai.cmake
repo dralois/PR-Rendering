@@ -62,7 +62,7 @@ if(AI_FOUND AND NOT TARGET AI::AI)
         # Add copy target
         add_custom_target(CopyDlls${PROJECT_NAME} COMMENT "Copies required dlls" VERBATIM)
         # Add copy commands
-        CopyContent(CopyDlls${PROJECT_NAME} ${AI_INCLUDE_DIR}/../bin ${AI_INCLUDE_DIR}/../bin false)
+        CopyContent(CopyDlls${PROJECT_NAME} ${AI_INCLUDE_DIR}/../bin ${AI_INCLUDE_DIR}/../bin)
         # Make library depend on it
         add_dependencies(AI::AI CopyDlls${PROJECT_NAME})
         # Hide in IDE folder

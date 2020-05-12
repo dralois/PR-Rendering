@@ -41,7 +41,7 @@ function(AddAppleseed TO_TARGET INSTALL_PATH)
     # TODO
     # Copy required dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin true)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
     endif()
 
     # TODO

@@ -77,7 +77,7 @@ function(AddOpenCV TO_TARGET INSTALL_PATH)
 
     # Copy required dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/x64/vc16/bin ${INSTALL_PATH}/x64/vc16/bin true)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/x64/vc16/bin ${INSTALL_PATH}/x64/vc16/bin)
     endif()
 
     # Link and include components

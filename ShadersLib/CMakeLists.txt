@@ -31,11 +31,13 @@ endif()
 ###########################################################################################
 
 # Generate & set IDE folder structure
-file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Shaders" FILES ${SOURCE_LIST})
+file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+file(GLOB SHADER_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.cpp")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Source Files" FILES ${SOURCE_LIST})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shader Files" FILES ${SHADER_LIST})
 
 # Create library
-add_library(ShadersLib SHARED ${SOURCE_LIST})
+add_library(ShadersLib SHARED ${SOURCE_LIST} ${SHADER_LIST})
 
 ###########################################################################################
 # External packages
