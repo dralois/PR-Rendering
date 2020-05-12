@@ -35,7 +35,7 @@ light = bpy.data.objects.new('light', light_data)
 light.location = mathutils.Vector((3, -4.2, 5))
 
 # Create the camera
-cam_data :bpy.types.PointLight = bpy.data.cameras.new('camera')
+cam_data :bpy.types.Camera = bpy.data.cameras.new('camera')
 cam = bpy.data.objects.new('camera', cam_data)
 cam.location = mathutils.Vector((6, -3, 5))
 cam.rotation_euler = mathutils.Euler((0.9, 0.0, 1.1))

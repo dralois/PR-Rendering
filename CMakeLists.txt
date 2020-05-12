@@ -91,10 +91,10 @@ endif()
 # Additional libraries
 ###########################################################################################
 
-# add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
+add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/OpenGLLib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/ShadersLib)
 
-# target_link_libraries(PRRendering PRIVATE BlenderLib)
+target_link_libraries(PRRendering PRIVATE BlenderLib)
 target_link_libraries(PRRendering PRIVATE OpenGLLib)
 target_link_libraries(PRRendering PRIVATE ShadersLib)
