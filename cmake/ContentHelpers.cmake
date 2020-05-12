@@ -81,28 +81,13 @@ function(CopyContent TO_TARGET DLL_DEBUG DLL_RELEASE)
         file(GLOB DLL_LIST_DEBUG RELATIVE ${DLL_DEBUG} CONFIGURE_DEPENDS "${DLL_DEBUG}/*.dll")
         file(GLOB DLL_LIST_RELEASE RELATIVE ${DLL_RELEASE} CONFIGURE_DEPENDS "${DLL_RELEASE}/*.dll")
     endif()
-    # Add debug info files
-    if(EXISTS ${DLL_DEBUG}/../lib)
-        set(PDB_DIR ${DLL_DEBUG}/../lib)
-    else()
-        set(PDB_DIR ${DLL_DEBUG})
-    endif()
-    file(GLOB PDB_LIST RELATIVE ${PDB_DIR} CONFIGURE_DEPENDS "${PDB_DIR}/*.pdb")
     # Some info output
     message(STATUS "DLLs (debug) copied for ${TO_TARGET}: ${DLL_LIST_DEBUG}")
     message(STATUS "DLLs (release) copied for ${TO_TARGET}: ${DLL_LIST_RELEASE}")
-    message(STATUS "Additional debug info copied for ${TO_TARGET}: ${PDB_LIST}")
     # Add post-build debug version copy commands to target
     foreach(DLL ${DLL_LIST_DEBUG})
         add_custom_command(TARGET ${TO_TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${DLL_DEBUG}/${DLL}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${DLL}"
-            VERBATIM
-        )
-    endforeach()
-    # Same for debug info
-    foreach(PDB ${PDB_LIST})
-        add_custom_command(TARGET ${TO_TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${PDB_DIR}/${PDB}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${PDB}"
             VERBATIM
         )
     endforeach()

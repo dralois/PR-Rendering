@@ -39,6 +39,13 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shader Files" FI
 # Create library
 add_library(ShadersLib SHARED ${SOURCE_LIST} ${SHADER_LIST})
 
+# Configure output
+set_target_properties(ShadersLib PROPERTIES
+                    PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+)
+
 ###########################################################################################
 # External packages
 ###########################################################################################

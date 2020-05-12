@@ -46,6 +46,13 @@ add_library(OpenGLLib SHARED ${HEADER_LIST} ${SOURCE_LIST} ${SHADER_LIST})
 # Make includes available
 target_include_directories(OpenGLLib PUBLIC include)
 
+# Configure output
+set_target_properties(OpenGLLib PROPERTIES
+                    PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+)
+
 ###########################################################################################
 # External packages
 ###########################################################################################

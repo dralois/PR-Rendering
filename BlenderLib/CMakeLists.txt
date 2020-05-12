@@ -47,6 +47,13 @@ add_library(BlenderLib SHARED ${HEADER_LIST} ${SOURCE_LIST} ${PYTHON_LIST})
 # Make includes available
 target_include_directories(BlenderLib PUBLIC include)
 
+# Configure output
+set_target_properties(BlenderLib PROPERTIES
+                    PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+)
+
 ###########################################################################################
 # External packages
 ###########################################################################################
@@ -60,7 +67,8 @@ find_package(Python 3.7 REQUIRED Development)
 if(WIN32)
     set_target_properties(Python::Python PROPERTIES
                         IMPORTED_IMPLIB_DEBUG "${Python_LIBRARY_RELEASE}"
-                        IMPORTED_LOCATION_DEBUG "${Python_RUNTIME_LIBRARY_RELEASE}")
+                        IMPORTED_LOCATION_DEBUG "${Python_RUNTIME_LIBRARY_RELEASE}"
+    )
 endif()
 # Add python development library
 target_link_libraries(BlenderLib PRIVATE Python::Python)
