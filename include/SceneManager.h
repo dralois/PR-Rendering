@@ -1,6 +1,8 @@
 #pragma once
 
 #pragma warning(push, 0)
+#include <ai.h>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -11,13 +13,11 @@
 
 #include "PxPhysicsAPI.h"
 
-#include <ai.h>
-#pragma warning(pop)
-
 #include <render.h>
 #include <AiMesh.h>
 #include <PxMeshConvex.h>
 #include <PxMeshTriangle.h>
+#pragma warning(pop)
 
 using namespace Eigen;
 using namespace physx;

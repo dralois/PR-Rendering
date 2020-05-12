@@ -1,12 +1,12 @@
 #pragma once
 
-#include <MeshBase.h>
-#include <Transformable.h>
-
 #pragma warning(push, 0)
+#include <ai.h>
+
 #include <Eigen/Dense>
 
-#include <ai.h>
+#include <MeshBase.h>
+#include <Transformable.h>
 #pragma warning(pop)
 
 //#define AI_EXTRACT_INTERNAL

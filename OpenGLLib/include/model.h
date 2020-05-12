@@ -3,11 +3,13 @@
 #include <string>
 #include <vector>
 
+#pragma warning(push, 0)
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <assimp/scene.h>
 
-#include "mesh.h"
+#include <mesh.h>
+#pragma warning(pop)
 
 using namespace std;
 

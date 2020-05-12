@@ -4,12 +4,14 @@
 #include <sstream>
 #include <iostream>
 
+#pragma warning(push, 0)
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
 #include <opencv2/opencv.hpp>
+#pragma warning(pop)
 
 namespace Renderer
 {

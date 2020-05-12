@@ -1,6 +1,9 @@
-#include <ai.h>
 #include <string.h>
 #include <iostream>
+
+#pragma warning(push, 0)
+#include <ai.h>
+#pragma warning(pop)
 
 AI_FILTER_NODE_EXPORT_METHODS(NullFilter);
 

@@ -1,5 +1,8 @@
-#include <ai.h>
 #include <string.h>
+
+#pragma warning(push, 0)
+#include <ai.h>
+#pragma warning(pop)
 
 extern const AtNodeMethods* DepthShader;
 extern const AtNodeMethods* LabelShader;

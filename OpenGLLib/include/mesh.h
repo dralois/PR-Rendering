@@ -3,11 +3,13 @@
 #include <vector>
 #include <string>
 
+#pragma warning(push, 0)
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <shader.h>
+#pragma warning(pop)
 
 using namespace std;
 

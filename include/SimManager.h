@@ -1,10 +1,10 @@
 #pragma once
 
-#include <SceneManager.h>
-
 #pragma warning(push, 0)
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
+
+#include <SceneManager.h>
 #pragma warning(pop)
 
 //---------------------------------------

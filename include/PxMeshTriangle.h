@@ -1,6 +1,8 @@
 #pragma once
 
+#pragma warning(push, 0)
 #include <PxMesh.h>
+#pragma warning(pop)
 
 //---------------------------------------
 // Triangle mesh, to be used sparingly

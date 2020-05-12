@@ -2,7 +2,9 @@
 
 #include <fstream>
 
+#pragma warning(push, 0)
 #include <Eigen/Dense>
+#pragma warning(pop)
 
 namespace Renderer
 {

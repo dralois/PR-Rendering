@@ -4,9 +4,9 @@
 
 #pragma warning(push, 0)
 #include <boost/filesystem.hpp>
-#pragma warning(pop)
 
 #include <SimManager.h>
+#pragma warning(pop)
 
 //---------------------------------------
 // Entry point

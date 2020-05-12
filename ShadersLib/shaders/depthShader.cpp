@@ -1,7 +1,10 @@
-#include <ai.h>
+#include <math.h>
 #include <string.h>
 #include <iostream>
-#include <math.h>
+
+#pragma warning(push, 0)
+#include <ai.h>
+#pragma warning(pop)
 
 AI_SHADER_NODE_EXPORT_METHODS(DepthShader);
 

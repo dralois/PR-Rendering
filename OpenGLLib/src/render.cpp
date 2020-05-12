@@ -1,14 +1,17 @@
 #include <render.h>
 
+#pragma warning(push, 0)
 #include <GL/glew.h>
-
 #include <GLFW/glfw3.h>
+
 #include <Eigen/Dense>
+
 #include <opencv2/opencv.hpp>
 
 #include <camera.h>
 #include <model.h>
 #include <shader.h>
+#pragma warning(pop)
 
 namespace Renderer
 {
@@ -117,7 +120,6 @@ namespace Renderer
 		}
 
 	public:
-
 		//---------------------------------------
 		// Render all scenes with given intrinsics
 		//---------------------------------------
@@ -222,7 +224,6 @@ namespace Renderer
 			// Enable depth testing
 			glEnable(GL_DEPTH_TEST);
 		}
-
 	};
 
 	//---------------------------------------
@@ -243,11 +244,6 @@ namespace Renderer
 	}
 
 	//---------------------------------------
-	// Destructor
-	//---------------------------------------
-	Render::~Render() = default;
-
-	//---------------------------------------
 	// Copy constructor
 	//---------------------------------------
 	Render::Render(const Render& other) :
@@ -263,4 +259,9 @@ namespace Renderer
 		swap(renderImpl, rhs.renderImpl);
 		return *this;
 	}
+
+	//---------------------------------------
+	// Destructor
+	//---------------------------------------
+	Render::~Render() = default;
 }
