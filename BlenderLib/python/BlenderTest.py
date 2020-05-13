@@ -4,9 +4,12 @@ import bmesh
 import mathutils
 
 # Appleseed init
-if bpy.ops.preferences.addon_enable(module='blenderseed') != "FINISHED":
-    bpy.ops.preferences.addon_install(overwrite=False, filepath=os.getcwd() + '\\blenderseed.zip')
-    bpy.ops.preferences.addon_enable(module='blenderseed')
+try:
+    bpy.ops.preferences.addon_refresh()
+    bpy.ops.preferences.addon_enable(module = 'blenderseed')
+except:
+    bpy.ops.preferences.addon_install(overwrite = False, filepath = os.getcwd() + '\\blenderseed.zip')
+    bpy.ops.preferences.addon_enable(module = 'blenderseed')
 
 bpy.data.batch_remove([obj.data for obj in bpy.data.objects])
 bpy.data.batch_remove([mat for mat in bpy.data.materials])

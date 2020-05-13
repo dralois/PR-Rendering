@@ -29,18 +29,25 @@ namespace Blenderseed
 		//---------------------------------------
 		Bridge_impl::Bridge_impl()
 		{
-			Py_Initialize();
-			// Store main and dict
-			entryMainModule = import("__main__");
-			entryNamespace = entryMainModule.attr("__dict__");
-			auto testModule = import("BlenderTest");
+			try
+			{
+				//Py_set
+				Py_Initialize();
+				// Store main and dict
+				entryMainModule = import("BlenderTest");
+				entryNamespace = entryMainModule.attr("__dict__");
+			}
+			catch(const error_already_set&)
+			{
+				PyErr_Print();
+			}
 		}
 	};
 
 	//---------------------------------------
 	// Forward API creation
 	//---------------------------------------
-	Blenderbridge::Blenderbridge():
+	Blenderbridge::Blenderbridge() :
 		bridgeImpl(new Bridge_impl())
 	{
 	}
@@ -48,7 +55,7 @@ namespace Blenderseed
 	//---------------------------------------
 	// Copy constructor
 	//---------------------------------------
-	Blenderbridge::Blenderbridge(const Blenderbridge & other) :
+	Blenderbridge::Blenderbridge(const Blenderbridge& other) :
 		bridgeImpl(new Bridge_impl(*other.bridgeImpl))
 	{
 	}
