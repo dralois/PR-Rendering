@@ -2,6 +2,7 @@
 
 #pragma warning(push, 0)
 #define BOOST_PYTHON_STATIC_LIB
+#include <boost/python/detail/wrap_python.hpp>
 #include <boost/python.hpp>
 #pragma warning(pop)
 
@@ -33,7 +34,7 @@ namespace Blenderseed
 			{
 				//Py_set
 				Py_Initialize();
-				// Store main and dict
+				// Store main and globals
 				entryMainModule = import("BlenderTest");
 				entryNamespace = entryMainModule.attr("__dict__");
 			}

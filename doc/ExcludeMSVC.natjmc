@@ -33,4 +33,7 @@
   <!-- Appleseed -->
   <Module Name="appleseed.dll" />
 
+  <!-- Boost -->
+  <Module Name="boost*.dll" />
+
 </NonUserCode>

@@ -59,6 +59,7 @@ set_target_properties(BlenderLib PROPERTIES
 ###########################################################################################
 
 # Disable python debug libraries
+set(Boost_ADDITIONAL_VERSIONS "1.73.0")
 set(Boost_USE_DEBUG_PYTHON OFF)
 
 # Find python for development

@@ -57,6 +57,7 @@ target_include_directories(PRRendering PRIVATE include)
 ###########################################################################################
 
 # Find & add boost
+set(Boost_ADDITIONAL_VERSIONS "1.73.0")
 find_package(Boost REQUIRED system thread filesystem)
 target_link_libraries(PRRendering PRIVATE Boost::thread Boost::filesystem)
 
