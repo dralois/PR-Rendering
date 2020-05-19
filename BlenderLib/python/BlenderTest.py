@@ -11,6 +11,7 @@ except:
     bpy.ops.preferences.addon_install(overwrite = False, filepath = os.getcwd() + '\\blenderseed.zip')
     bpy.ops.preferences.addon_enable(module = 'blenderseed')
 
+# Remove defaults
 bpy.data.batch_remove([obj.data for obj in bpy.data.objects])
 bpy.data.batch_remove([mat for mat in bpy.data.materials])
 
@@ -51,6 +52,8 @@ bpy.context.collection.objects.link(cam)
 # Render settings
 bpy.context.scene.render.image_settings.file_format = 'PNG'
 bpy.context.scene.render.filepath = os.getcwd() + '/output.png'
+bpy.context.scene.render.resolution_x = 1280
+bpy.context.scene.render.resolution_y = 720
 bpy.context.scene.render.engine = 'APPLESEED_RENDER'
 bpy.context.scene.camera = cam
 

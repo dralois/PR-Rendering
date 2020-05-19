@@ -1,57 +1,112 @@
+from typing import List
+
 import bpy
+import mathutils
 
+from ..BridgeObjects import CXXMesh, CXXLight, CXXCamera
 from ..Converters import Camera, Mesh, Lights
+from . import ObjectManager
 
-class SceneObjects(object):
+class Scene(object):
 
     def __init__(self):
-        self.__cameras : list[Camera.CameraConverter] = []
-        self.__lights : list[Lights.LightConverter] = []
-        self.__meshes : list[Mesh.MeshConverter] = []
+        self.__isActive = False
+        self.__output = ""
+        self.__camera = Camera.CameraConverter()
+        self.__meshes = ObjectManager.MeshFactory()
+        self.__lights = ObjectManager.LightFactory()
+        self.__materials = ObjectManager.MaterialFactory()
 
     def __del__(self):
-        del self.__cameras
-        del self.__lights
+        # Make sure rendering is cancelled
+        if(self.__isActive):
+            bpy.ops.wm.quit_blender()
+        del self.__camera
         del self.__meshes
+        del self.__lights
+        del self.__materials
 
-    # Create and return new camera
-    def AddCamera(self, name):
-        newCam = Camera.CameraConverter(name)
-        self.__cameras.append(newCam)
-        return newCam
+    # Render scene (camera)
+    def Render(self):
+        self.__isActive = True
+        # Set render camera & output
+        bpy.context.scene.render.filepath += self.__output
+        bpy.context.scene.camera = self.__camera.BlenderObject()
+        # Render scene to file
+        bpy.ops.render.render(write_still = True)
+        self.__isActive = False
 
-    # Create and return new mesh
-    def AddMesh(self, name):
-        newMesh = Mesh.MeshConverter(name)
-        self.__meshes.append(newMesh)
-        return newMesh
+    # Get output file
+    @property
+    def Output(self):
+        return self.__output
 
-    # Create and return new light
-    def AddLight(self, name, type = "POINT"):
-        newLight = None
-        # Create respective light
-        if type == "SPOT":
-            newLight = Lights.SpotLightConverter(name)
-        elif type == "SUN":
-            newLight = Lights.SunLightConverter(name)
-        elif type == "AREA":
-            newLight = Lights.AreaLightConverter(name)
-        else:
-            newLight = Lights.PointLightConverter(name)
-        # Add and return it
-        self.__lights.append(newLight)
-        return newLight
+    # Set output file
+    @Output.setter
+    def Output(self, value):
+        self.__output = value
 
-    # Try to render and remove next camera
-    def TryRenderNextCamera(self):
-        # If any cameras left
-        if len(self.__cameras) > 0:
-            # Render and remove it
-            nextRender = self.__cameras.pop()
-            nextRender.ActivateAndRender()
-            del nextRender
-            # Success
-            return True
-        else:
-            # Stop rendering
-            return False
+    # Get scene camera
+    @property
+    def Camera(self):
+        return self.__camera
+
+    # Get light manager
+    @property
+    def LightManager(self):
+        return self.__lights
+
+    # Get mesh manager
+    @property
+    def MeshManager(self):
+        return self.__meshes
+
+    # Get material manager
+    @property
+    def MaterialManager(self):
+        return self.__materials
+
+# TODO
+class SceneProxy(object):
+    def __init__(self, meshes, lights, camera):
+        self.Camera : CXXCamera = camera
+        self.Lights : List[CXXLight] = lights
+        self.Meshes : List[CXXMesh] = meshes
+
+# TODO
+# Build and return scene from proxy
+def Proxy2Scene(proxy : SceneProxy):
+    # Create scene
+    build = Scene()
+    build.Output = proxy.Camera.Output
+
+    # Build camera
+    build.Camera.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
+    build.Camera.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
+    build.Camera.ObjectPosition = mathutils.Vector(proxy.Camera.Position)
+    build.Camera.ObjectRotationQuat = mathutils.Quaternion(proxy.Camera.Rotation)
+    build.Camera.ObjectScale = mathutils.Vector(proxy.Camera.Scale)
+
+    # TODO
+    # Build meshes
+    mesh : CXXMesh
+    for mesh in proxy.Meshes:
+        # FIXME: mesh.Shader -> material
+        curr = build.MeshManager.CreateMesh(mesh.Name, mesh.File, None)
+        curr.ObjectPosition = mathutils.Vector(mesh.Position)
+        curr.ObjectRotationQuat = mathutils.Quaternion(mesh.Rotation)
+        curr.ObjectScale = mathutils.Vector(mesh.Scale)
+
+    # TODO
+    # Build lights
+    light : CXXLight
+    for light in proxy.Lights:
+        # FIXME: Name, types, params
+        curr = build.LightManager.CreateLight("default", "POINT")
+        curr.LightIntensity = light.Intensity
+        curr.ObjectPosition = mathutils.Vector(light.Position)
+        curr.ObjectRotationQuat = mathutils.Quaternion(light.Rotation)
+        curr.ObjectScale = mathutils.Vector(light.Scale)
+
+    # Return scene
+    return build

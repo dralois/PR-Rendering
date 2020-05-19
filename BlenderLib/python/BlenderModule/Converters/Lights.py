@@ -1,97 +1,141 @@
 import bpy
 import mathutils
 
-from .Base import Converter
+from .Base import ObjectConverter
 
-class LightConverter(Converter):
+class LightConverter(ObjectConverter):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self._light : bpy.types.Light = None
+    def __init__(self, name, impl):
+        self.__isArea = isinstance(impl, bpy.types.AreaLight)
+        self.__impl : bpy.types.Light = impl
+        super().__init__(name, self.__impl)
 
     def __del__(self):
         super().__del__()
 
-    # Create general light
-    def _CreateLight(self, intensity, radiance=mathutils.Color((0.8, 0.8, 0.8)), exposure=0.0, cast_indirect=True):
-        # Set general parameters
-        if isinstance(self._light, bpy.types.AreaLight):
-            self._light.appleseed.area_intensity = intensity
-            self._light.appleseed.area_color = radiance
-            self._light.appleseed.area_exposure = exposure
-            self._light.appleseed.cast_indirect = cast_indirect
+    # Get light intensity
+    @property
+    def LightIntensity(self):
+        if self.__isArea:
+            return self.__impl.appleseed.area_intensity
         else:
-            self._light.appleseed.radiance_multiplier = intensity
-            self._light.appleseed.radiance = radiance
-            self._light.appleseed.exposure = exposure
-            self._light.appleseed.cast_indirect = cast_indirect
-        # Store in scene
-        self._CreateObject(self._light)
+            return self.__impl.appleseed.radiance_multiplier
+
+    # Set light intensity
+    @LightIntensity.setter
+    def LightIntensity(self, value):
+        if self.__isArea:
+            self.__impl.appleseed.area_intensity = value
+        else:
+            self.__impl.appleseed.radiance_multiplier = value
+
+    # Get exposure
+    @property
+    def LightExposure(self):
+        if self.__isArea:
+            return self.__impl.appleseed.area_exposure
+        else:
+            return self.__impl.appleseed.exposure
+
+    # Set exposure
+    @LightExposure.setter
+    def LightExposure(self, value):
+        if self.__isArea:
+            self.__impl.appleseed.area_exposure = value
+        else:
+            self.__impl.appleseed.exposure = value
+
+    # Get whether light casts indirect light
+    @property
+    def LightCastsIndirect(self):
+        return self.__impl.appleseed.cast_indirect
+
+    # Set whether light casts indirect light
+    @LightCastsIndirect.setter
+    def LightCastsIndirect(self, value):
+        self.__impl.appleseed.cast_indirect = value
+
+    # Get light color
+    @property
+    def LightColor(self) -> mathutils.Color:
+        if self.__isArea:
+            return self.__impl.appleseed.area_color
+        else:
+            return self.__impl.appleseed.radiance
+
+    # Set light color
+    @LightColor.setter
+    def LightColor(self, value):
+        if self.__isArea:
+            self.__impl.appleseed.area_color = value
+        else:
+            self.__impl.appleseed.radiance = value
 
 class PointLightConverter(LightConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__fullname = "light_point_" + self._name
-        self._light : bpy.types.PointLight = bpy.data.lights.new(self.__fullname, type="POINT")
+        self.__light : bpy.types.PointLight = bpy.data.lights.new( "light_point_" + name, type="POINT")
+        super().__init__(name, self.__light)
 
     def __del__(self):
         super().__del__()
-
-    # Create point light
-    def CreatePointLight(self, intensity):
-        # Point light has no special params
-        self._CreateLight(intensity)
 
 class SpotLightConverter(LightConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__fullname = "light_spot_" + self._name
-        self._light : bpy.types.SpotLight = bpy.data.lights.new(self.__fullname, type="SPOT")
+        self.__light : bpy.types.SpotLight = bpy.data.lights.new("light_spot_" + name, type="SPOT")
+        super().__init__(name, self.__light)
 
     def __del__(self):
         super().__del__()
 
-    # Create spot light
-    def CreateSpotLight(self, intensity, angle):
-        # Set spot light parameters
-        self._light.spot_size = angle
-        # Store in scene
-        self._CreateLight(intensity)
+    # Get spot angle in rad
+    @property
+    def SpotAngle(self):
+        return self.__light.spot_size
+
+    # Set spot angle in rad
+    @SpotAngle.setter
+    def SpotAngle(self, value):
+        self.__light.spot_size = value
 
 class SunLightConverter(LightConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__fullname = "light_sun_" + self._name
-        self._light : bpy.types.SunLight = bpy.data.lights.new(self.__fullname, type="SUN")
+        self.__light : bpy.types.SunLight = bpy.data.lights.new("light_sun_" + name, type="SUN")
+        # Directional light is not supported
+        self.__light.appleseed.sun_mode = "sun"
+        super().__init__(name, self.__light)
 
     def __del__(self):
-        bpy.data.lights.remove(self._light)
         super().__del__()
-
-    # Create sun light
-    def CreateSunLight(self, intensity):
-        # Set sun light parameters
-        self._light.appleseed.sun_mode = "sun"
-        # Store in scene
-        self._CreateLight(intensity)
 
 class AreaLightConverter(LightConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__fullname = "light_area_" + self._name
-        self._light : bpy.types.AreaLight = bpy.data.lights.new(self.__fullname, type="AREA")
+        self.__light : bpy.types.AreaLight = bpy.data.lights.new("light_area_" + name, type="AREA")
+        super().__init__(name, self.__light)
 
     def __del__(self):
         super().__del__()
 
-    # Create area light
-    def CreateAreaLight(self, intensity, size):
-        # Set area light parameters
-        self._light.shape = "DISK"
-        self._light.size = size
-        # Store in scene
-        self._CreateLight(intensity)
+    # Get area shape (RECTANGLE, DISK, SQUARE)
+    @property
+    def AreaShape(self):
+        return self.__light.shape
+
+    # Set area shape (RECTANGLE, DISK, SQUARE)
+    @AreaShape.setter
+    def AreaShape(self, value):
+        self.__light.shape = value
+
+    # Get area size [x, y]
+    @property
+    def AreaSize(self):
+        return self.__light.size, self.__light.size_y
+
+    # Set area size [x, y]
+    @AreaSize.setter
+    def AreaSize(self, value):
+        self.__light.size = value[0]
+        self.__light.size = value[1]

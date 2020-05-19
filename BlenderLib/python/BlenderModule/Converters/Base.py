@@ -1,84 +1,88 @@
 import bpy
 import mathutils
 
-class Converter(object):
+class BaseConverter(object):
 
-    def __init__(self, name):
-        self._name = name
-        self._obj : bpy.types.Object = None
+    def __init__(self, name, internal):
+        self.__name = name
+        self.__internal : bpy.types.ID = internal
+
+    # Get name given on creation
+    @property
+    def Name(self):
+        return self.__name
+
+    # Get internal name
+    @property
+    def BlenderName(self):
+        return self.__internal.name
+
+    # Get internal object in memory
+    @property
+    def BlenderInternal(self) -> bpy.types.ID:
+        return self.__internal
+
+    # Get unique copy of self
+    def GetCopy(self, newName):
+        return BaseConverter(newName, self.__internal.copy())
+
+class ObjectConverter(BaseConverter):
+
+    def __init__(self, name, objData):
+        # Create & add object to scene
+        self.__obj : bpy.types.Object = bpy.data.objects.new(objData.name, objData)
+        bpy.context.collection.objects.link(self.__obj)
+        super().__init__(name, self.__obj)
 
     def __del__(self):
-        if self._obj is not None:
-            bpy.data.objects.remove(self._obj)
+        # Removes data block & object from scene
+        bpy.data.objects.remove(self.__obj)
 
-    # Get object in memory from bpy.data
+    # Get object in memory
     @property
-    def BlenderObject(self):
-        return self._obj
+    def BlenderObject(self) -> bpy.types.Object:
+        return self.__obj
 
     # Get position in scene
     @property
-    def Position(self):
-        if self._obj is not None:
-            return self._obj.location
-        else:
-            return mathutils.Vector(0.0, 0.0, 0.0)
+    def ObjectPosition(self) -> mathutils.Vector:
+        return self.__obj.location
 
     # Set position in scene
-    @Position.setter
-    def Position(self, value):
-        if self._obj is not None:
-            self._obj.location = value
+    @ObjectPosition.setter
+    def ObjectPosition(self, value):
+        self.__obj.location = value
 
     # Get rotation of object (euler)
     @property
-    def RotationEuler(self):
-        if self._obj is not None:
-            self._obj.rotation_mode = "XYZ"
-            return self._obj.rotation_euler
-        else:
-            return mathutils.Euler(0.0, 0.0, 0.0)
+    def ObjectRotationEuler(self) -> mathutils.Euler:
+        self.__obj.rotation_mode = "XYZ"
+        return self.__obj.rotation_euler
 
     # Get rotation of object (quaternion)
     @property
-    def RotationQuat(self):
-        if self._obj is not None:
-            self._obj.rotation_mode = "QUATERNION"
-            return self._obj.rotation_quaternion
-        else:
-            return mathutils.Quaternion(0.0, 0.0, 0.0, 0.0)
+    def ObjectRotationQuat(self) -> mathutils.Quaternion:
+        self.__obj.rotation_mode = "QUATERNION"
+        return self.__obj.rotation_quaternion
 
     # Set rotation of object (euler)
-    @RotationEuler.setter
-    def RotationEuler(self, value):
-        if self._obj is not None:
-            self._obj.rotation_mode = "XYZ"
-            self._obj.rotation_euler = value
+    @ObjectRotationEuler.setter
+    def ObjectRotationEuler(self, value):
+        self.__obj.rotation_mode = "XYZ"
+        self.__obj.rotation_euler = value
 
     # Set rotation of object (quaternion)
-    @RotationQuat.setter
-    def RotationQuat(self, value):
-        if self._obj is not None:
-            self._obj.rotation_mode = "QUATERNION"
-            self._obj.rotation_quaternion = value
+    @ObjectRotationQuat.setter
+    def ObjectRotationQuat(self, value):
+        self.__obj.rotation_mode = "QUATERNION"
+        self.__obj.rotation_quaternion = value
 
     # Get scale of object
     @property
-    def Scale(self):
-        if self._obj is not None:
-            return self._obj.scale
-        else:
-            return mathutils.Vector(0.0, 0.0, 0.0)
+    def ObjectScale(self) -> mathutils.Vector:
+        return self.__obj.scale
 
     # Set scale of object
-    @Scale.setter
-    def Scale(self, value):
-        if self._obj is not None:
-            self._obj.scale = value
-
-    # Create object in memory
-    def _CreateObject(self, data):
-        # Create object in bpy.data
-        self._obj = bpy.data.objects.new("obj_" + self._name, data)
-        # Add to scene
-        bpy.context.collection.objects.link(self._obj)
+    @ObjectScale.setter
+    def ObjectScale(self, value):
+        self.__obj.scale = value

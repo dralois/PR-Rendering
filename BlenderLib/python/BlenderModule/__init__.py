@@ -1,4 +1,5 @@
-__all__ = ["Converters", "Managers"]
+__all__ = ["BridgeObjects", "Converters", "Managers"]
 
+from . import BridgeObjects
 from . import Converters
 from . import Managers

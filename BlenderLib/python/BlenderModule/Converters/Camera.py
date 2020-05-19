@@ -1,34 +1,35 @@
 import bpy
 import mathutils
 
-from .Base import Converter
+from .Base import ObjectConverter
 
-class CameraConverter(Converter):
+class CameraConverter(ObjectConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__isActive = False
-        self.__fullname = "cam_persp_" + self._name
-        self.__camera : bpy.types.Camera = bpy.data.cameras.new(self.__fullname)
+        self.__camera : bpy.types.Camera = bpy.data.cameras.new("cam_" + name)
+        super().__init__(name, self.__camera)
 
     def __del__(self):
         super().__del__()
 
-    # Creates new camera
-    def CreateCamera(self, fovX, fovY, shiftX, shiftY):
-        # Set camera parameters
-        self.__camera.angle_x = fovX
-        self.__camera.angle_y = fovY
-        self.__camera.shift_x = shiftX
-        self.__camera.shift_y = shiftY
-        # Store in scene
-        self._CreateObject(self.__camera)
+    # Get FOV [x, y]
+    @property
+    def CameraFOV(self):
+        return self.__camera.angle_x, self.__camera.angle_y
 
-    # Renders this camera
-    def ActivateAndRender(self):
-        self.__isActive = True
-        # Set active camera to this one
-        bpy.context.scene.camera = self.BlenderObject
-        # Render scene to file
-        bpy.ops.render.render(write_still = True)
-        self.__isActive = False
+    # Set FOV [x, y]
+    @CameraFOV.setter
+    def CameraFOV(self, value):
+        self.__camera.angle_x = value[0]
+        self.__camera.angle_y = value[1]
+
+    # Get shift [x, y]
+    @property
+    def CameraShift(self):
+        return self.__camera.shift_x, self.__camera.shift_y
+
+    # Set shift [x, y]
+    @CameraShift.setter
+    def CameraShift(self, value):
+        self.__camera.shift_x = value[0]
+        self.__camera.shift_y = value[1]

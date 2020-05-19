@@ -2,38 +2,50 @@ import bpy
 import bmesh
 import mathutils
 
-from .Base import Converter
+from .Base import ObjectConverter
 from .Material import MaterialConverter
 
-class MeshConverter(Converter):
+class MeshConverter(ObjectConverter):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.__fullname = "mesh_" + self._name
-        self.__material : bpy.types.Material = None
-        self.__mesh : bpy.types.Mesh = bpy.data.meshes.new(self.__fullname)
+        self.__filePath = ""
+        self.__mesh : bpy.types.Mesh = bpy.data.meshes.new("mesh_" + name)
+        super().__init__(name, self.__mesh)
+        # Assign default material on creation
+        self.BlenderObject.active_material = MaterialConverter.DefaultMaterial()
 
     def __del__(self):
         super().__del__()
 
-    # Create cube mesh
-    def CreateCube(self, material):
-        # Store material
-        self.__material = material or MaterialConverter.DefaultMaterial()
-        # Create and store cube
-        bm = bmesh.new()
-        bmesh.ops.create_cube(bm, size=1.0)
-        bm.to_mesh(self.__mesh)
-        bm.free()
-        # Store in scene & assign material
-        self._CreateObject(self.__mesh)
-        self._obj.active_material = self.__material
+    # Get assigned material
+    @property
+    def MeshMaterial(self) -> bpy.types.Material:
+        return self.BlenderObject.active_material
 
-    # Create & load mesh from file
-    def CreateMesh(self, material, filePath):
-        # Store material
-        self.__material = material or MaterialConverter.DefaultMaterial()
-        # TODO: Load & create mesh
-        # Store in scene & assign material
-        self._CreateObject(self.__mesh)
-        self._obj.active_material = self.__material
+    # Set assigned material
+    @MeshMaterial.setter
+    def MeshMaterial(self, value):
+        if value is not None:
+            self.BlenderObject.active_material = value
+
+    # TODO
+    # Create mesh from file
+    def CreateFromFile(self, filePath):
+        # Load mesh or unit cube
+        if filePath == "":
+            __MakeCube()
+        else:
+            self.__LoadMesh(filePath)
+
+    # Create cube mesh
+    def __MakeCube(self):
+        # Create and store cube
+        cubeMesh = bmesh.new()
+        bmesh.ops.create_cube(cubeMesh, size=1.0)
+        cubeMesh.to_mesh(self.__mesh)
+        cubeMesh.free()
+
+    # TODO
+    # Load mesh from (obj) file
+    def __LoadMesh(self, filePath):
+        self.__filePath = filePath
