@@ -4,6 +4,9 @@ from ..Converters import Base, Camera, Lights, Material, Mesh
 
 T = TypeVar("T", Camera.CameraConverter, Lights.LightConverter, Material.MaterialConverter, Mesh.MeshConverter)
 
+class NoOriginalException(Exception):
+    pass
+
 class ObjectStorage(Generic[T]):
 
     def __init__(self):
@@ -40,37 +43,37 @@ class ObjectStorage(Generic[T]):
         for obj in matches:
             self._Remove(obj)
 
+    # Attempt to store & return a new copy
+    def TryMakeCopy(self, objId, name) -> T:
+        if objId in self.__original:
+            return self._Store(self.__original[objId].GetCopy(name))
+        else:
+            raise NoOriginalException()
+
+    # Store original & return it
+    def MakeOriginal(self, objId, obj) -> T:
+        return self.__Store(obj, objId)
+
     # Save object in storage
-    def _Store(self, obj : T, objId = None):
+    def __Store(self, obj : T, objId = None) -> T:
         bpyName = obj.BlenderName
-        # Potentially store for copying
+        # Potentially make original
         if objId is not None:
             self.__original[objId] = obj
             self.__mapping[bpyName] = objId
-        # Always save in storage
+        # Always store & return object
         self.__storage[bpyName] = obj
-
-    # Try to to create from original
-    def _Copy(self, objId, name) -> T:
-        # If original exists
-        if objId in self.__original:
-            # Make & store copy
-            cpy = self.__original[objId].GetCopy(name)
-            self._Store(cpy)
-            # Return it
-            return cpy
-        else:
-            return None
+        return self.__storage[bpyName]
 
     # Remove object from storage
-    def _Remove(self, obj : T):
+    def __Remove(self, obj : T):
         bpyName = obj.BlenderName
         # Remove stored object
         if bpyName in self.__storage:
-            del self.__storage.pop(bpyName)
+            del self.__storage[bpyName]
         # Potentially remove from copying
         if bpyName in self.__mapping:
-            del self.__original.pop(self.__mapping[bpyName])
+            del self.__original[self.__mapping[bpyName]]
             del self.__mapping[bpyName]
 
 class MaterialFactory(ObjectStorage[Material.MaterialConverter]):
@@ -83,15 +86,14 @@ class MaterialFactory(ObjectStorage[Material.MaterialConverter]):
 
     # Create material with params
     def CreateMaterial(self, name, path) -> Material.MaterialConverter:
-        # Try to copy first
-        newMat = self._Copy(path, name)
-        # If not possible, create original
-        if newMat is None:
+        # Always try to copy original first
+        try:
+            return self.TryMakeCopy(path, name)
+        except NoOriginalException:
+            # If no original, create and return that
             newMat = Material.MaterialConverter(name)
             newMat.CreateFromFile(path)
-            self._Store(newMat, path)
-        # Finally return object
-        return newMat
+            return self.MakeOriginal(path, newMat)
 
 class MeshFactory(ObjectStorage[Mesh.MeshConverter]):
 
@@ -103,16 +105,17 @@ class MeshFactory(ObjectStorage[Mesh.MeshConverter]):
 
     # Create mesh with params
     def CreateMesh(self, name, path, material) -> Mesh.MeshConverter:
-        # Try to copy first
-        newMesh = self._Copy(path, name)
-        # If not possible, create original
-        if newMesh is None:
+        # Always try to copy original first
+        try:
+            cpy = self.TryMakeCopy(path, name)
+            cpy.MeshMaterial = material
+            return cpy
+        except NoOriginalException:
+            # If no original, create and return that
             newMesh = Mesh.MeshConverter(name)
             newMesh.CreateFromFile(path)
             newMesh.MeshMaterial = material
-            self._Store(newMesh, path)
-        # Finally return object
-        return newMesh
+            return self.MakeOriginal(path, newMesh)
 
 class LightFactory(ObjectStorage[Lights.LightConverter]):
 
@@ -124,19 +127,18 @@ class LightFactory(ObjectStorage[Lights.LightConverter]):
 
     # Create light with params
     def CreateLight(self, name, type) -> Lights.LightConverter:
-        # Try to copy first
-        newLight = self._Copy(type, name)
-        # If not possible, create original
-        if newLight is None:
+        # Always try to copy original first
+        try:
+            return self.TryMakeCopy(type, name)
+        except NoOriginalException:
+            # If no original, create and return that
             if type == "AREA":
                 newLight = Lights.AreaLightConverter(name)
-            elif type == "SPOT"
+            elif type == "SPOT":
                 newLight = Lights.SpotLightConverter(name)
-            elif type == "SUN"
+            elif type == "SUN":
                 newLight = Lights.SunLightConverter(name)
             else:
                 newLight = Lights.PointLightConverter(name)
             # Original light is based on type
-            self._Store(newLight, type)
-        # Finally return object
-        return newLight
+            return self.MakeOriginal(type, newLight)

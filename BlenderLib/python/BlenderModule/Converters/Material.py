@@ -1,5 +1,4 @@
 import bpy
-import mathutils
 
 from .Base import BaseConverter
 

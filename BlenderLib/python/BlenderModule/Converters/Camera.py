@@ -1,16 +1,21 @@
 import bpy
-import mathutils
 
 from .Base import ObjectConverter
 
 class CameraConverter(ObjectConverter):
 
-    def __init__(self, name):
+    def __init__(self, name, result):
+        self.__result = result
         self.__camera : bpy.types.Camera = bpy.data.cameras.new("cam_" + name)
         super().__init__(name, self.__camera)
 
     def __del__(self):
         super().__del__()
+
+    # Get result file name
+    @property
+    def CameraResultFile(self):
+        return self.__result
 
     # Get FOV [x, y]
     @property

@@ -3,16 +3,17 @@ from typing import List
 import bpy
 import mathutils
 
-from ..BridgeObjects import CXXMesh, CXXLight, CXXCamera
+from ..Utils.BridgeObjects import CXXMesh, CXXLight, CXXCamera, CXXSettings
 from ..Converters import Camera, Mesh, Lights
 from . import ObjectManager
 
+# TODO
 class Scene(object):
 
-    def __init__(self):
+    def __init__(self, ):
         self.__isActive = False
-        self.__output = ""
-        self.__camera = Camera.CameraConverter()
+        self.__settings = CXXSettings()
+        self.__camera : Camera.CameraConverter = None
         self.__meshes = ObjectManager.MeshFactory()
         self.__lights = ObjectManager.LightFactory()
         self.__materials = ObjectManager.MaterialFactory()
@@ -26,30 +27,58 @@ class Scene(object):
         del self.__lights
         del self.__materials
 
+    # Initialize scene for rendering
+    def Setup(self):
+        # Init blenderseed plugin
+        try:
+            bpy.ops.preferences.addon_refresh()
+            bpy.ops.preferences.addon_enable(module = "blenderseed")
+        except ImportError:
+            bpy.ops.preferences.addon_install(filepath = self.__settings.Plugin)
+            bpy.ops.preferences.addon_enable(module = "blenderseed")
+        # Remove default stuff from scene
+        bpy.data.batch_remove([obj.data for obj in bpy.data.objects])
+        bpy.data.batch_remove([mat for mat in bpy.data.materials])
+        # Change renderer to appleseed
+        bpy.context.scene.render.engine = "APPLESEED_RENDER"
+
     # Render scene (camera)
     def Render(self):
         self.__isActive = True
-        # Set render camera & output
-        bpy.context.scene.render.filepath += self.__output
+        # Activate scenes' camera for rendering
         bpy.context.scene.camera = self.__camera.BlenderObject()
+        # Adjust render settings
+        bpy.context.scene.render.filepath = self.__settings.Output + self.__camera.CameraResultFile
+        bpy.context.scene.render.image_settings.compression = (15, 0)[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.color_depth = (8, 32)[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.file_format = "PNG"
+        bpy.context.scene.render.image_settings.use_zbuffer = not self.__settings.DepthOnly
+        bpy.context.scene.render.resolution_x = self.__settings.Resolution[0]
+        bpy.context.scene.render.resolution_y = self.__settings.Resolution[1]
         # Render scene to file
         bpy.ops.render.render(write_still = True)
         self.__isActive = False
 
-    # Get output file
+    # Get output settings
     @property
-    def Output(self):
-        return self.__output
+    def Settings(self):
+        return self.__settings
 
-    # Set output file
-    @Output.setter
-    def Output(self, value):
-        self.__output = value
+    # Set output settings
+    @Settings.setter
+    def Settings(self, value):
+        self.__settings = value
 
     # Get scene camera
     @property
     def Camera(self):
         return self.__camera
+
+    # Set scene camera
+    @Camera.setter
+    def Camera(self, value):
+        self.__camera = value
 
     # Get light manager
     @property
@@ -66,9 +95,9 @@ class Scene(object):
     def MaterialManager(self):
         return self.__materials
 
-# TODO
 class SceneProxy(object):
-    def __init__(self, meshes, lights, camera):
+    def __init__(self, settings, camera, lights, meshes):
+        self.Settings : CXXSettings = settings
         self.Camera : CXXCamera = camera
         self.Lights : List[CXXLight] = lights
         self.Meshes : List[CXXMesh] = meshes
@@ -76,16 +105,18 @@ class SceneProxy(object):
 # TODO
 # Build and return scene from proxy
 def Proxy2Scene(proxy : SceneProxy):
-    # Create scene
+    # Create scene & settings
     build = Scene()
-    build.Output = proxy.Camera.Output
+    build.Settings = proxy.Settings
 
     # Build camera
-    build.Camera.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
-    build.Camera.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
-    build.Camera.ObjectPosition = mathutils.Vector(proxy.Camera.Position)
-    build.Camera.ObjectRotationQuat = mathutils.Quaternion(proxy.Camera.Rotation)
-    build.Camera.ObjectScale = mathutils.Vector(proxy.Camera.Scale)
+    sceneCam = Camera.CameraConverter("scene", proxy.Camera.result)
+    sceneCam.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
+    sceneCam.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
+    sceneCam.ObjectPosition = mathutils.Vector(proxy.Camera.Position)
+    sceneCam.ObjectRotationQuat = mathutils.Quaternion(proxy.Camera.Rotation)
+    sceneCam.ObjectScale = mathutils.Vector(proxy.Camera.Scale)
+    build.Camera = sceneCam
 
     # TODO
     # Build meshes

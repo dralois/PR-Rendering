@@ -1,23 +1,28 @@
-import os
-import bpy
+
+from .Managers import RenderManager
+from .Managers.SceneManager import SceneProxy
+from .Utils.BridgeObjects import CXXCamera, CXXLight, CXXMesh, CXXSettings
+
 import mathutils
 
-from . import *
+settings = CXXSettings()
+settings.Output = "test//"
+settings.Plugin = "..//"
+settings.Resolution = (1280, 720)
 
-# Init
-scene = Managers.SceneManager.Scene()
+camera = CXXCamera()
+camera.Position = (6, -3, 5)
+rotQuat = mathutils.Euler((0.9, 0.0, 1.1)).to_quaternion()
+camera.Rotation = (rotQuat.w, rotQuat.x, rotQuat.y, rotQuat.z)
+camera.Result = "output.png"
 
-# Setup test scene
-cam = scene.AddCamera("cam")
-light = scene.LightManager.CreateLight("light", "POINT")
-cube = scene.MeshManager.CreateMesh("cube", None, None)
+light = CXXLight()
+light.Intensity = 100
+light.Position = (3, -4.2, 5)
 
-# Position & adjust objects in scene
-light.LightIntensity = 100
-light.ObjectPosition = mathutils.Vector((3, -4.2, 5))
-scene.Camera.ObjectPosition = mathutils.Vector((6, -3, 5))
-scene.Camera.ObjectRotationEuler = mathutils.Euler((0.9, 0.0, 1.1))
+mesh = CXXMesh()
+mesh.Name = "cube"
 
-# Render camera
-scene.Output = os.getcwd() + "//output.png"
-scene.Render()
+scene = SceneProxy(settings, camera, [light], [mesh])
+
+RenderManager.RenderScenes([scene])
