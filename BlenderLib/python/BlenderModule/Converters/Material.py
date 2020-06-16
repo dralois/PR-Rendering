@@ -1,6 +1,8 @@
-import bpy
-
+from ..Utils.Importer import DoImport
 from .Base import BaseConverter
+
+# Blender for multiprocessing
+bpy = DoImport()
 
 class MaterialConverter(BaseConverter):
 

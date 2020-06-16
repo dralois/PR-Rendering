@@ -1,26 +1,25 @@
-from typing import List
-
-import multiprocessing
-
-from ..Utils.Importer import ImportBPY
-
-org_sys, bpy_sys = ImportBPY()
-print(org_sys)
-print(bpy_sys)
-
+from ..Utils.Importer import GetPaths, SetPaths
 from .SceneManager import SceneProxy, Proxy2Scene
 
-def RenderSceneSingle(scene : SceneProxy):
-    # Create scene from proxy
-    scene = Proxy2Scene(self.__scene)
-    # Load blenderseed & setup
-    scene.Setup()
-    # Finally render the scene
-    scene.Render()
-    pass
+from typing import List
+import multiprocessing
 
+# Fetch functional and broken paths for Blender importing
+__orgPaths, __bpyPaths = GetPaths()
+
+# Renders a single scene
+def RenderSceneSingle(sceneData : SceneProxy):
+    # Create scene from proxy
+    scene = Proxy2Scene(sceneData)
+    # Render the scene
+    scene.Render()
+
+# Renders a collection of scenes in parallel
 def RenderScenes(scenes : List[SceneProxy]):
-    with multiprocessing.Pool(maxtasksperchild=1) as workers:
+    # Start render workers
+    with multiprocessing.Pool(  maxtasksperchild=1,
+                                initializer=SetPaths,
+                                initargs=(__orgPaths, __bpyPaths)) as workers:
         workers.map(RenderSceneSingle, scenes)
         workers.close()
         workers.join()

@@ -1,7 +1,31 @@
 import sys
 
-def ImportBPY():
-    org_sys = list(sys.path)
+# Singleton storage
+__orgPaths = None
+__bpyPaths = None
+
+# Returns bpy import
+def DoImport():
+    functional, broken = GetPaths()
+    sys.path = functional
     import bpy
-    bpy_sys = list(sys.path)
-    return org_sys, bpy_sys
+    sys.path = broken
+    return bpy
+
+# Returns [functional sys.path, broken sys.path with bpy]
+def GetPaths():
+    global __orgPaths, __bpyPaths
+    # Store the paths before and after breaking it
+    if __orgPaths is None and __bpyPaths is None:
+        __orgPaths = list(sys.path)
+        import bpy
+        __bpyPaths = list(sys.path)
+    # Return them
+    return __orgPaths, __bpyPaths
+
+# Sets [functional sys.path, broken sys.path with bpy]
+def SetPaths(orgPaths, bpyPaths):
+    global __orgPaths, __bpyPaths
+    # Store the paths before and after breaking it
+    __orgPaths = orgPaths
+    __bpyPaths = bpyPaths

@@ -1,13 +1,15 @@
-from typing import List
-
-import bpy
-import mathutils
-
+from ..Utils.Importer import DoImport
 from ..Utils.BridgeObjects import CXXMesh, CXXLight, CXXCamera, CXXSettings
 from ..Converters import Camera, Mesh, Lights
 from . import ObjectManager
 
-# TODO
+# Blender for multiprocessing
+bpy = DoImport()
+
+from typing import List
+import mathutils
+
+# Actual blender data storage & rendering class
 class Scene(object):
 
     def __init__(self, ):
@@ -27,8 +29,26 @@ class Scene(object):
         del self.__lights
         del self.__materials
 
+    # Render scene (camera)
+    def Render(self):
+        self.__isActive = True
+        # Activate scenes' camera for rendering
+        bpy.context.scene.camera = self.__camera.BlenderObject
+        # Adjust render settings
+        bpy.context.scene.render.filepath = self.__settings.Output + self.__camera.CameraResultFile
+        bpy.context.scene.render.image_settings.compression = (15, 0)[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.color_depth = ("8", "32")[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.DepthOnly]
+        bpy.context.scene.render.image_settings.file_format = "PNG"
+        bpy.context.scene.render.image_settings.use_zbuffer = not self.__settings.DepthOnly
+        bpy.context.scene.render.resolution_x = self.__settings.Resolution[0]
+        bpy.context.scene.render.resolution_y = self.__settings.Resolution[1]
+        # Render scene to file
+        bpy.ops.render.render(write_still = True)
+        self.__isActive = False
+
     # Initialize scene for rendering
-    def Setup(self):
+    def __Setup(self):
         # Init blenderseed plugin
         try:
             bpy.ops.preferences.addon_refresh()
@@ -42,33 +62,16 @@ class Scene(object):
         # Change renderer to appleseed
         bpy.context.scene.render.engine = "APPLESEED_RENDER"
 
-    # Render scene (camera)
-    def Render(self):
-        self.__isActive = True
-        # Activate scenes' camera for rendering
-        bpy.context.scene.camera = self.__camera.BlenderObject()
-        # Adjust render settings
-        bpy.context.scene.render.filepath = self.__settings.Output + self.__camera.CameraResultFile
-        bpy.context.scene.render.image_settings.compression = (15, 0)[self.__settings.DepthOnly]
-        bpy.context.scene.render.image_settings.color_depth = (8, 32)[self.__settings.DepthOnly]
-        bpy.context.scene.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.DepthOnly]
-        bpy.context.scene.render.image_settings.file_format = "PNG"
-        bpy.context.scene.render.image_settings.use_zbuffer = not self.__settings.DepthOnly
-        bpy.context.scene.render.resolution_x = self.__settings.Resolution[0]
-        bpy.context.scene.render.resolution_y = self.__settings.Resolution[1]
-        # Render scene to file
-        bpy.ops.render.render(write_still = True)
-        self.__isActive = False
-
     # Get output settings
     @property
     def Settings(self):
         return self.__settings
 
-    # Set output settings
+    # Set output settings & setup blenderseed
     @Settings.setter
     def Settings(self, value):
         self.__settings = value
+        self.__Setup()
 
     # Get scene camera
     @property
@@ -95,6 +98,7 @@ class Scene(object):
     def MaterialManager(self):
         return self.__materials
 
+# Proxy data storage class
 class SceneProxy(object):
     def __init__(self, settings, camera, lights, meshes):
         self.Settings : CXXSettings = settings
@@ -110,7 +114,7 @@ def Proxy2Scene(proxy : SceneProxy):
     build.Settings = proxy.Settings
 
     # Build camera
-    sceneCam = Camera.CameraConverter("scene", proxy.Camera.result)
+    sceneCam = Camera.CameraConverter("scene", proxy.Camera.Result)
     sceneCam.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
     sceneCam.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
     sceneCam.ObjectPosition = mathutils.Vector(proxy.Camera.Position)

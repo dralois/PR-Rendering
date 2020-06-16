@@ -1,4 +1,8 @@
-import bpy
+from ..Utils.Importer import DoImport
+
+# Blender for multiprocessing
+bpy = DoImport()
+
 import bmesh
 import mathutils
 
@@ -33,7 +37,7 @@ class MeshConverter(ObjectConverter):
     def CreateFromFile(self, filePath):
         # Load mesh or unit cube
         if filePath == "":
-            __MakeCube()
+            self.__MakeCube()
         else:
             self.__LoadMesh(filePath)
 

@@ -1,4 +1,8 @@
-import bpy
+from ..Utils.Importer import DoImport
+
+# Blender for multiprocessing
+bpy = DoImport()
+
 import mathutils
 
 class BaseConverter(object):

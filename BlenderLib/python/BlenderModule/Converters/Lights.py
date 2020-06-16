@@ -1,7 +1,10 @@
-import bpy
-import mathutils
-
+from ..Utils.Importer import DoImport
 from .Base import ObjectConverter
+
+# Blender for multiprocessing
+bpy = DoImport()
+
+import mathutils
 
 class LightConverter(ObjectConverter):
 

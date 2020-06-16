@@ -1,4 +1,7 @@
-import bpy
+from ..Utils.Importer import DoImport
+
+# Blender for multiprocessing
+bpy = DoImport()
 
 from .Base import ObjectConverter
 

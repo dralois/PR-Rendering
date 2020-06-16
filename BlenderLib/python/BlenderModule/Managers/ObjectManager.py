@@ -1,6 +1,6 @@
-from typing import List, Dict, Generic, TypeVar
-
 from ..Converters import Base, Camera, Lights, Material, Mesh
+
+from typing import List, Dict, Generic, TypeVar
 
 T = TypeVar("T", Camera.CameraConverter, Lights.LightConverter, Material.MaterialConverter, Mesh.MeshConverter)
 
