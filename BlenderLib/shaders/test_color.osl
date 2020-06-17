@@ -1,0 +1,18 @@
+shader test_color
+[[
+    string as_node_name = "asTestColor",
+    string as_category = "surface"
+]]
+(
+    color in_color = color(1)
+    [[
+        string label = "Color",
+    ]],
+    output closure color out_output = 0
+    [[
+        string label = "Output"
+    ]]
+)
+{
+    out_output = in_color;
+}
