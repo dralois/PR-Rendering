@@ -19,6 +19,8 @@ class MeshData(DataWrapper):
             self.__mesh = bpy.data.meshes.new("mesh_" + name)
         elif isinstance(cpy, MeshData):
             self.__mesh = cpy.Blueprint.copy()
+            self.__mesh.name = name
+            self.__isValid = True
         else:
             raise TypeError
 
@@ -62,7 +64,9 @@ class MeshData(DataWrapper):
         # Delete potentially loaded materials
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])
         # Update internals
-        self.__mesh = loader.data
+        newMesh = loader.data
+        self._Update(newMesh)
+        self.__mesh = newMesh
         # Delete creator object
         bpy.data.objects.remove(loader)
 

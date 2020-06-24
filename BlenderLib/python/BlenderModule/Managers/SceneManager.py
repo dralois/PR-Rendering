@@ -61,6 +61,8 @@ class Scene(object):
         bpy.data.batch_remove([mat for mat in bpy.data.materials])
         # Change renderer to appleseed
         bpy.context.scene.render.engine = "APPLESEED_RENDER"
+        # Enable debug output
+        bpy.context.preferences.addons["blenderseed"].preferences.log_level = "debug"
 
     # Get output settings
     @property

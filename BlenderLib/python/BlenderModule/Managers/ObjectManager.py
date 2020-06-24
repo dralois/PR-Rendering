@@ -34,6 +34,7 @@ class BlueprintStorage(Generic[T]):
         self.__blueprints = {}
         self.__uniques : List[T]
         self.__uniques = []
+        self.__uniqueID = 0
 
     def __del__(self):
         del self.__blueprints
@@ -54,6 +55,16 @@ class BlueprintStorage(Generic[T]):
             self.__blueprints[blueprintID] = blueprint
         # Return created or existing blueprint
         return self.__blueprints[blueprintID]
+
+    # Get a unique identifier string
+    @property
+    def NextUniqueID(self) -> str:
+        self.__uniqueID += 1
+        return "_{:03d}".format(self.__uniqueID)
+
+    # Override: Make & return unique copy
+    def GetUnique(self, blueprint : T) -> T:
+        raise NotImplementedError
 
     # Store unique blueprint copy
     def AddUnique(self, unique : T) -> T:
@@ -123,12 +134,17 @@ class InstanceStorage(Generic[V, T]):
 # Shader storage & factory
 class ShaderFactory(BlueprintStorage[Shader.ShaderData]):
 
+    # Override: Make & return unique shader
+    def GetUnique(self, blueprint : Shader.ShaderData) -> Shader.ShaderData:
+        uniqueShader = Shader.ShaderData(blueprint.BlueprintID + self.NextUniqueID, blueprint)
+        return self.AddUnique(uniqueShader)
+
     # Get OSL shader blueprint
-    def GetShaderBlueprint(self, path, uniqueShader = True) -> Shader.ShaderData:
+    def GetShaderBlueprint(self, path, uniqueShader = False) -> Shader.ShaderData:
         try:
             # Unique or instanced shader
             if uniqueShader:
-                return self.AddUnique(Shader.ShaderData(GetFileName(path), self.GetBlueprint(path)))
+                return self.GetUnique(self.GetBlueprint(path))
             else:
                 return self.GetBlueprint(path)
         except NoBlueprintException:
@@ -137,7 +153,7 @@ class ShaderFactory(BlueprintStorage[Shader.ShaderData]):
             newShader.CreateFromFile(path)
             # Unique or instanced shader
             if uniqueShader:
-                return self.AddUnique(Shader.ShaderData(GetFileName(path), self.AddBlueprint(path, newShader)))
+                return self.GetUnique(self.AddBlueprint(path, newShader))
             else:
                 return self.AddBlueprint(path, newShader)
 
@@ -153,12 +169,17 @@ class MaterialFactory(BlueprintStorage[Material.MaterialData]):
         super().__del__()
         del self.__shaders
 
+    # Override: Make & return unique shader
+    def GetUnique(self, blueprint : Material.MaterialData) -> Material.MaterialData:
+        uniqueMat = Material.MaterialData(blueprint.BlueprintID + self.NextUniqueID, blueprint)
+        return self.AddUnique(uniqueMat)
+
     # Get material blueprint
-    def GetMaterialBlueprint(self, shaderPath, uniqueMat = True) -> Material.MaterialData:
+    def GetMaterialBlueprint(self, shaderPath, uniqueMat = False) -> Material.MaterialData:
         try:
             # Unique or instanced material
             if uniqueMat:
-                return self.AddUnique(Material.MaterialData(GetFileName(shaderPath), self.GetBlueprint(shaderPath)))
+                return self.GetUnique(self.GetBlueprint(shaderPath))
             else:
                 return self.GetBlueprint(shaderPath)
         except NoBlueprintException:
@@ -169,7 +190,7 @@ class MaterialFactory(BlueprintStorage[Material.MaterialData]):
             newMat.CreateFromShader(shader)
             # Unique or instanced material
             if uniqueMat:
-                return self.AddUnique(Material.MaterialData(GetFileName(shaderPath), self.AddBlueprint(shaderPath, newMat)))
+                return self.GetUnique(self.AddBlueprint(shaderPath, newMat))
             else:
                 return self.AddBlueprint(shaderPath, newMat)
 
@@ -186,12 +207,12 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
         del self.__materials
 
     # Create mesh instance from blueprint
-    def AddMeshInstance(self, meshName, meshBlueprint : Mesh.MeshData, shaderPath, uniqueMat = True):
+    def AddMeshInstance(self, meshName, meshBlueprint : Mesh.MeshData, shaderPath):
         # Sanity check
         if not isinstance(meshBlueprint, Mesh.MeshData):
             raise TypeError
         # Fetch required material blueprint
-        mat = self.__materials.GetMaterialBlueprint(shaderPath, uniqueMat)
+        mat = self.__materials.GetMaterialBlueprint(shaderPath, False)
         mesh = Mesh.MeshInstance(meshName, meshBlueprint)
         mesh.MeshMaterial = mat
         return self._AddInstance(mesh)

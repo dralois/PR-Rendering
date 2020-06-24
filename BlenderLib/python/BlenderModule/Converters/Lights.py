@@ -97,6 +97,7 @@ class PointLightData(GenericLightData):
             self.__light = bpy.data.lights.new( "light_point_" + name, type="POINT")
         elif isinstance(cpy, PointLightData):
             self.__light = cpy.Blueprint.copy()
+            self.__light.name = name
         else:
             raise TypeError
 
@@ -112,6 +113,7 @@ class SpotLightData(GenericLightData):
             self.__light = bpy.data.lights.new("light_spot_" + name, type="SPOT")
         elif isinstance(cpy, SpotLightData):
             self.__light = cpy.Blueprint.copy()
+            self.__light.name = name
         else:
             raise TypeError
 
@@ -137,6 +139,7 @@ class SunLightData(GenericLightData):
             self.__light = bpy.data.lights.new("light_sun_" + name, type="SUN")
         elif isinstance(cpy, SunLightData):
             self.__light = cpy.Blueprint.copy()
+            self.__light.name = name
         else:
             raise TypeError
 
@@ -154,6 +157,7 @@ class AreaLightData(GenericLightData):
             self.__light = bpy.data.lights.new("light_area_" + name, type="AREA")
         elif isinstance(cpy, bpy.type.AreaLight):
             self.__light = cpy.Blueprint.copy()
+            self.__light.name = name
         else:
             raise TypeError
 

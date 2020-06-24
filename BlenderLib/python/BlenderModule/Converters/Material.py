@@ -20,6 +20,8 @@ class MaterialData(DataWrapper):
             self.__material = bpy.data.materials.new("mat_" + name)
         elif isinstance(cpy, MaterialData):
             self.__material = cpy.Blueprint.copy()
+            self.__material.name = name
+            self.__isValid = True
         else:
             raise TypeError
 

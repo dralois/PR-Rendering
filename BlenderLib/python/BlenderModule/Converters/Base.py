@@ -64,7 +64,7 @@ class DataWrapper(BaseWrapper):
     # Override: Get internal name
     @property
     def BlueprintID(self):
-        return self.__data.name_full
+        return self.__data.name
 
     # Override: Get internal data
     @property
@@ -77,8 +77,10 @@ class DataWrapper(BaseWrapper):
 
     # Override: Cleanup old & update internal data
     def _Update(self, newData : bpy.types.ID):
+        oldName = self.BlueprintID
         self._Cleanup()
         self.__data = newData
+        self.__data.name = oldName
 
 # Object with transform in scene
 class ObjectWrapper(BaseWrapper):
@@ -104,7 +106,7 @@ class ObjectWrapper(BaseWrapper):
     # Override: Get blueprint name
     @property
     def BlueprintID(self):
-        return self.__obj.name_full
+        return self.__obj.name
 
     # Forwarded: Get blueprint
     @property

@@ -14,6 +14,7 @@ class CameraData(DataWrapper):
             self.__camera = bpy.data.cameras.new("cam_" + name)
         elif isinstance(cpy, CameraData):
             self.__camera = cpy.Blueprint.copy()
+            self.__camera.name = name
         else:
             raise TypeError
 

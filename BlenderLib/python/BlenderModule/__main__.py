@@ -26,12 +26,14 @@ mesh1.Name = "cube1"
 mesh1.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
 mesh1.Shader = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.osl")
 mesh1.Position = (0,0,0)
+mesh1.Scale = (.5,.5,.5)
 
 mesh2 = CXXMesh()
 mesh2.Name = "cube2"
 mesh2.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
 mesh2.Shader = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.osl")
-mesh2.Position = (.5,0,.5)
+mesh2.Position = (1,1,0)
+mesh2.Scale = (.5,.5,.5)
 
 scene = SceneProxy(settings, camera, [light], [mesh1, mesh2])
 

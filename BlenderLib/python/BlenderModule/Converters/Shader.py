@@ -17,6 +17,8 @@ class ShaderData(DataWrapper):
             self.__shaderCode = bpy.data.texts.new("osl_" + name)
         elif isinstance(cpy, ShaderData):
             self.__shaderCode = cpy.Blueprint.copy()
+            self.__shaderCode.name = name
+            self.__isValid = True
         else:
             raise TypeError
 
@@ -42,11 +44,8 @@ class ShaderData(DataWrapper):
         file = os.path.abspath(filePath)
         # Only load if normalized path exists & not yet created
         if len(filePath) > 0 and not self.__isValid:
-            # Create new
-            blueprintName = self.BlueprintID
+            # Update internals with newly loaded code
             newShader = bpy.data.texts.load(file)
-            newShader.name = blueprintName
-            # Handle internals
             self._Update(newShader)
             self.__shaderCode = newShader
             self.__isValid = True
