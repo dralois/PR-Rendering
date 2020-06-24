@@ -6,7 +6,7 @@ import os
 import mathutils
 
 settings = CXXSettings()
-settings.Output = os.path.join(os.getcwd(), "Module Test\\")
+settings.Output = os.path.join(os.getcwd(), "BlenderModule\\Test\\")
 settings.Plugin = os.path.join(os.getcwd(), "..\\")
 settings.Resolution = (1280, 720)
 
