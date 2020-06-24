@@ -1,144 +1,262 @@
-from ..Converters import Base, Camera, Lights, Material, Mesh
+from ..Converters import Base, Camera, Lights, Material, Mesh, Shader
 
 from typing import List, Dict, Generic, TypeVar
 
-T = TypeVar("T", Camera.CameraConverter, Lights.LightConverter, Material.MaterialConverter, Mesh.MeshConverter)
+T = TypeVar("T",
+            Camera.CameraData,
+            Lights.GenericLightData,
+            Material.MaterialData,
+            Mesh.MeshData,
+            Shader.ShaderData
+)
 
-class NoOriginalException(Exception):
+V = TypeVar("V",
+            Camera.CameraInstance,
+            Lights.GenericLightInstance,
+            Mesh.MeshInstance
+)
+
+# Get file name from path
+def GetFileName(path):
+    from os.path import split, splitext
+    file = split(path)[1]
+    return splitext(file)[0]
+
+# Thrown if blueprint not created yet
+class NoBlueprintException(Exception):
     pass
 
-class ObjectStorage(Generic[T]):
+# Generic blueprint storage
+class BlueprintStorage(Generic[T]):
 
     def __init__(self):
-        self.__storage : Dict[str, T]
-        self.__storage = {}
-        self.__original : Dict[str, T]
-        self.__original = {}
-        self.__mapping : Dict[str, str]
-        self.__mapping = {}
+        self.__blueprints : Dict[str, T]
+        self.__blueprints = {}
+        self.__uniques : List[T]
+        self.__uniques = []
 
     def __del__(self):
-        del self.__storage
-        del self.__original
-        del self.__mapping
+        del self.__blueprints
+        del self.__uniques
 
-    # Get all matching objects
-    def GetByName(self, name) -> List[T]:
+    # Get blueprint by ID
+    def GetBlueprint(self, blueprintID) -> T:
+        # Return only if blueprint exists
+        if blueprintID not in self.__blueprints:
+            raise NoBlueprintException
+        else:
+            return self.__blueprints[blueprintID]
+
+    # Add new blueprint by ID
+    def AddBlueprint(self, blueprintID, blueprint : T) -> T:
+        # Don't override blueprints
+        if blueprintID not in self.__blueprints:
+            self.__blueprints[blueprintID] = blueprint
+        # Return created or existing blueprint
+        return self.__blueprints[blueprintID]
+
+    # Store unique blueprint copy
+    def AddUnique(self, unique : T) -> T:
+        self.__uniques.append(unique)
+        return unique
+
+    # Remove unique blueprint copy from storage
+    def RemoveUnique(self, unique : T):
+        if unique in self.__uniques:
+            self.__uniques.remove(unique)
+
+# Generic storage of actual instances in a scene
+class InstanceStorage(Generic[V, T]):
+
+    def __init__(self):
+        self.__blueprints : BlueprintStorage[T]
+        self.__blueprints = BlueprintStorage[T]()
+        self.__instances : List[V]
+        self.__instances =  []
+
+    def __del__(self):
+        del self.__blueprints
+        del self.__instances
+
+    # Get all matching instances
+    def GetInstances(self, name) -> List[V]:
         matches = []
-        # Find all objects with given name
-        for obj in self.__storage.values():
+        # Find all instances with given name
+        for obj in self.__instances.values():
             if obj.Name == name:
                 matches.append(obj)
         # Return them
         return matches
 
-    # Remove all matching objects
-    def RemoveByName(self, name):
+    # Remove all matching instances
+    def RemoveInstances(self, name):
         matches = []
-        # Find all objects with given name
-        for bpyName, obj in self.__storage.items():
+        # Find all instances with given name
+        for obj in self.__instances.values():
             if obj.Name == name:
                 matches.append(obj)
         # Remove them
         for obj in matches:
-            self._Remove(obj)
+            self._RemoveInstance(obj)
 
-    # Attempt to store & return a new copy
-    def TryMakeCopy(self, objId, name) -> T:
-        if objId in self.__original:
-            return self._Store(self.__original[objId].GetCopy(name))
+    # Get blueprint factory
+    @property
+    def _Blueprints(self) -> BlueprintStorage[T]:
+        return self.__blueprints
+
+    # Adds an instance to storage
+    def _AddInstance(self, instance : V) -> V:
+        if instance is not None:
+            self.__instances.append(instance)
+            return instance
         else:
-            raise NoOriginalException()
+            raise ValueError
 
-    # Store original & return it
-    def MakeOriginal(self, objId, obj) -> T:
-        return self.__Store(obj, objId)
+    # Removes an instance from storage
+    def _RemoveInstance(self, instance : V):
+        if instance in self.__instances:
+            self._Blueprints.RemoveUnique(instance)
+            self.__instances.remove(instance)
+        else:
+            raise ValueError
 
-    # Save object in storage
-    def __Store(self, obj : T, objId = None) -> T:
-        bpyName = obj.BlenderName
-        # Potentially make original
-        if objId is not None:
-            self.__original[objId] = obj
-            self.__mapping[bpyName] = objId
-        # Always store & return object
-        self.__storage[bpyName] = obj
-        return self.__storage[bpyName]
+# Shader storage & factory
+class ShaderFactory(BlueprintStorage[Shader.ShaderData]):
 
-    # Remove object from storage
-    def __Remove(self, obj : T):
-        bpyName = obj.BlenderName
-        # Remove stored object
-        if bpyName in self.__storage:
-            del self.__storage[bpyName]
-        # Potentially remove from copying
-        if bpyName in self.__mapping:
-            del self.__original[self.__mapping[bpyName]]
-            del self.__mapping[bpyName]
-
-class MaterialFactory(ObjectStorage[Material.MaterialConverter]):
-
-    def __init__(self):
-        super().__init__()
-
-    def __del__(self):
-        super().__del__()
-
-    # Create material with params
-    def CreateMaterial(self, name, path) -> Material.MaterialConverter:
-        # Always try to copy original first
+    # Get OSL shader blueprint
+    def GetShaderBlueprint(self, path, uniqueShader = True) -> Shader.ShaderData:
         try:
-            return self.TryMakeCopy(path, name)
-        except NoOriginalException:
-            # If no original, create and return that
-            newMat = Material.MaterialConverter(name)
-            newMat.CreateFromFile(path)
-            return self.MakeOriginal(path, newMat)
-
-class MeshFactory(ObjectStorage[Mesh.MeshConverter]):
-
-    def __init__(self):
-        super().__init__()
-
-    def __del__(self):
-        super().__del__()
-
-    # Create mesh with params
-    def CreateMesh(self, name, path, material) -> Mesh.MeshConverter:
-        # Always try to copy original first
-        try:
-            cpy = self.TryMakeCopy(path, name)
-            cpy.MeshMaterial = material
-            return cpy
-        except NoOriginalException:
-            # If no original, create and return that
-            newMesh = Mesh.MeshConverter(name)
-            newMesh.CreateFromFile(path)
-            newMesh.MeshMaterial = material
-            return self.MakeOriginal(path, newMesh)
-
-class LightFactory(ObjectStorage[Lights.LightConverter]):
-
-    def __init__(self):
-        super().__init__()
-
-    def __del__(self):
-        super().__del__()
-
-    # Create light with params
-    def CreateLight(self, name, type) -> Lights.LightConverter:
-        # Always try to copy original first
-        try:
-            return self.TryMakeCopy(type, name)
-        except NoOriginalException:
-            # If no original, create and return that
-            if type == "AREA":
-                newLight = Lights.AreaLightConverter(name)
-            elif type == "SPOT":
-                newLight = Lights.SpotLightConverter(name)
-            elif type == "SUN":
-                newLight = Lights.SunLightConverter(name)
+            # Unique or instanced shader
+            if uniqueShader:
+                return self.AddUnique(Shader.ShaderData(GetFileName(path), self.GetBlueprint(path)))
             else:
-                newLight = Lights.PointLightConverter(name)
-            # Original light is based on type
-            return self.MakeOriginal(type, newLight)
+                return self.GetBlueprint(path)
+        except NoBlueprintException:
+            # If no blueprint, create and return it
+            newShader = Shader.ShaderData(GetFileName(path))
+            newShader.CreateFromFile(path)
+            # Unique or instanced shader
+            if uniqueShader:
+                return self.AddUnique(Shader.ShaderData(GetFileName(path), self.AddBlueprint(path, newShader)))
+            else:
+                return self.AddBlueprint(path, newShader)
+
+# Material storage & factory
+class MaterialFactory(BlueprintStorage[Material.MaterialData]):
+
+    def __init__(self):
+        super().__init__()
+        self.__shaders : ShaderFactory
+        self.__shaders = ShaderFactory()
+
+    def __del__(self):
+        super().__del__()
+        del self.__shaders
+
+    # Get material blueprint
+    def GetMaterialBlueprint(self, shaderPath, uniqueMat = True) -> Material.MaterialData:
+        try:
+            # Unique or instanced material
+            if uniqueMat:
+                return self.AddUnique(Material.MaterialData(GetFileName(shaderPath), self.GetBlueprint(shaderPath)))
+            else:
+                return self.GetBlueprint(shaderPath)
+        except NoBlueprintException:
+            # If no blueprint, create it
+            newMat = Material.MaterialData(GetFileName(shaderPath))
+            # Fetch required OSL shader & create material
+            shader = self.__shaders.GetShaderBlueprint(shaderPath)
+            newMat.CreateFromShader(shader)
+            # Unique or instanced material
+            if uniqueMat:
+                return self.AddUnique(Material.MaterialData(GetFileName(shaderPath), self.AddBlueprint(shaderPath, newMat)))
+            else:
+                return self.AddBlueprint(shaderPath, newMat)
+
+# Mesh storage & factory & instancer
+class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
+
+    def __init__(self):
+        super().__init__()
+        self.__materials : MaterialFactory
+        self.__materials = MaterialFactory()
+
+    def __del__(self):
+        super().__del__()
+        del self.__materials
+
+    # Create mesh instance from blueprint
+    def AddMeshInstance(self, meshName, meshBlueprint : Mesh.MeshData, shaderPath, uniqueMat = True):
+        # Sanity check
+        if not isinstance(meshBlueprint, Mesh.MeshData):
+            raise TypeError
+        # Fetch required material blueprint
+        mat = self.__materials.GetMaterialBlueprint(shaderPath, uniqueMat)
+        mesh = Mesh.MeshInstance(meshName, meshBlueprint)
+        mesh.MeshMaterial = mat
+        return self._AddInstance(mesh)
+
+    # Get mesh blueprint
+    def GetMeshBlueprint(self, meshPath) -> Mesh.MeshData:
+        try:
+            return self._Blueprints.GetBlueprint(meshPath)
+        except NoBlueprintException:
+            # If no blueprint, create mesh
+            newMesh = Mesh.MeshData(GetFileName(meshPath))
+            newMesh.CreateFromFile(meshPath)
+            # Add & return blueprint
+            return self._Blueprints.AddBlueprint(meshPath, newMesh)
+
+# Light storage & factory & instancer
+class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLightData]):
+
+    # Create light instance from blueprint
+    def AddLightInstance(self, lightName, lightBlueprint : Lights.GenericLightData) -> Lights.GenericLightInstance:
+        # Make instance depending on light type
+        if isinstance(lightBlueprint, Lights.AreaLightData):
+            light = Lights.AreaLightInstance(lightName, lightBlueprint)
+        elif isinstance(lightBlueprint, Lights.SpotLightData):
+            light = Lights.SpotLightInstance(lightName, lightBlueprint)
+        elif isinstance(lightBlueprint, Lights.SunLightData):
+            light = Lights.SunLightInstance(lightName, lightBlueprint)
+        elif isinstance(lightBlueprint, Lights.PointLightData):
+            light = Lights.PointLightInstance(lightName, lightBlueprint)
+        else:
+            raise TypeError
+        # Add and return it
+        return self._AddInstance(light)
+
+    # Get light blueprint
+    def GetLightBlueprint(self, type) -> Lights.GenericLightData:
+        # Always try to return a copied light blueprint first
+        try:
+            if type == "AREA":
+                return self._Blueprints.AddUnique(Lights.AreaLightData(type, self._Blueprints.GetBlueprint(type)))
+            elif type == "SPOT":
+                return self._Blueprints.AddUnique(Lights.SpotLightData(type, self._Blueprints.GetBlueprint(type)))
+            elif type == "SUN":
+                return self._Blueprints.AddUnique(Lights.SunLightData(type, self._Blueprints.GetBlueprint(type)))
+            elif type == "POINT":
+                return self._Blueprints.AddUnique(Lights.PointLightData(type, self._Blueprints.GetBlueprint(type)))
+            else:
+                raise ValueError
+        except NoBlueprintException:
+            # If no blueprint, create one and return copied version
+            if type == "AREA":
+                newLight = Lights.AreaLightData(type)
+                blueprint = self._Blueprints.AddBlueprint(type, newLight)
+                return self._Blueprints.AddUnique(Lights.AreaLightData(type, blueprint))
+            elif type == "SPOT":
+                newLight = Lights.SpotLightData(type)
+                blueprint = self._Blueprints.AddBlueprint(type, newLight)
+                return self._Blueprints.AddUnique(Lights.SpotLightData(type, blueprint))
+            elif type == "SUN":
+                newLight = Lights.SunLightData(type)
+                blueprint = self._Blueprints.AddBlueprint(type, newLight)
+                return self._Blueprints.AddUnique(Lights.SunLightData(type, blueprint))
+            elif type == "POINT":
+                newLight = Lights.PointLightData(type)
+                blueprint = self._Blueprints.AddBlueprint(type, newLight)
+                return self._Blueprints.AddUnique(Lights.PointLightData(type, blueprint))
+            else:
+                raise ValueError

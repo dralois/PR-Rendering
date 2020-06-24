@@ -13,7 +13,7 @@ def DoImport():
     return bpy
 
 # Returns [functional sys.path, broken sys.path with bpy]
-def GetPaths():
+def GetPaths() -> (str, str):
     global __orgPaths, __bpyPaths
     # Store the paths before and after breaking it
     if __orgPaths is None and __bpyPaths is None:

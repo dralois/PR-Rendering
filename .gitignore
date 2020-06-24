@@ -69,7 +69,10 @@ _deps
 
 ### Custom ###
 
-# Files
+# Special files
+!module_test.obj
+
+# Files types
 *.zip
 *.png
 

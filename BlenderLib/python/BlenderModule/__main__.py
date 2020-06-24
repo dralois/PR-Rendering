@@ -1,4 +1,4 @@
-from .Managers.RenderManager import RenderScenes
+from .Managers.RenderManager import RenderScenes, RenderSceneSingle
 from .Managers.SceneManager import SceneProxy
 from .Utils.BridgeObjects import CXXCamera, CXXLight, CXXMesh, CXXSettings
 
@@ -17,12 +17,22 @@ camera.Rotation = (rotQuat.w, rotQuat.x, rotQuat.y, rotQuat.z)
 camera.Result = "test_render.png"
 
 light = CXXLight()
+light.Name = "Default"
 light.Intensity = 100
 light.Position = (3, -4.2, 5)
 
-mesh = CXXMesh()
-mesh.Name = "cube"
+mesh1 = CXXMesh()
+mesh1.Name = "cube1"
+mesh1.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
+mesh1.Shader = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.osl")
+mesh1.Position = (0,0,0)
 
-scene = SceneProxy(settings, camera, [light], [mesh])
+mesh2 = CXXMesh()
+mesh2.Name = "cube2"
+mesh2.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
+mesh2.Shader = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.osl")
+mesh2.Position = (.5,0,.5)
 
-RenderScenes([scene])
+scene = SceneProxy(settings, camera, [light], [mesh1, mesh2])
+
+RenderSceneSingle(scene)

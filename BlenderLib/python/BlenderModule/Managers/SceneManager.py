@@ -8,6 +8,7 @@ bpy = DoImport()
 
 from typing import List
 import mathutils
+import os
 
 # Actual blender data storage & rendering class
 class Scene(object):
@@ -15,10 +16,10 @@ class Scene(object):
     def __init__(self, ):
         self.__isActive = False
         self.__settings = CXXSettings()
-        self.__camera : Camera.CameraConverter = None
+        self.__camera : Camera.CameraInstance
+        self.__camera = None
         self.__meshes = ObjectManager.MeshFactory()
         self.__lights = ObjectManager.LightFactory()
-        self.__materials = ObjectManager.MaterialFactory()
 
     def __del__(self):
         # Make sure rendering is cancelled
@@ -27,13 +28,12 @@ class Scene(object):
         del self.__camera
         del self.__meshes
         del self.__lights
-        del self.__materials
 
     # Render scene (camera)
     def Render(self):
         self.__isActive = True
         # Activate scenes' camera for rendering
-        bpy.context.scene.camera = self.__camera.BlenderObject
+        bpy.context.scene.camera = self.__camera.ObjectInstance
         # Adjust render settings
         bpy.context.scene.render.filepath = self.__settings.Output + self.__camera.CameraResultFile
         bpy.context.scene.render.image_settings.compression = (15, 0)[self.__settings.DepthOnly]
@@ -93,11 +93,6 @@ class Scene(object):
     def MeshManager(self):
         return self.__meshes
 
-    # Get material manager
-    @property
-    def MaterialManager(self):
-        return self.__materials
-
 # Proxy data storage class
 class SceneProxy(object):
     def __init__(self, settings, camera, lights, meshes):
@@ -106,42 +101,43 @@ class SceneProxy(object):
         self.Lights : List[CXXLight] = lights
         self.Meshes : List[CXXMesh] = meshes
 
-# TODO
 # Build and return scene from proxy
 def Proxy2Scene(proxy : SceneProxy):
     # Create scene & settings
-    build = Scene()
+    build : Scene = Scene()
     build.Settings = proxy.Settings
 
     # Build camera
-    sceneCam = Camera.CameraConverter("scene", proxy.Camera.Result)
-    sceneCam.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
-    sceneCam.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
-    sceneCam.ObjectPosition = mathutils.Vector(proxy.Camera.Position)
-    sceneCam.ObjectRotationQuat = mathutils.Quaternion(proxy.Camera.Rotation)
-    sceneCam.ObjectScale = mathutils.Vector(proxy.Camera.Scale)
-    build.Camera = sceneCam
+    camBlueprint = Camera.CameraData("default")
+    camBlueprint.CameraFOV = proxy.Camera.FOV[0], proxy.Camera.FOV[1]
+    camBlueprint.CameraShift = proxy.Camera.Shift[0], proxy.Camera.Shift[1]
+    build.Camera = Camera.CameraInstance("scene", proxy.Camera.Result, camBlueprint)
+    build.Camera.ObjectPosition = mathutils.Vector(proxy.Camera.Position)
+    build.Camera.ObjectRotationQuat = mathutils.Quaternion(proxy.Camera.Rotation)
+    build.Camera.ObjectScale = mathutils.Vector(proxy.Camera.Scale)
 
-    # TODO
     # Build meshes
     mesh : CXXMesh
     for mesh in proxy.Meshes:
-        # FIXME: mesh.Shader -> material
-        curr = build.MeshManager.CreateMesh(mesh.Name, mesh.File, None)
-        curr.ObjectPosition = mathutils.Vector(mesh.Position)
-        curr.ObjectRotationQuat = mathutils.Quaternion(mesh.Rotation)
-        curr.ObjectScale = mathutils.Vector(mesh.Scale)
+        meshBlueprint = build.MeshManager.GetMeshBlueprint(mesh.File)
+        meshInstance = build.MeshManager.AddMeshInstance(mesh.Name, meshBlueprint, mesh.Shader)
+        meshInstance.ObjectPosition = mathutils.Vector(mesh.Position)
+        meshInstance.ObjectRotationQuat = mathutils.Quaternion(mesh.Rotation)
+        meshInstance.ObjectScale = mathutils.Vector(mesh.Scale)
 
-    # TODO
     # Build lights
     light : CXXLight
     for light in proxy.Lights:
-        # FIXME: Name, types, params
-        curr = build.LightManager.CreateLight("default", "POINT")
-        curr.LightIntensity = light.Intensity
-        curr.ObjectPosition = mathutils.Vector(light.Position)
-        curr.ObjectRotationQuat = mathutils.Quaternion(light.Rotation)
-        curr.ObjectScale = mathutils.Vector(light.Scale)
+        # FIXME: Params
+        lightBlueprint = build.LightManager.GetLightBlueprint(light.Type)
+        lightBlueprint.LightColor = light.Color
+        lightBlueprint.LightIntensity = light.Intensity
+        lightBlueprint.LightExposure = light.Exposure
+        lightBlueprint.LightCastsIndirect = light.CastsIndirect
+        lightInstance = build.LightManager.AddLightInstance(light.Name, lightBlueprint)
+        lightInstance.ObjectPosition = mathutils.Vector(light.Position)
+        lightInstance.ObjectRotationQuat = mathutils.Quaternion(light.Rotation)
+        lightInstance.ObjectScale = mathutils.Vector(light.Scale)
 
     # Return scene
     return build

@@ -1,0 +1,18 @@
+shader module_test
+[[
+    string as_node_name = "asModuleTest",
+    string as_category = "shader"
+]]
+(
+    color in_color = color(0.75, 1.0, 0.45)
+    [[
+        string label = "Color"
+    ]],
+    output closure color out_color = 0
+    [[
+        string label = "Output"
+    ]]
+)
+{
+    out_color = in_color * diffuse(Ng);
+}

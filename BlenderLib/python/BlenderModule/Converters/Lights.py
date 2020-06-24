@@ -1,20 +1,33 @@
 from ..Utils.Importer import DoImport
-from .Base import ObjectConverter
+from .Base import DataWrapper, ObjectWrapper
 
 # Blender for multiprocessing
 bpy = DoImport()
 
 import mathutils
 
-class LightConverter(ObjectConverter):
+# Generic light descriptor
+class GenericLightData(DataWrapper):
 
-    def __init__(self, name, impl):
+    def __init__(self, name, impl : bpy.types.Light):
+        # Sanity check
+        if not isinstance(impl, bpy.types.Light):
+            raise TypeError
+        # Area light differs from rest
         self.__isArea = isinstance(impl, bpy.types.AreaLight)
-        self.__impl : bpy.types.Light = impl
+        self.__impl : bpy.types.Light
+        self.__impl = impl
         super().__init__(name, self.__impl)
 
-    def __del__(self):
-        super().__del__()
+    # Override: Cleanup & remove light
+    def _Cleanup(self):
+        if self.__impl is not None:
+            bpy.data.lights.remove(self.__impl)
+
+    # Override: Get if light valid
+    @property
+    def Valid(self):
+        return self.__impl is not None
 
     # Get light intensity
     @property
@@ -74,23 +87,35 @@ class LightConverter(ObjectConverter):
         else:
             self.__impl.appleseed.radiance = value
 
-class PointLightConverter(LightConverter):
+# Point light descriptor
+class PointLightData(GenericLightData):
 
-    def __init__(self, name):
-        self.__light : bpy.types.PointLight = bpy.data.lights.new( "light_point_" + name, type="POINT")
+    def __init__(self, name, cpy = None):
+        self.__light : bpy.types.PointLight
+
+        if cpy is None:
+            self.__light = bpy.data.lights.new( "light_point_" + name, type="POINT")
+        elif isinstance(cpy, PointLightData):
+            self.__light = cpy.Blueprint.copy()
+        else:
+            raise TypeError
+
         super().__init__(name, self.__light)
 
-    def __del__(self):
-        super().__del__()
+# Spot light descriptor
+class SpotLightData(GenericLightData):
 
-class SpotLightConverter(LightConverter):
+    def __init__(self, name, cpy = None):
+        self.__light : bpy.types.SpotLight
 
-    def __init__(self, name):
-        self.__light : bpy.types.SpotLight = bpy.data.lights.new("light_spot_" + name, type="SPOT")
+        if cpy is None:
+            self.__light = bpy.data.lights.new("light_spot_" + name, type="SPOT")
+        elif isinstance(cpy, SpotLightData):
+            self.__light = cpy.Blueprint.copy()
+        else:
+            raise TypeError
+
         super().__init__(name, self.__light)
-
-    def __del__(self):
-        super().__del__()
 
     # Get spot angle in rad
     @property
@@ -102,25 +127,37 @@ class SpotLightConverter(LightConverter):
     def SpotAngle(self, value):
         self.__light.spot_size = value
 
-class SunLightConverter(LightConverter):
+# Sun light descriptor
+class SunLightData(GenericLightData):
 
-    def __init__(self, name):
-        self.__light : bpy.types.SunLight = bpy.data.lights.new("light_sun_" + name, type="SUN")
+    def __init__(self, name, cpy = None):
+        self.__light : bpy.types.SunLight
+
+        if cpy is None:
+            self.__light = bpy.data.lights.new("light_sun_" + name, type="SUN")
+        elif isinstance(cpy, SunLightData):
+            self.__light = cpy.Blueprint.copy()
+        else:
+            raise TypeError
+
         # Directional light is not supported
         self.__light.appleseed.sun_mode = "sun"
         super().__init__(name, self.__light)
 
-    def __del__(self):
-        super().__del__()
+# Area light descriptor
+class AreaLightData(GenericLightData):
 
-class AreaLightConverter(LightConverter):
+    def __init__(self, name, cpy = None):
+        self.__light : bpy.types.AreaLight
 
-    def __init__(self, name):
-        self.__light : bpy.types.AreaLight = bpy.data.lights.new("light_area_" + name, type="AREA")
+        if cpy is None:
+            self.__light = bpy.data.lights.new("light_area_" + name, type="AREA")
+        elif isinstance(cpy, bpy.type.AreaLight):
+            self.__light = cpy.Blueprint.copy()
+        else:
+            raise TypeError
+
         super().__init__(name, self.__light)
-
-    def __del__(self):
-        super().__del__()
 
     # Get area shape (RECTANGLE, DISK, SQUARE)
     @property
@@ -142,3 +179,70 @@ class AreaLightConverter(LightConverter):
     def AreaSize(self, value):
         self.__light.size = value[0]
         self.__light.size = value[1]
+
+# Generic light object in scene
+class GenericLightInstance(ObjectWrapper):
+
+    def __init__(self, name, data):
+        super().__init__(name, data)
+
+    # Forwarded: Get light data
+    @property
+    def Blueprint(self):
+        raise NotImplementedError
+
+# Point light object in scene
+class PointLightInstance(GenericLightInstance):
+
+    def __init__(self, name, data : PointLightData):
+        super().__init__(name, data)
+        # Store descriptor
+        self.__lightData : PointLightData
+        self.__lightData = data
+
+    # Override: Get point light data
+    @property
+    def Blueprint(self) -> PointLightData:
+        return self.__lightData
+
+# Spot light object in scene
+class SpotLightInstance(GenericLightInstance):
+
+    def __init__(self, name, data : SpotLightData):
+        super().__init__(name, data)
+        # Store descriptor
+        self.__lightData : SpotLightData
+        self.__lightData = data
+
+    # Override: Get spot light data
+    @property
+    def Blueprint(self) -> SpotLightData:
+        return self.__lightData
+
+# Sun light object in scene
+class SunLightInstance(GenericLightInstance):
+
+    def __init__(self, name, data : SunLightData):
+        super().__init__(name, data)
+        # Store descriptor
+        self.__lightData : SunLightData
+        self.__lightData = data
+
+    # Override: Get sun light data
+    @property
+    def Blueprint(self) -> SunLightData:
+        return self.__lightData
+
+# Area light object in scene
+class AreaLightInstance(GenericLightInstance):
+
+    def __init__(self, name, data : AreaLightData):
+        super().__init__(name, data)
+        # Store descriptor
+        self.__lightData : AreaLightData
+        self.__lightData = data
+
+    # Override: Get area light data
+    @property
+    def Blueprint(self) -> AreaLightData:
+        return self.__lightData

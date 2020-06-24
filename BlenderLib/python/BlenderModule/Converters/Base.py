@@ -5,46 +5,115 @@ bpy = DoImport()
 
 import mathutils
 
-class BaseConverter(object):
+# Base object class
+class BaseWrapper(object):
 
-    def __init__(self, name, internal):
+    def __init__(self, name):
         self.__name = name
-        self.__internal : bpy.types.ID = internal
+
+    def __del__(self):
+        self._Cleanup()
 
     # Get name given on creation
     @property
     def Name(self):
         return self.__name
 
-    # Get internal name
+    # Override: Get if blueprint is valid
     @property
-    def BlenderName(self):
-        return self.__internal.name
+    def Valid(self):
+        raise NotImplementedError
 
-    # Get internal object in memory
+    # Override: Get blueprint name
     @property
-    def BlenderInternal(self) -> bpy.types.ID:
-        return self.__internal
+    def BlueprintID(self):
+        raise NotImplementedError
 
-    # Get unique copy of self
-    def GetCopy(self, newName):
-        return BaseConverter(newName, self.__internal.copy())
+    # Override: Get blueprint data
+    @property
+    def Blueprint(self):
+        raise NotImplementedError
 
-class ObjectConverter(BaseConverter):
+    # Override: Cleanup internal data
+    def _Cleanup(self):
+        raise NotImplementedError
 
-    def __init__(self, name, objData):
+    # Override: Update internal data
+    def _Update(self, newData):
+        raise NotImplementedError
+
+# Arbitrary object without transform
+class DataWrapper(BaseWrapper):
+
+    def __init__(self, name, data : bpy.types.ID):
+        super().__init__(name)
+        # Sanity check
+        if not isinstance(data, bpy.types.ID):
+            raise TypeError
+        self.__data : bpy.types.ID
+        self.__data = data
+        # Make sure the data block isn't deleted
+        self.__data.use_fake_user = True
+        print("{}: {}".format(self, self.__data.users))
+
+    # Forwarded: Get if valid
+    @property
+    def Valid(self):
+        raise NotImplementedError
+
+    # Override: Get internal name
+    @property
+    def BlueprintID(self):
+        return self.__data.name_full
+
+    # Override: Get internal data
+    @property
+    def Blueprint(self):
+        return self.__data
+
+    # Forwarded: Cleanup internal data
+    def _Cleanup(self):
+        raise NotImplementedError
+
+    # Override: Cleanup old & update internal data
+    def _Update(self, newData : bpy.types.ID):
+        self._Cleanup()
+        self.__data = newData
+
+# Object with transform in scene
+class ObjectWrapper(BaseWrapper):
+
+    def __init__(self, name, data : DataWrapper):
+        super().__init__(name)
+        # Sanity check
+        if not isinstance(data, DataWrapper):
+            raise TypeError
+        # Store object data
+        self.__data = data
         # Create & add object to scene
-        self.__obj : bpy.types.Object = bpy.data.objects.new(objData.name, objData)
+        self.__obj : bpy.types.Object
+        self.__obj = bpy.data.objects.new(name, data.Blueprint)
         bpy.context.collection.objects.link(self.__obj)
-        super().__init__(name, self.__obj)
+        print("{}: {}".format(self, self.__obj.type))
 
-    def __del__(self):
-        # Removes data block & object from scene
-        bpy.data.objects.remove(self.__obj)
-
-    # Get object in memory
+    # Override: Get if instance valid
     @property
-    def BlenderObject(self) -> bpy.types.Object:
+    def Valid(self):
+        return self.__data.Valid()
+
+    # Override: Get blueprint name
+    @property
+    def BlueprintID(self):
+        return self.__obj.name_full
+
+    # Forwarded: Get blueprint
+    @property
+    def Blueprint(self):
+        raise NotImplementedError
+
+    # Get object instance
+    @property
+    def ObjectInstance(self) -> bpy.types.Object:
         return self.__obj
 
     # Get position in scene
@@ -90,3 +159,13 @@ class ObjectConverter(BaseConverter):
     @ObjectScale.setter
     def ObjectScale(self, value):
         self.__obj.scale = value
+
+    # Override: Erase object & remove from scene
+    def _Cleanup(self):
+        if self.__obj is not None:
+            bpy.data.objects.remove(self.__obj)
+
+    # Override: Update object data (keeps transform)
+    def _Update(self, newData : DataWrapper):
+        self.__data = newData
+        self.__obj.data = self.__data.Blueprint

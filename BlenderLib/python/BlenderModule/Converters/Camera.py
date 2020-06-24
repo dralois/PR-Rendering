@@ -1,24 +1,33 @@
 from ..Utils.Importer import DoImport
+from .Base import ObjectWrapper, DataWrapper
 
 # Blender for multiprocessing
 bpy = DoImport()
 
-from .Base import ObjectConverter
+# Camera descriptor
+class CameraData(DataWrapper):
 
-class CameraConverter(ObjectConverter):
+    def __init__(self, name, cpy = None):
+        self.__camera : bpy.types.Camera
 
-    def __init__(self, name, result):
-        self.__result = result
-        self.__camera : bpy.types.Camera = bpy.data.cameras.new("cam_" + name)
+        if cpy is None:
+            self.__camera = bpy.data.cameras.new("cam_" + name)
+        elif isinstance(cpy, CameraData):
+            self.__camera = cpy.Blueprint.copy()
+        else:
+            raise TypeError
+
         super().__init__(name, self.__camera)
 
-    def __del__(self):
-        super().__del__()
+    # Override: Cleanup & remove camera
+    def _Cleanup(self):
+        if self.__camera is not None:
+            bpy.data.cameras.remove(self.__camera)
 
-    # Get result file name
+    # Override: Get if camera valid
     @property
-    def CameraResultFile(self):
-        return self.__result
+    def Valid(self):
+        return self.__camera is not None
 
     # Get FOV [x, y]
     @property
@@ -41,3 +50,23 @@ class CameraConverter(ObjectConverter):
     def CameraShift(self, value):
         self.__camera.shift_x = value[0]
         self.__camera.shift_y = value[1]
+
+# Camera object in scene
+class CameraInstance(ObjectWrapper):
+
+    def __init__(self, name, result, data : CameraData):
+        super().__init__(name, data)
+        # Store descriptor
+        self.__camData : CameraData
+        self.__camData = data
+        self.__result = result
+
+    # Get camera data
+    @property
+    def Blueprint(self) -> CameraData:
+        return self.__camData
+
+    # Get result file name
+    @property
+    def CameraResultFile(self):
+        return self.__result
