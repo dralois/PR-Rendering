@@ -1,12 +1,16 @@
-from ..Utils.Importer import DoImport
+from ..Utils.Importer import ImportBpy
+from ..Utils.Logger import get_logger
 from .Material import MaterialData
 from .Base import DataWrapper, ObjectWrapper
 
 # Blender for multiprocessing
-bpy = DoImport()
+bpy = ImportBpy()
 
+import os
 import bmesh
 import mathutils
+
+logger = get_logger()
 
 # Mesh descriptor
 class MeshData(DataWrapper):
@@ -40,7 +44,12 @@ class MeshData(DataWrapper):
     def CreateFromFile(self, filePath):
         # Load mesh or unit cube
         if len(filePath) > 0 and not self.__isValid:
-            self.__LoadMesh(filePath)
+            meshType = os.path.splitext(filePath)[1]
+            # Loading depends on extension
+            if meshType == ".obj":
+                self.__LoadMeshObj(filePath)
+            else:
+                logger.warning(f"Mesh format {meshType} not supported!")
         elif not self.__isValid:
             self.__MakeCube()
         # Mesh is now valid
@@ -54,9 +63,8 @@ class MeshData(DataWrapper):
         cubeMesh.to_mesh(self.__mesh)
         cubeMesh.free()
 
-    # FIXME: Mesh is not kept in memory / loaded correctly?
-    # Load mesh from (obj) file
-    def __LoadMesh(self, filePath):
+    # Load mesh from obj file
+    def __LoadMeshObj(self, filePath):
         self.__filePath = filePath
         # Load mesh to active scene & store from selection
         bpy.ops.import_scene.obj(filepath = self.__filePath)
@@ -95,9 +103,7 @@ class MeshInstance(ObjectWrapper):
     # Set assigned material
     @MeshMaterial.setter
     def MeshMaterial(self, value : MaterialData):
-        # Sanity check
-        if not isinstance(value, MaterialData):
-            raise TypeError
+        assert isinstance(value, MaterialData)
         # Set material active
         if value.Material is not None:
             self.ObjectInstance.material_slots[0].material = value.Material

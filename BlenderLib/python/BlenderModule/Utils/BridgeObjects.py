@@ -41,4 +41,6 @@ class CXXSettings(object):
         self.Resolution = (1080,1920)
         self.DepthOnly = False
         self.Plugin = "blenderseed.zip"
-        self.Output = "output//"
+        self.Output = "output\\"
+        self.LogLevel = "error"
+        self.Shaders = "shaders\\"

@@ -5,7 +5,7 @@ __orgPaths = None
 __bpyPaths = None
 
 # Returns bpy import
-def DoImport():
+def ImportBpy():
     functional, broken = GetPaths()
     sys.path = functional
     import bpy

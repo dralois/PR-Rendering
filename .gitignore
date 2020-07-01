@@ -78,6 +78,7 @@ _deps
 *.png
 *.obj
 *.mtl
+*.oso
 
 #Folders
 [Bb]uild/*

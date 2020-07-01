@@ -1,7 +1,7 @@
-from ..Utils.Importer import DoImport
+from ..Utils.Importer import ImportBpy
 
 # Blender for multiprocessing
-bpy = DoImport()
+bpy = ImportBpy()
 
 import mathutils
 
@@ -47,14 +47,12 @@ class DataWrapper(BaseWrapper):
 
     def __init__(self, name, data : bpy.types.ID):
         super().__init__(name)
-        # Sanity check
-        if not isinstance(data, bpy.types.ID):
-            raise TypeError
+        assert isinstance(data, bpy.types.ID)
+        # Store data block
         self.__data : bpy.types.ID
         self.__data = data
         # Make sure the data block isn't deleted
         self.__data.use_fake_user = True
-        print("{}: {}".format(self, self.__data.users))
 
     # Forwarded: Get if valid
     @property
@@ -87,16 +85,13 @@ class ObjectWrapper(BaseWrapper):
 
     def __init__(self, name, data : DataWrapper):
         super().__init__(name)
-        # Sanity check
-        if not isinstance(data, DataWrapper):
-            raise TypeError
+        assert isinstance(data, DataWrapper)
         # Store object data
         self.__data = data
         # Create & add object to scene
         self.__obj : bpy.types.Object
         self.__obj = bpy.data.objects.new(name, data.Blueprint)
         bpy.context.collection.objects.link(self.__obj)
-        print("{}: {}".format(self, self.__obj.type))
 
     # Override: Get if instance valid
     @property

@@ -1,8 +1,8 @@
-from ..Utils.Importer import DoImport
+from ..Utils.Importer import ImportBpy
 from .Base import DataWrapper, ObjectWrapper
 
 # Blender for multiprocessing
-bpy = DoImport()
+bpy = ImportBpy()
 
 import mathutils
 
@@ -10,9 +10,7 @@ import mathutils
 class GenericLightData(DataWrapper):
 
     def __init__(self, name, impl : bpy.types.Light):
-        # Sanity check
-        if not isinstance(impl, bpy.types.Light):
-            raise TypeError
+        assert isinstance(impl, bpy.types.Light)
         # Area light differs from rest
         self.__isArea = isinstance(impl, bpy.types.AreaLight)
         self.__impl : bpy.types.Light

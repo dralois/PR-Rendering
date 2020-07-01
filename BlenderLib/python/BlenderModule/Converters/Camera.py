@@ -1,8 +1,8 @@
-from ..Utils.Importer import DoImport
+from ..Utils.Importer import ImportBpy
 from .Base import ObjectWrapper, DataWrapper
 
 # Blender for multiprocessing
-bpy = DoImport()
+bpy = ImportBpy()
 
 # Camera descriptor
 class CameraData(DataWrapper):

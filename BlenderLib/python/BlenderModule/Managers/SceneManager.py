@@ -1,14 +1,18 @@
-from ..Utils.Importer import DoImport
+from ..Utils.Importer import ImportBpy
 from ..Utils.BridgeObjects import CXXMesh, CXXLight, CXXCamera, CXXSettings
-from ..Converters import Camera, Mesh, Lights
+from ..Utils.ShaderCompiler import CompileFolder
+from ..Utils.Logger import get_logger, get_logger_level
+from ..Converters import Camera, Lights, Material, Mesh, Shader
 from . import ObjectManager
 
 # Blender for multiprocessing
-bpy = DoImport()
+bpy = ImportBpy()
 
 from typing import List
 import mathutils
 import os
+
+logger = get_logger()
 
 # Actual blender data storage & rendering class
 class Scene(object):
@@ -31,8 +35,9 @@ class Scene(object):
 
     # Render scene (camera)
     def Render(self):
-        self.__isActive = True
+        logger.info(f"Rendering scene to {self.Camera.CameraResultFile}")
         # Activate scenes' camera for rendering
+        self.__isActive = True
         bpy.context.scene.camera = self.__camera.ObjectInstance
         # Adjust render settings
         bpy.context.scene.render.filepath = self.__settings.Output + self.__camera.CameraResultFile
@@ -49,11 +54,18 @@ class Scene(object):
 
     # Initialize scene for rendering
     def __Setup(self):
+        logger.info("Setting up scene")
+        # Compile all shaders
+        asPath = bpy.utils.user_resource('SCRIPTS', "addons") + "//blenderseed"
+        CompileFolder(self.__settings.Shaders, asPath)
+        # Set shader searchpath
+        os.environ["APPLESEED_SEARCHPATH"] = "".join([self.__settings.Shaders, 
+            os.path.pathsep, os.path.join(os.path.dirname(__file__), "..\\Test\\")])
         # Init blenderseed plugin
         try:
             bpy.ops.preferences.addon_refresh()
             bpy.ops.preferences.addon_enable(module = "blenderseed")
-        except ImportError:
+        except:
             bpy.ops.preferences.addon_install(filepath = self.__settings.Plugin)
             bpy.ops.preferences.addon_enable(module = "blenderseed")
         # Remove default stuff from scene
@@ -61,8 +73,8 @@ class Scene(object):
         bpy.data.batch_remove([mat for mat in bpy.data.materials])
         # Change renderer to appleseed
         bpy.context.scene.render.engine = "APPLESEED_RENDER"
-        # Enable debug output
-        bpy.context.preferences.addons["blenderseed"].preferences.log_level = "debug"
+        # Change appleseed debug output level to match own logger
+        bpy.context.preferences.addons["blenderseed"].preferences.log_level = get_logger_level()
 
     # Get output settings
     @property
@@ -122,7 +134,8 @@ def Proxy2Scene(proxy : SceneProxy):
     mesh : CXXMesh
     for mesh in proxy.Meshes:
         meshBlueprint = build.MeshManager.GetMeshBlueprint(mesh.File)
-        meshInstance = build.MeshManager.AddMeshInstance(mesh.Name, meshBlueprint, mesh.Shader)
+        meshShader = Shader.GetShader(mesh.Shader)(mesh.Shader)
+        meshInstance = build.MeshManager.AddMeshInstance(mesh.Name, meshBlueprint, meshShader)
         meshInstance.ObjectPosition = mathutils.Vector(mesh.Position)
         meshInstance.ObjectRotationQuat = mathutils.Quaternion(mesh.Rotation)
         meshInstance.ObjectScale = mathutils.Vector(mesh.Scale)

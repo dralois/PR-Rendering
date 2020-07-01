@@ -1,1 +1,1 @@
-__all__ = ["BridgeObjects", "ClassProperty", "Importer"]
+__all__ = ["BridgeObjects", "ClassProperty", "Importer", "Logger", "ShaderCompiler"]
