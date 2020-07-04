@@ -8,45 +8,36 @@ import mathutils
 # Base object class
 class BaseWrapper(object):
 
-    def __init__(self, name):
-        self.__name = name
-
     def __del__(self):
         self._Cleanup()
 
-    # Get name given on creation
-    @property
-    def Name(self):
-        return self.__name
-
-    # Override: Get if blueprint is valid
+    # Forwarded: Get if blueprint is valid
     @property
     def Valid(self):
         raise NotImplementedError
 
-    # Override: Get blueprint name
+    # Forwarded: Get blueprint name
     @property
     def BlueprintID(self):
         raise NotImplementedError
 
-    # Override: Get blueprint data
+    # Forwarded: Get blueprint data
     @property
     def Blueprint(self):
         raise NotImplementedError
 
-    # Override: Cleanup internal data
+    # Forwarded: Cleanup internal data
     def _Cleanup(self):
         raise NotImplementedError
 
-    # Override: Update internal data
+    # Forwarded: Update internal data
     def _Update(self, newData):
         raise NotImplementedError
 
 # Arbitrary object without transform
 class DataWrapper(BaseWrapper):
 
-    def __init__(self, name, data : bpy.types.ID):
-        super().__init__(name)
+    def __init__(self, data : bpy.types.ID):
         assert isinstance(data, bpy.types.ID)
         # Store data block
         self.__data : bpy.types.ID
@@ -69,6 +60,10 @@ class DataWrapper(BaseWrapper):
     def Blueprint(self):
         return self.__data
 
+    # Forwarded: Create from json data
+    def CreateFromJSON(self, data : dict):
+        raise NotImplementedError
+
     # Forwarded: Cleanup internal data
     def _Cleanup(self):
         raise NotImplementedError
@@ -83,14 +78,13 @@ class DataWrapper(BaseWrapper):
 # Object with transform in scene
 class ObjectWrapper(BaseWrapper):
 
-    def __init__(self, name, data : DataWrapper):
-        super().__init__(name)
+    def __init__(self, data : DataWrapper):
         assert isinstance(data, DataWrapper)
         # Store object data
         self.__data = data
         # Create & add object to scene
         self.__obj : bpy.types.Object
-        self.__obj = bpy.data.objects.new(name, data.Blueprint)
+        self.__obj = bpy.data.objects.new(data.BlueprintID, data.Blueprint)
         bpy.context.collection.objects.link(self.__obj)
 
     # Override: Get if instance valid
@@ -156,6 +150,19 @@ class ObjectWrapper(BaseWrapper):
     @ObjectScale.setter
     def ObjectScale(self, value):
         self.__obj.scale = value
+
+    # Forwarded: Create from json data
+    def CreateFromJSON(self, data : dict):
+        # Parse transform
+        self.ObjectPosition = mathutils.Vector(data.get("position", (0.0,0.0,0.0)))
+        rot = data.get("rotation", (0.0,0.0,0.0))
+        if len(rot) == 3:
+            self.ObjectRotationEuler = mathutils.Euler(rot)
+        elif len(rot) == 4:
+            self.ObjectRotationQuat = mathutils.Quaternion(rot)
+        self.ObjectScale = data.get("scale", (1.0,1.0,1.0))
+        # Parse specific data
+        self.__data.CreateFromJSON(data)
 
     # Override: Erase object & remove from scene
     def _Cleanup(self):

@@ -1,1 +1,1 @@
-__all__ = ["Base", "Camera" "Lights", "Material", "Mesh", "Shader"]
+__all__ = ["Base", "Camera" "Lights", "Material", "Mesh", "Shader", "Texture"]

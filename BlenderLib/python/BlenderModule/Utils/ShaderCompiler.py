@@ -1,16 +1,16 @@
-from .Logger import get_logger
+from .Logger import GetLogger
 
 import os
 import sys
 import glob
 
-logger = get_logger()
+logger = GetLogger()
 
 # Compile and store every osl shader in a folder
 def CompileFolder(shaderFolder, modulePath):
     logger.info(f"Compiling shaders in folder {shaderFolder}")
     # Glob all osl files, compile and store them
-    for oslShader in glob.glob(shaderFolder + "*.osl"):
+    for oslShader in glob.glob(shaderFolder + "\\*.osl"):
         bytecode = CompileFile(os.path.abspath(oslShader), modulePath)
         StoreBytecode(bytecode, os.path.splitext(oslShader)[0] + ".oso")
 

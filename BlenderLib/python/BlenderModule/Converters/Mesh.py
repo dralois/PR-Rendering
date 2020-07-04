@@ -1,34 +1,33 @@
 from ..Utils.Importer import ImportBpy
-from ..Utils.Logger import get_logger
+from ..Utils.Logger import GetLogger
 from .Material import MaterialData
 from .Base import DataWrapper, ObjectWrapper
 
 # Blender for multiprocessing
 bpy = ImportBpy()
+logger = GetLogger()
 
 import os
 import bmesh
 import mathutils
 
-logger = get_logger()
-
 # Mesh descriptor
 class MeshData(DataWrapper):
 
-    def __init__(self, name, cpy = None):
+    def __init__(self, blueprintID, cpy = None):
         self.__isValid = False
         self.__mesh : bpy.types.Mesh
 
         if cpy is None:
-            self.__mesh = bpy.data.meshes.new("mesh_" + name)
+            self.__mesh = bpy.data.meshes.new(blueprintID)
         elif isinstance(cpy, MeshData):
             self.__mesh = cpy.Blueprint.copy()
-            self.__mesh.name = name
+            self.__mesh.name = blueprintID
             self.__isValid = True
         else:
             raise TypeError
 
-        super().__init__(name, self.__mesh)
+        super().__init__(self.__mesh)
 
     # Override: Cleanup & remove mesh
     def _Cleanup(self):
@@ -40,8 +39,11 @@ class MeshData(DataWrapper):
     def Valid(self):
         return self.__isValid
 
-    # Create mesh from file
-    def CreateFromFile(self, filePath):
+    # Override: Create from json data
+    def CreateFromJSON(self, data : dict):
+        assert data is not None
+        # Parse filepath
+        filePath = data.get("file", "")
         # Load mesh or unit cube
         if len(filePath) > 0 and not self.__isValid:
             meshType = os.path.splitext(filePath)[1]
@@ -57,7 +59,7 @@ class MeshData(DataWrapper):
 
     # Create cube mesh
     def __MakeCube(self):
-        # Create and store cube
+        # Create and flush cube
         cubeMesh = bmesh.new()
         bmesh.ops.create_cube(cubeMesh, size=1.0)
         cubeMesh.to_mesh(self.__mesh)
@@ -81,11 +83,12 @@ class MeshData(DataWrapper):
 # Mesh object in scene
 class MeshInstance(ObjectWrapper):
 
-    def __init__(self, name, data : MeshData):
-        super().__init__(name, data)
+    def __init__(self, blueprint : MeshData):
+        assert isinstance(blueprint, MeshData)
+        super().__init__(blueprint)
         # Store descriptor
         self.__meshData : MeshData
-        self.__meshData = data
+        self.__meshData = blueprint
         # Create material slot
         bpy.context.view_layer.objects.active = self.ObjectInstance
         bpy.ops.object.material_slot_add()

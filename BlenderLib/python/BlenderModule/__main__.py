@@ -1,42 +1,55 @@
 from .Managers.RenderManager import RenderScenes, RenderSceneSingle
-from .Managers.SceneManager import SceneProxy
-from .Utils.BridgeObjects import CXXCamera, CXXLight, CXXMesh, CXXSettings
 
+import json
 import os
-import mathutils
 
-settings = CXXSettings()
-settings.Output = os.path.join(os.getcwd(), "BlenderModule\\Test\\")
-settings.Plugin = os.path.join(os.getcwd(), "blenderseed.zip")
-settings.Shaders = os.path.join(os.getcwd(), "BlenderModule\\Test\\")
-settings.Resolution = (1280, 720)
-settings.LogLevel = "info"
+testScene = {
+    "settings" :
+    {
+        "logLevel" : "info",
+        "resolution" : [1280, 720],
+        "plugin" : os.path.join(os.getcwd(), "blenderseed.zip"),
+        "output" : os.path.join(os.getcwd(), "BlenderModule\\Test\\"),
+        "shaderPaths" : [os.path.join(os.getcwd(), "BlenderModule\\Test\\")]
+    },
+    "camera" :
+    {
+        "position" : [6.0, -3.0, 5.0],
+        "rotation" : [0.9, 0.0, 1.1],
+        "result" : "test_render.png"
+    },
+    "meshes" : [
+        {
+            "position" : [-0.5, -0.5, 0.0],
+            "scale" : [0.5, 0.5, 0.5],
+            "file" : os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj"),
+            "shader" : "module_test",
+            "params" :
+            {
+                "color" : (0.5, 0.3, 0.7)
+            }
+        },
+        {
+            "position" : [1.0, 1.0, 0.0],
+            "scale" : [0.5, 0.5, 0.5],
+            "file" : os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj"),
+            "shader" : "module_test",
+            "params" :
+            {
+                "color" : (0.3, 0.7, 0.5)
+            }
+        }
+    ],
+    "lights" : [
+        {
+            "position" : [3.0, -4.2, 5.0],
+            "type" : "POINT",
+            "intensity" : 100
+        }
+    ]
+}
 
-camera = CXXCamera()
-camera.Position = (6.0, -3.0, 5.0)
-rotQuat = mathutils.Euler((0.9, 0.0, 1.1)).to_quaternion()
-camera.Rotation = (rotQuat.w, rotQuat.x, rotQuat.y, rotQuat.z)
-camera.Result = "test_render.png"
+temp = json.dumps(testScene)
+testScene = json.loads(temp)
 
-light = CXXLight()
-light.Name = "Default"
-light.Intensity = 100
-light.Position = (3.0, -4.2, 5.0)
-
-mesh1 = CXXMesh()
-mesh1.Name = "cube1"
-mesh1.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
-mesh1.Shader = "asModuleTest"
-mesh1.Position = (-0.5, -0.5, 0.0)
-mesh1.Scale = (0.5, 0.5, 0.5)
-
-mesh2 = CXXMesh()
-mesh2.Name = "cube2"
-mesh2.File = os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj")
-mesh2.Shader = "asModuleTest"
-mesh2.Position = (1.0, 1.0, 0.0)
-mesh2.Scale = (0.5, 0.5, 0.5)
-
-scene = SceneProxy(settings, camera, [light], [mesh1, mesh2])
-
-RenderSceneSingle(scene)
+RenderSceneSingle(testScene)

@@ -1,24 +1,26 @@
 from ..Utils.Importer import ImportBpy
+from ..Utils.Logger import GetLogger
 from .Base import ObjectWrapper, DataWrapper
 
 # Blender for multiprocessing
 bpy = ImportBpy()
+logger = GetLogger()
 
 # Camera descriptor
 class CameraData(DataWrapper):
 
-    def __init__(self, name, cpy = None):
+    def __init__(self, blueprintID, cpy = None):
         self.__camera : bpy.types.Camera
 
         if cpy is None:
-            self.__camera = bpy.data.cameras.new("cam_" + name)
+            self.__camera = bpy.data.cameras.new(blueprintID)
         elif isinstance(cpy, CameraData):
             self.__camera = cpy.Blueprint.copy()
-            self.__camera.name = name
+            self.__camera.name = blueprintID
         else:
             raise TypeError
 
-        super().__init__(name, self.__camera)
+        super().__init__(self.__camera)
 
     # Override: Cleanup & remove camera
     def _Cleanup(self):
@@ -52,15 +54,22 @@ class CameraData(DataWrapper):
         self.__camera.shift_x = value[0]
         self.__camera.shift_y = value[1]
 
+    # Override: Create from json data
+    def CreateFromJSON(self, data : dict):
+        assert data is not None
+        self.CameraFOV = data.get("fov", (0.6911,0.4711))
+        self.CameraShift = data.get("shift", (0.0,0.0))
+
 # Camera object in scene
 class CameraInstance(ObjectWrapper):
 
-    def __init__(self, name, result, data : CameraData):
-        super().__init__(name, data)
+    def __init__(self, blueprint : CameraData):
+        assert isinstance(blueprint, CameraData)
+        super().__init__(blueprint)
         # Store descriptor
         self.__camData : CameraData
-        self.__camData = data
-        self.__result = result
+        self.__camData = blueprint
+        self.__result = ""
 
     # Get camera data
     @property
@@ -71,3 +80,14 @@ class CameraInstance(ObjectWrapper):
     @property
     def CameraResultFile(self):
         return self.__result
+
+    # Set result file name
+    @CameraResultFile.setter
+    def CameraResultFile(self, value):
+        self.__result = value
+
+    # Override: Create from json data
+    def CreateFromJSON(self, data : dict):
+        assert data is not None
+        super().CreateFromJSON(data)
+        self.CameraResultFile = data.get("result", "")

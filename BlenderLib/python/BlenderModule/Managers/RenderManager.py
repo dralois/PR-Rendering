@@ -1,21 +1,24 @@
 from ..Utils.Importer import GetPaths, SetPaths
-from .SceneManager import SceneProxy, Proxy2Scene
+from .SceneManager import CreateFromJSON, Scene
 
 from typing import List
 import multiprocessing
+import json
 
 # Fetch functional and broken paths for Blender importing
 __orgPaths, __bpyPaths = GetPaths()
 
 # Renders a single scene
-def RenderSceneSingle(sceneData : SceneProxy):
+def RenderSceneSingle(sceneData):
     # Create scene from proxy
-    scene = Proxy2Scene(sceneData)
+    scene = CreateFromJSON(sceneData)
     # Render the scene
     scene.Render()
 
 # Renders a collection of scenes in parallel
-def RenderScenes(scenes : List[SceneProxy]):
+def RenderScenes(renderfileString):
+    # Parse renderfile
+    scenes = json.loads(renderfileString)
     # Start render workers
     with multiprocessing.Pool(  maxtasksperchild=1,
                                 initializer=SetPaths,

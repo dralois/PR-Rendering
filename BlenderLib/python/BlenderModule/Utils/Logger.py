@@ -15,7 +15,7 @@ __reversed = {  logging.DEBUG : "debug",
                 logging.CRITICAL : "critical"}
 
 # Get global logger
-def get_logger():
+def GetLogger():
     global __logger
 
     if not __logger:
@@ -29,9 +29,9 @@ def get_logger():
     return __logger
 
 # Set global logging level (string)
-def set_logger_level(level):
+def SetLevel(level):
     __logger.setLevel(__mapping.get(level, logging.INFO))
 
 # Get global logging level (string)
-def get_logger_level():
+def GetLevel():
     return __reversed.get(__logger.level, "error")

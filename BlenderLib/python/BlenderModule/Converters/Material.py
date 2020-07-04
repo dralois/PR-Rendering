@@ -1,39 +1,35 @@
 from ..Utils.ClassProperty import classproperty
 from ..Utils.Importer import ImportBpy
+from ..Utils.Logger import GetLogger
 from .Base import DataWrapper
-from .Shader import ShaderBase, DefaultShader
+from .Shader import Shader
 
 # Blender for multiprocessing
 bpy = ImportBpy()
+logger = GetLogger()
 
 # Material descriptor
 class MaterialData(DataWrapper):
 
     __defaultMat : bpy.types.Material
     __defaultMat = None
-    __defaultShader : ShaderBase
-    __defaultShader = None
 
-    def __init__(self, name, cpy = None):
+    def __init__(self, blueprintID, cpy = None):
         self.__isValid = False
         self.__material : bpy.types.Material
-        self.__shader : ShaderBase
-        self.__shader = None
 
         if cpy is None:
-            self.__material = bpy.data.materials.new("mat_" + name)
+            self.__material = bpy.data.materials.new(blueprintID)
             self.__material.use_nodes = True
             self.__material.node_tree.nodes.clear()
         elif isinstance(cpy, MaterialData):
             self.__material = cpy.Blueprint.copy()
-            self.__material.name = name
-            # Recreate material from shader
-            if cpy.Shader is not None:
-                self.CreateFromShader(cpy.Shader.Copy())
+            self.__material.name = blueprintID
+            self.__isValid = True
         else:
             raise TypeError
 
-        super().__init__(name, self.__material)
+        super().__init__(self.__material)
 
     # Override: Cleanup & remove material
     def _Cleanup(self):
@@ -44,11 +40,6 @@ class MaterialData(DataWrapper):
     @property
     def Valid(self):
         return self.__isValid
-
-    # Get material shader
-    @property
-    def Shader(self) -> ShaderBase:
-        return self.__shader
 
     # Get material block
     @property
@@ -63,20 +54,18 @@ class MaterialData(DataWrapper):
     def DefaultMaterial(cls) -> bpy.types.Material:
         # Create if necessary
         if cls.__defaultMat is None:
-            # Create, activate and clear node tree
-            cls.__defaultMat = bpy.data.materials.new("mat_default")
+            # Add default shader tree to new default material
+            cls.__defaultMat = bpy.data.materials.new("default")
             cls.__defaultMat.use_nodes = True
             cls.__defaultMat.node_tree.nodes.clear()
-            cls.__defaultShader = DefaultShader()
-            cls.__defaultShader.AddShader(cls.__defaultMat.node_tree)
+            Shader.AddShader(cls.__defaultMat.node_tree, None)
         # Finally return material
         return cls.__defaultMat
 
-    # Create material from shader
-    def CreateFromShader(self, shader : ShaderBase):
-        assert isinstance(shader, ShaderBase)
+    # Override: Create from json data
+    def CreateFromJSON(self, data : dict):
+        assert data is not None
         # Only allow creation once
         if not self.__isValid:
-            self.__shader = shader
-            self.__shader.AddShader(self.__material.node_tree)
+            Shader.AddShader(self.__material.node_tree, data)
             self.__isValid = True

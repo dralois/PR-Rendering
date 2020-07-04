@@ -7,11 +7,11 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
     {
         "settings" :
         {
+            "logLevel" : string,
             "resolution" : [ int, int ],
             "depthOnly" : bool,
-            "plugin" : string,
             "output" : string,
-            "logLevel" : string,
+            "plugin" : string,
             "shaderPaths" : [ string, ... ],
             "texturePaths" : [ string, ... ],
         },
@@ -31,7 +31,11 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "scale" : [ float, float, float ],
                 "file" : string,
                 "shader" : string,
-                "params" : [ ... ]
+                "params" :
+                    {
+                        "'param'" : 'value',
+                        ...
+                    }
             },
             ...
         ],
@@ -45,7 +49,11 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "intensity" : float,
                 "exposure" : float,
                 "castsIndirect" : bool,
-                "params" : [ ... ]
+                "params" :
+                    {
+                        "'param'" : 'value',
+                        ...
+                    }
             },
             ...
         ]
