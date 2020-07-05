@@ -8,10 +8,10 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
         "settings" :
         {
             "logLevel" : string,
+            "storeBlend" : bool,
             "resolution" : [ int, int ],
             "depthOnly" : bool,
             "output" : string,
-            "storeBlend" : bool,
             "plugin" : string,
             "shaderPaths" : [ string, ... ],
             "texturePaths" : [ string, ... ]

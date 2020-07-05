@@ -7,10 +7,10 @@ testScene = {
     "settings" :
     {
         "logLevel" : "info",
+        "storeBlend" : True,
         "resolution" : [1280, 720],
         "plugin" : os.path.join(os.getcwd(), "blenderseed.zip"),
         "output" : os.path.join(os.getcwd(), "BlenderModule\\Test\\"),
-        "storeBlend" : True,
         "shaderPaths" : [os.path.join(os.getcwd(), "BlenderModule\\Test\\")]
     },
     "camera" :
