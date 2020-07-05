@@ -1,6 +1,6 @@
-from ..Utils.ClassProperty import classproperty
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
+from ..Utils import classproperty
 from .Base import DataWrapper
 from .Shader import Shader
 
@@ -14,18 +14,16 @@ class MaterialData(DataWrapper):
     __defaultMat : bpy.types.Material
     __defaultMat = None
 
-    def __init__(self, blueprintID, cpy = None):
-        self.__isValid = False
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__material : bpy.types.Material
+        self.__material = bpy.data.materials.new(blueprintID)
+        self.__material.use_nodes = True
+        self.__shader = {}
 
         if cpy is None:
-            self.__material = bpy.data.materials.new(blueprintID)
-            self.__material.use_nodes = True
             self.__material.node_tree.nodes.clear()
         elif isinstance(cpy, MaterialData):
-            self.__material = cpy.Blueprint.copy()
-            self.__material.name = blueprintID
-            self.__isValid = True
+            self.CreateFromJSON(cpy.Shader)
         else:
             raise TypeError
 
@@ -39,12 +37,17 @@ class MaterialData(DataWrapper):
     # Override: Get if material valid
     @property
     def Valid(self):
-        return self.__isValid
+        return len(self.__material.node_tree.nodes) > 0
+
+    # Get material shader data
+    @property
+    def Shader(self):
+        return self.__shader
 
     # Get material block
     @property
     def Material(self) -> bpy.types.Material:
-        if self.__isValid:
+        if self.Valid:
             return self.__material
         else:
             return self.DefaultMaterial
@@ -65,7 +68,8 @@ class MaterialData(DataWrapper):
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
-        # Only allow creation once
-        if not self.__isValid:
-            Shader.AddShader(self.__material.node_tree, data)
-            self.__isValid = True
+        # Store shader data
+        self.__shader = data
+        # Remove all nodes
+        self.__material.node_tree.nodes.clear()
+        Shader.AddShader(self.__material.node_tree, self.__shader)

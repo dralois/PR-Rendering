@@ -10,7 +10,7 @@ logger = GetLogger()
 # Texture descriptor
 class TextureData(DataWrapper):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__isValid = False
         self.__texture : bpy.types.Image
 

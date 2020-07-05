@@ -92,13 +92,13 @@ class GenericLightData(DataWrapper):
         assert data is not None
         self.LightColor = mathutils.Vector(data.get("color", (1.0,1.0,1.0)))
         self.LightIntensity = data.get("intensity", 1.0)
-        self.LightExposure = data.get("exposure", 1.0)
+        self.LightExposure = data.get("exposure", 0.0)
         self.LightCastsIndirect = data.get("castsIndirect", True)
 
 # Point light descriptor
 class PointLightData(GenericLightData):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__light : bpy.types.PointLight
 
         if cpy is None:
@@ -119,7 +119,7 @@ class PointLightData(GenericLightData):
 # Spot light descriptor
 class SpotLightData(GenericLightData):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__light : bpy.types.SpotLight
 
         if cpy is None:
@@ -154,7 +154,7 @@ class SpotLightData(GenericLightData):
 # Sun light descriptor
 class SunLightData(GenericLightData):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__light : bpy.types.SunLight
 
         if cpy is None:
@@ -177,7 +177,7 @@ class SunLightData(GenericLightData):
 # Area light descriptor
 class AreaLightData(GenericLightData):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__light : bpy.types.AreaLight
 
         if cpy is None:

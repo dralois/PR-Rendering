@@ -1,6 +1,7 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.ShaderCompiler import CompileFolder
 from ..Utils.Logger import GetLogger, GetLevel, SetLevel
+from ..Utils import FileDir, FileName, FullFileName, FullPath
 from ..Converters import Camera, Lights, Material, Mesh, Shader
 from . import ObjectManager
 
@@ -36,16 +37,21 @@ class Scene(object):
         logger.info(f"Rendering scene to {self.Camera.CameraResultFile}")
         # Activate scenes' camera for rendering
         self.__isActive = True
-        bpy.context.scene.camera = self.__camera.ObjectInstance
+        ctx = bpy.context.scene
+        ctx.camera = self.__camera.ObjectInstance
         # Adjust render settings
-        bpy.context.scene.render.filepath = self.__settings.get("output", "output\\") + self.__camera.CameraResultFile
-        bpy.context.scene.render.image_settings.compression = (15, 0)[self.__settings.get("depthOnly", False)]
-        bpy.context.scene.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]
-        bpy.context.scene.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.get("depthOnly", False)]
-        bpy.context.scene.render.image_settings.file_format = "PNG"
-        bpy.context.scene.render.image_settings.use_zbuffer = not self.__settings.get("depthOnly", False)
-        bpy.context.scene.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
-        bpy.context.scene.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
+        ctx.render.filepath = self.__settings.get("output", "output\\") + self.__camera.CameraResultFile
+        ctx.render.image_settings.compression = (15, 0)[self.__settings.get("depthOnly", False)]
+        ctx.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]
+        ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.get("depthOnly", False)]
+        ctx.render.image_settings.file_format = "PNG"
+        ctx.render.image_settings.use_zbuffer = not self.__settings.get("depthOnly", False)
+        ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
+        ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
+        # Possibly store to blend file
+        if self.__settings.get("storeBlend", False):
+            saveFile = FileDir(ctx.render.filepath) + FileName(ctx.render.filepath) + ".blend"
+            bpy.ops.wm.save_mainfile(filepath = saveFile)
         # Render scene to file
         bpy.ops.render.render(write_still = True)
         self.__isActive = False
@@ -56,13 +62,12 @@ class Scene(object):
         logger.info("Setting up scene")
         # Compile all shaders
         asPath = bpy.utils.user_resource("SCRIPTS", "addons") + "\\blenderseed"
-        searchPaths = os.path.abspath(os.path.dirname(__file__) +  "\\..\\Test\\")
+        searchPaths = FullPath(__file__ + "\\..\\Test\\")
         # For each shader path
-        for shaderPath in self.__settings.get("shaderPaths", ["shaders\\"]):
-            fullPath = os.path.abspath(shaderPath)
+        for shaderPath in [FullPath(path) for path in self.__settings.get("shaderPaths", ["shaders\\"])]:
             # Compile and add to appleseed search
-            CompileFolder(fullPath, asPath)
-            searchPaths += os.path.pathsep + fullPath
+            CompileFolder(shaderPath, asPath)
+            searchPaths += os.path.pathsep + shaderPath
         # Set shader searchpath
         os.environ["APPLESEED_SEARCHPATH"] = searchPaths
         # TODO: Read & convert textures from paths

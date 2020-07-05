@@ -11,9 +11,10 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "resolution" : [ int, int ],
             "depthOnly" : bool,
             "output" : string,
+            "storeBlend" : bool,
             "plugin" : string,
             "shaderPaths" : [ string, ... ],
-            "texturePaths" : [ string, ... ],
+            "texturePaths" : [ string, ... ]
         },
         "camera" :
         {

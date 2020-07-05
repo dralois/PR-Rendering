@@ -9,7 +9,7 @@ logger = GetLogger()
 # Camera descriptor
 class CameraData(DataWrapper):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__camera : bpy.types.Camera
 
         if cpy is None:

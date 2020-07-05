@@ -84,7 +84,7 @@ class ObjectWrapper(BaseWrapper):
         self.__data = data
         # Create & add object to scene
         self.__obj : bpy.types.Object
-        self.__obj = bpy.data.objects.new(data.BlueprintID, data.Blueprint)
+        self.__obj = bpy.data.objects.new("obj_" + data.BlueprintID, data.Blueprint)
         bpy.context.collection.objects.link(self.__obj)
 
     # Override: Get if instance valid

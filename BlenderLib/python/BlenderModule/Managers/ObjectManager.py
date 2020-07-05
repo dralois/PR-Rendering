@@ -1,5 +1,6 @@
 from ..Converters import Base, Camera, Lights, Material, Mesh, Shader
 from ..Utils.Logger import GetLogger
+from ..Utils import FileName
 
 logger = GetLogger()
 
@@ -18,12 +19,6 @@ V = TypeVar("V",
             Mesh.MeshInstance
 )
 
-# Get file name from path
-def GetFileName(path):
-    from os.path import split, splitext
-    file = split(path)[1]
-    return splitext(file)[0]
-
 # Generic blueprint storage
 class BlueprintStorage(Generic[T]):
 
@@ -37,12 +32,6 @@ class BlueprintStorage(Generic[T]):
     def __del__(self):
         del self.__blueprints
         del self.__uniques
-
-    # Get a unique identifier string
-    @property
-    def __NextUniqueID(self) -> str:
-        self.__uniqueID += 1
-        return "_{:03d}".format(self.__uniqueID)
 
     # Get blueprint by json data
     def GetBlueprint(self, data : dict, unique = False) -> T:
@@ -71,7 +60,7 @@ class BlueprintStorage(Generic[T]):
     def _AddUnique(self, blueprint : T) -> T:
         logger.info(f"Adding unique blueprint of {blueprint.BlueprintID} ({type(blueprint)})")
         # Make new version from blueprint & add & return it
-        unique = type(blueprint)(blueprint.BlueprintID + self.__NextUniqueID, blueprint)
+        unique = type(blueprint)(blueprint.BlueprintID + self.__NextUniqueID(), blueprint)
         self.__uniques.append(unique)
         return unique
 
@@ -80,6 +69,11 @@ class BlueprintStorage(Generic[T]):
         logger.info(f"Removing unique blueprint of {unique.BlueprintID} ({type(unique)})")
         if unique in self.__uniques:
             self.__uniques.remove(unique)
+
+    # Get a unique identifier string
+    def __NextUniqueID(self) -> str:
+        self.__uniqueID += 1
+        return "_{:03d}".format(self.__uniqueID)
 
 # Generic storage of actual instances in a scene
 class InstanceStorage(Generic[V, T], BlueprintStorage[T]):
@@ -157,7 +151,7 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
     # Override: Get blueprint identifier
     def _GetBlueprintID(self, data : dict):
         assert data is not None
-        return "mesh_" + GetFileName(data.get("file", ""))
+        return "mesh_" + FileName(data.get("file", ""))
 
     # Override: Make new blueprint from json data
     def _MakeBlueprint(self, data : dict) -> Mesh.MeshData:
@@ -173,8 +167,9 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
     def _MakeInstance(self, data : dict, blueprint : Mesh.MaterialData) -> Mesh.MeshInstance:
         assert isinstance(blueprint, Mesh.MeshData)
         assert data is not None
-        # Get material
+        # Always get unique material
         uniqueMat = self.__materials.GetBlueprint(data, True)
+        uniqueMat.CreateFromJSON(data)
         # Make instance & return it
         meshInstance = Mesh.MeshInstance(blueprint)
         meshInstance.CreateFromJSON(data)
@@ -183,6 +178,11 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
 
 # Light storage & factory & instancer
 class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLightData]):
+
+    # Override: Get instance by json data
+    def GetInstance(self, data : dict, unique = True) -> V:
+        # Lights should be unique
+        return super().GetInstance(data, unique)
 
     # Override: Get blueprint identifier
     def _GetBlueprintID(self, data : dict):
@@ -195,13 +195,13 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
         # Get identifier from json data
         blueprintID = self._GetBlueprintID(data)
         # Make new blueprint depending on type
-        if blueprintID.endswith("AREA"):
+        if "AREA" in blueprintID:
             newLight = Lights.AreaLightData(blueprintID)
-        elif blueprintID.endswith("SPOT"):
+        elif "SPOT" in blueprintID:
             newLight = Lights.SpotLightData(blueprintID)
-        elif blueprintID.endswith("SUN"):
+        elif "SUN" in blueprintID:
             newLight = Lights.SunLightData(blueprintID)
-        elif blueprintID.endswith("POINT"):
+        elif "POINT" in blueprintID:
             newLight = Lights.PointLightData(blueprintID)
         else:
             raise ValueError
@@ -213,17 +213,15 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
     def _MakeInstance(self, data : dict, blueprint : Lights.GenericLightData) -> Lights.GenericLightInstance:
         assert isinstance(blueprint, Lights.GenericLightData)
         assert data is not None
-        # Get identifier from json data
-        blueprintID = self._GetBlueprintID(data)
         # Make instance & return it
-        if blueprintID.endswith("AREA"):
+        if "AREA" in blueprint.BlueprintID:
             lightInstance = Lights.AreaLightInstance(blueprint)
-        elif blueprintID.endswith("SPOT"):
-            lightInstance = Lights.SpotLightData(blueprintID)
-        elif blueprintID.endswith("SUN"):
-            lightInstance = Lights.SunLightData(blueprintID)
-        elif blueprintID.endswith("POINT"):
-            lightInstance = Lights.PointLightData(blueprintID)
+        elif "SPOT" in blueprint.BlueprintID:
+            lightInstance = Lights.SpotLightInstance(blueprint)
+        elif "SUN" in blueprint.BlueprintID:
+            lightInstance = Lights.SunLightInstance(blueprint)
+        elif "POINT" in blueprint.BlueprintID:
+            lightInstance = Lights.PointLightInstance(blueprint)
         else:
             raise ValueError
         # Create & return it

@@ -1,5 +1,6 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
+from ..Utils import FileExt
 from .Material import MaterialData
 from .Base import DataWrapper, ObjectWrapper
 
@@ -7,14 +8,13 @@ from .Base import DataWrapper, ObjectWrapper
 bpy = ImportBpy()
 logger = GetLogger()
 
-import os
 import bmesh
 import mathutils
 
 # Mesh descriptor
 class MeshData(DataWrapper):
 
-    def __init__(self, blueprintID, cpy = None):
+    def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__isValid = False
         self.__mesh : bpy.types.Mesh
 
@@ -46,7 +46,7 @@ class MeshData(DataWrapper):
         filePath = data.get("file", "")
         # Load mesh or unit cube
         if len(filePath) > 0 and not self.__isValid:
-            meshType = os.path.splitext(filePath)[1]
+            meshType = FileExt(filePath)
             # Loading depends on extension
             if meshType == ".obj":
                 self.__LoadMeshObj(filePath)
@@ -89,9 +89,8 @@ class MeshInstance(ObjectWrapper):
         # Store descriptor
         self.__meshData : MeshData
         self.__meshData = blueprint
-        # Create material slot
-        bpy.context.view_layer.objects.active = self.ObjectInstance
-        bpy.ops.object.material_slot_add()
+        # Change material slot to object only
+        self.ObjectInstance.material_slots[0].link = "OBJECT"
 
     # Override: Get mesh data
     @property
