@@ -1,0 +1,10 @@
+surface uv_to_color
+[[
+    string as_node_name = "asUV2Color",
+    string as_category = "surface"
+]]
+(
+)
+{
+    Ci = color(u, v, 0) * emission();
+}

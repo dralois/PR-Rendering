@@ -23,7 +23,13 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "scale" : [ float, float, float ],
             "fov" : [ float, float ],
             "shift" : [ float, float ],
-            "result" : string
+            "result" : string,
+            "shader" : string,
+            "params" :
+                {
+                    "'shaderParam'" : 'value',
+                    ...
+                }
         },
         "meshes" : [
             {
@@ -34,7 +40,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "shader" : string,
                 "params" :
                     {
-                        "'param'" : 'value',
+                        "'shaderParam'" : 'value',
                         ...
                     }
             },
@@ -52,7 +58,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "castsIndirect" : bool,
                 "params" :
                     {
-                        "'param'" : 'value',
+                        "'extraLightParam'" : 'value',
                         ...
                     }
             },

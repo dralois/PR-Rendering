@@ -18,12 +18,12 @@ class MaterialData(DataWrapper):
         self.__material : bpy.types.Material
         self.__material = bpy.data.materials.new(blueprintID)
         self.__material.use_nodes = True
-        self.__shader = {}
+        self.__shaderData = {}
 
         if cpy is None:
             self.__material.node_tree.nodes.clear()
         elif isinstance(cpy, MaterialData):
-            self.CreateFromJSON(cpy.Shader)
+            self.CreateFromJSON(cpy.ShaderData)
         else:
             raise TypeError
 
@@ -41,8 +41,8 @@ class MaterialData(DataWrapper):
 
     # Get material shader data
     @property
-    def Shader(self):
-        return self.__shader
+    def ShaderData(self):
+        return self.__shaderData
 
     # Get material block
     @property
@@ -69,7 +69,7 @@ class MaterialData(DataWrapper):
     def CreateFromJSON(self, data : dict):
         assert data is not None
         # Store shader data
-        self.__shader = data
+        self.__shaderData = data
         # Remove all nodes
         self.__material.node_tree.nodes.clear()
-        Shader.AddShader(self.__material.node_tree, self.__shader)
+        Shader.AddShader(self.__material.node_tree, self.__shaderData)

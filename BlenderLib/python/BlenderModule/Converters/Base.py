@@ -116,6 +116,7 @@ class ObjectWrapper(BaseWrapper):
     @ObjectPosition.setter
     def ObjectPosition(self, value):
         self.__obj.location = value
+        self._TransformUpdate()
 
     # Get rotation of object (euler)
     @property
@@ -134,12 +135,14 @@ class ObjectWrapper(BaseWrapper):
     def ObjectRotationEuler(self, value):
         self.__obj.rotation_mode = "XYZ"
         self.__obj.rotation_euler = value
+        self._TransformUpdate()
 
     # Set rotation of object (quaternion)
     @ObjectRotationQuat.setter
     def ObjectRotationQuat(self, value):
         self.__obj.rotation_mode = "QUATERNION"
         self.__obj.rotation_quaternion = value
+        self._TransformUpdate()
 
     # Get scale of object
     @property
@@ -150,8 +153,20 @@ class ObjectWrapper(BaseWrapper):
     @ObjectScale.setter
     def ObjectScale(self, value):
         self.__obj.scale = value
+        self._TransformUpdate()
 
-    # Forwarded: Create from json data
+    # Get transform matrix of object
+    @property
+    def ObjectTransform(self) -> mathutils.Matrix:
+        return self.__obj.matrix_world
+
+    # Set transform matrix of object
+    @ObjectTransform.setter
+    def ObjectTransform(self, value) -> mathutils.Matrix:
+        self.__obj.matrix_world = value
+        self._TransformUpdate()
+
+    # Forwarded & Override: Create from json data
     def CreateFromJSON(self, data : dict):
         # Parse transform
         self.ObjectPosition = mathutils.Vector(data.get("position", (0.0,0.0,0.0)))
@@ -173,3 +188,7 @@ class ObjectWrapper(BaseWrapper):
     def _Update(self, newData : DataWrapper):
         self.__data = newData
         self.__obj.data = self.__data.Blueprint
+
+    # Forwarded: Called when transform changes
+    def _TransformUpdate(self):
+        pass

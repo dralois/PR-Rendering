@@ -7,7 +7,7 @@ testScene = {
     "settings" :
     {
         "logLevel" : "info",
-        "storeBlend" : True,
+        "storeBlend" : False,
         "resolution" : [1280, 720],
         "plugin" : os.path.join(os.getcwd(), "blenderseed.zip"),
         "output" : os.path.join(os.getcwd(), "BlenderModule\\Test\\"),
@@ -17,7 +17,8 @@ testScene = {
     {
         "position" : [6.0, -3.0, 5.0],
         "rotation" : [0.9, 0.0, 1.1],
-        "result" : "test_render.png"
+        "result" : "test_render.png",
+        "shader" : "uv_to_color"
     },
     "meshes" : [
         {

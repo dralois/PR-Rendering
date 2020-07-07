@@ -45,13 +45,12 @@ class Scene(object):
         ctx.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]
         ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.get("depthOnly", False)]
         ctx.render.image_settings.file_format = "PNG"
-        ctx.render.image_settings.use_zbuffer = not self.__settings.get("depthOnly", False)
         ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
         # Possibly store to blend file
         if self.__settings.get("storeBlend", False):
             saveFile = FileDir(ctx.render.filepath) + FileName(ctx.render.filepath) + ".blend"
-            bpy.ops.wm.save_mainfile(filepath = saveFile)
+            bpy.ops.wm.save_mainfile(filepath = saveFile, check_existing = False)
         # Render scene to file
         bpy.ops.render.render(write_still = True)
         self.__isActive = False
@@ -61,17 +60,20 @@ class Scene(object):
     def __Setup(self):
         logger.info("Setting up scene")
         # Compile all shaders
+        searchPaths = ""
         asPath = bpy.utils.user_resource("SCRIPTS", "addons") + "\\blenderseed"
-        searchPaths = FullPath(__file__ + "\\..\\Test\\")
+        compilePaths = self.__settings.get("shaderPaths", [])
+        compilePaths.append(FullPath(FileDir(__file__) + "\\..\\Shaders\\"))
         # For each shader path
-        for shaderPath in [FullPath(path) for path in self.__settings.get("shaderPaths", ["shaders\\"])]:
+        for shaderPath in [FullPath(path) for path in compilePaths]:
             # Compile and add to appleseed search
             CompileFolder(shaderPath, asPath)
             searchPaths += os.path.pathsep + shaderPath
         # Set shader searchpath
         os.environ["APPLESEED_SEARCHPATH"] = searchPaths
         # TODO: Read & convert textures from paths
-
+        for texPath in [FullPath(path) for path in self.__settings.get("texturePaths", [])]:
+            pass
         # Init blenderseed plugin
         try:
             bpy.ops.preferences.addon_refresh()

@@ -79,7 +79,7 @@ _deps
 *.obj
 *.mtl
 *.oso
-*.blend
+*.blend**
 
 #Folders
 [Bb]uild/*

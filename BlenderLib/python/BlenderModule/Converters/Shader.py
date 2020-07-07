@@ -15,10 +15,20 @@ class Shader(object):
         assert data is not None
         # Only allow to add to empty tree
         if not len(tree.nodes) > 0:
-            shader = GetShader(data.get("shader", "default") if data else "default")
+            shader = GetShader(data.get("shader", "default"))
             # Build shader and add closure to final node
             finalNode = shader.BuildShader(tree, data.get("params", {}))
             cls.__AddClosure(finalNode, tree)
+
+    # Builds fullscreen post processing effect from json params & adds nodes to tree
+    @classmethod
+    def AddPostProcessing(cls, tree : bpy.types.NodeTree, data : dict):
+        assert isinstance(tree, bpy.types.NodeTree)
+        assert data is not None
+        # Only allow to add to empty tree
+        if not len(tree.nodes) > 0:
+            shader = GetShader(data.get("shader", "uv_to_color"))
+            shader.BuildShader(tree, data.get("params", {}))
 
     # Add closure node and connect to closure output node
     @classmethod
@@ -50,8 +60,16 @@ class TestShader(ShaderBase):
         testNode.in_color = data.get("color", (1.0,1.0,1.0))
         return testNode
 
+# Generator for default fullscreen post processing effect
+class UV2Color(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        return tree.nodes.new("AppleseedasUV2ColorNode")
+
 # Get appropriate shader generator
 def GetShader(shaderID) -> ShaderBase:
     mapping = { "default" : DefaultShader,
-                "module_test" : TestShader }
+                "module_test" : TestShader,
+                "uv_to_color" : UV2Color }
     return mapping.get(shaderID, DefaultShader)

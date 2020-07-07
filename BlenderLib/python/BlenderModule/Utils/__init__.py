@@ -4,7 +4,7 @@ import os
 
 # Full path from (relative) path
 def FullPath(filePath):
-    return os.path.abspath(filePath)
+    return os.path.realpath(filePath)
 
 # Full directory from (relative) path / file
 def FileDir(filePath):

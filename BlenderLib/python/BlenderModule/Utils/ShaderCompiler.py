@@ -1,6 +1,7 @@
 from .Logger import GetLogger
 from . import FileName, FileDir, FullPath
 
+import os
 import sys
 import glob
 
@@ -17,12 +18,24 @@ def CompileFolder(shaderFolder, modulePath):
 # Compiles osl shader and returns bytecode
 def CompileFile(sourceFile, modulePath):
     logger.info(f"Compiling shader {sourceFile}")
-    # Modify path and import tools
+    # Store original path
+    tempPath = os.environ["PATH"]
+    pyDir = FullPath(modulePath + "\\appleseed\\lib")
+
+    # Modify sys path and import tools
+    sys.path.append(pyDir)
     sys.path.append(modulePath)
     import utils.path_util as path_utils
-    path_utils.load_appleseed_python_paths()
+
+    # Modify env path and import appleseed
+    binDir = path_utils.get_appleseed_bin_dir_path()
+    os.environ['PATH'] += os.pathsep + binDir
     from appleseed._appleseedpython3 import ShaderCompiler
+
+    # Undo modifications
+    os.environ["PATH"] = tempPath
     sys.path.remove(modulePath)
+    sys.path.remove(pyDir)
 
     # Create shader compiler
     oslStdPath = path_utils.get_stdosl_paths()

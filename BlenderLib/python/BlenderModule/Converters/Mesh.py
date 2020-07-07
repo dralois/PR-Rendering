@@ -89,8 +89,6 @@ class MeshInstance(ObjectWrapper):
         # Store descriptor
         self.__meshData : MeshData
         self.__meshData = blueprint
-        # Change material slot to object only
-        self.ObjectInstance.material_slots[0].link = "OBJECT"
 
     # Override: Get mesh data
     @property
@@ -108,5 +106,9 @@ class MeshInstance(ObjectWrapper):
         assert isinstance(value, MaterialData)
         # Set material active
         if value.Material is not None:
+            # Make slot if there isn't one
+            if len(self.ObjectInstance.material_slots) == 0:
+                self.ObjectInstance.data.materials.append(value.Material)
+            # Bind material to object
+            self.ObjectInstance.material_slots[0].link = "OBJECT"
             self.ObjectInstance.material_slots[0].material = value.Material
-            self.ObjectInstance.active_material = value.Material
