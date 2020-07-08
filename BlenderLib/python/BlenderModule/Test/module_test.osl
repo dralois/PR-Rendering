@@ -8,11 +8,11 @@ shader module_test
     [[
         string label = "Color"
     ]],
-    output closure color out_color = 0
+    output color out_color = 0
     [[
         string label = "Output"
     ]]
 )
 {
-    out_color = in_color * diffuse(Ng);
+    out_color = in_color;
 }

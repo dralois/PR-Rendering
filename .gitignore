@@ -69,13 +69,10 @@ _deps
 
 ### Custom ###
 
-# Special files
-!module_test.obj
-!module_test.mtl
-
 # Files types
 *.zip
 *.png
+*.tx
 *.obj
 *.mtl
 *.oso
@@ -94,3 +91,8 @@ _deps
 **/[Ee]xternal/*
 __pycache__/*
 **/__pycache__/*
+
+# Special files
+!**/module_test.obj
+!**/module_test.mtl
+!**/module_test.png

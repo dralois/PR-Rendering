@@ -1,5 +1,6 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
+from ..Utils import FullPath
 from .Base import ObjectWrapper, DataWrapper
 from .Shader import Shader
 
@@ -120,9 +121,8 @@ class CameraInstance(ObjectWrapper):
         self.__result = value
 
     # Update camera postprocessing effect
-    def ChangeFullscreenEffect(self, effect, data : dict):
-        assert data is not None
-        # If effect is None deactivate
+    def ChangeFullscreenEffect(self, effect):
+        # If effect is None deactivate current effect
         if effect is None:
             # Unlink quad if necessary
             if self.__ppcActive:
@@ -131,7 +131,7 @@ class CameraInstance(ObjectWrapper):
         else:
             # Otherwise add & activate it
             self.__ppcMat.node_tree.nodes.clear()
-            Shader.AddPostProcessing(self.__ppcMat.node_tree, data)
+            Shader.AddPostProcessing(self.__ppcMat.node_tree, effect)
             # Link quad if necessary
             if not self.__ppcActive:
                 self.__ppcActive = True
@@ -142,7 +142,7 @@ class CameraInstance(ObjectWrapper):
         assert data is not None
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("result", "")
-        self.ChangeFullscreenEffect(data.get("shader", None), data)
+        self.ChangeFullscreenEffect(data.get("shader", None))
 
     # Override: Called when transform changes
     def _TransformUpdate(self):

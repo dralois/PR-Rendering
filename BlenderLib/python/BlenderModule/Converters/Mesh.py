@@ -1,6 +1,6 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
-from ..Utils import FileExt
+from ..Utils import FileExt, FullPath
 from .Material import MaterialData
 from .Base import DataWrapper, ObjectWrapper
 
@@ -43,13 +43,15 @@ class MeshData(DataWrapper):
     def CreateFromJSON(self, data : dict):
         assert data is not None
         # Parse filepath
-        filePath = data.get("file", "")
+        self.__filePath = FullPath(data.get("file", ""))
         # Load mesh or unit cube
-        if len(filePath) > 0 and not self.__isValid:
-            meshType = FileExt(filePath)
+        if len(self.__filePath) > 0 and not self.__isValid:
+            meshType = FileExt(self.__filePath)
             # Loading depends on extension
             if meshType == ".obj":
-                self.__LoadMeshObj(filePath)
+                self.__LoadMeshObj()
+            elif meshType == ".glb":
+                self.__LoadMeshGLTF()
             else:
                 logger.warning(f"Mesh format {meshType} not supported!")
         elif not self.__isValid:
@@ -66,10 +68,24 @@ class MeshData(DataWrapper):
         cubeMesh.free()
 
     # Load mesh from obj file
-    def __LoadMeshObj(self, filePath):
-        self.__filePath = filePath
+    def __LoadMeshObj(self):
         # Load mesh to active scene & store from selection
         bpy.ops.import_scene.obj(filepath = self.__filePath)
+        loader : bpy.types.Object = bpy.context.selected_objects[0]
+        # Delete potentially loaded materials
+        bpy.data.batch_remove([slot.material for slot in loader.material_slots])
+        # Update internals
+        newMesh = loader.data
+        self._Update(newMesh)
+        self.__mesh = newMesh
+        # Delete creator object
+        bpy.data.objects.remove(loader)
+
+    # FIXME: Test if this works
+    # Load mesh from glTF file
+    def __LoadMeshGLTF(self):
+        # Load mesh to active scene & store from selection
+        bpy.ops.import_scene.gltf(filepath = self.__filePath)
         loader : bpy.types.Object = bpy.context.selected_objects[0]
         # Delete potentially loaded materials
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])

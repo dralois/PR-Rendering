@@ -124,7 +124,7 @@ class MaterialFactory(BlueprintStorage[Material.MaterialData]):
     # Override: Get blueprint identifier
     def _GetBlueprintID(self, data : dict):
         assert data is not None
-        return "mat_" + data.get("shader", "default")
+        return "mat_" + data.get("name", "default")
 
     # Override: Make new blueprint from json data
     def _MakeBlueprint(self, data : dict) -> Material.MaterialData:
@@ -168,8 +168,9 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
         assert isinstance(blueprint, Mesh.MeshData)
         assert data is not None
         # Always get unique material
-        uniqueMat = self.__materials.GetBlueprint(data, True)
-        uniqueMat.CreateFromJSON(data)
+        shader = data.get("shader", {})
+        uniqueMat = self.__materials.GetBlueprint(shader, True)
+        uniqueMat.CreateFromJSON(shader)
         # Make instance & return it
         meshInstance = Mesh.MeshInstance(blueprint)
         meshInstance.CreateFromJSON(data)

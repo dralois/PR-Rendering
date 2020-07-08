@@ -12,15 +12,16 @@ def CompileFolder(shaderFolder, modulePath):
     logger.info(f"Compiling shaders in folder {shaderFolder}")
     # Glob all osl files, compile and store them
     for oslShader in glob.glob(shaderFolder + "\\*.osl"):
-        bytecode = CompileFile(FullPath(oslShader), modulePath)
-        StoreBytecode(bytecode, FileDir(oslShader) + FileName(oslShader) + ".oso")
+        compiledFile = f"{FileDir(oslShader)}\\{FileName(oslShader)}.oso"
+        if not os.path.exists(compiledFile) or logger.level < 30:
+            bytecode = CompileFile(FullPath(oslShader), modulePath)
+            StoreBytecode(bytecode, compiledFile)
 
 # Compiles osl shader and returns bytecode
 def CompileFile(sourceFile, modulePath):
-    logger.info(f"Compiling shader {sourceFile}")
     # Store original path
     tempPath = os.environ["PATH"]
-    pyDir = FullPath(modulePath + "\\appleseed\\lib")
+    pyDir = FullPath(f"{modulePath}\\appleseed\\lib")
 
     # Modify sys path and import tools
     sys.path.append(pyDir)
@@ -29,7 +30,7 @@ def CompileFile(sourceFile, modulePath):
 
     # Modify env path and import appleseed
     binDir = path_utils.get_appleseed_bin_dir_path()
-    os.environ['PATH'] += os.pathsep + binDir
+    os.environ["PATH"] += os.pathsep + binDir
     from appleseed._appleseedpython3 import ShaderCompiler
 
     # Undo modifications
@@ -47,6 +48,7 @@ def CompileFile(sourceFile, modulePath):
     codeFile.close()
 
     # Compile and return code
+    logger.info(f"Compiling shader {sourceFile}")
     return compiler.compile_buffer(sourceCode)
 
 # Stores compiled shader in file

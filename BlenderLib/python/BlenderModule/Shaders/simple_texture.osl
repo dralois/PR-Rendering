@@ -1,0 +1,35 @@
+shader simple_texture
+[[
+    string as_node_name = "asSimpleTexture",
+    string as_category = "shader"
+]]
+(
+    string in_filename = ""
+    [[
+        string label = "Texture file"
+    ]],
+    output color out_color = 0
+    [[
+        string label = "Output"
+    ]]
+)
+{
+    if (in_filename == "")
+    {
+        error("No texture set!");
+        return;
+    }
+    else
+    {
+        int valid_file = 0;
+        gettextureinfo(in_filename, "exists", valid_file);
+
+        if (!valid_file)
+        {
+            error("Texture %s not valid!", in_filename);
+            return;
+        }
+    }
+
+    out_color =  (color) texture(in_filename, u, v);
+}

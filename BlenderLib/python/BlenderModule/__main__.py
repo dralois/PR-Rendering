@@ -9,36 +9,46 @@ testScene = {
         "logLevel" : "info",
         "storeBlend" : False,
         "resolution" : [1280, 720],
-        "plugin" : os.path.join(os.getcwd(), "blenderseed.zip"),
-        "output" : os.path.join(os.getcwd(), "BlenderModule\\Test\\"),
-        "shaderPaths" : [os.path.join(os.getcwd(), "BlenderModule\\Test\\")]
+        "pluginDir" : os.path.join(os.getcwd(), "blenderseed.zip"),
+        "outputDir" : os.path.join(os.getcwd(), "BlenderModule\\Test"),
+        "shaderDirs" : [os.path.join(os.getcwd(), "BlenderModule\\Test")]
     },
     "camera" :
     {
         "position" : [6.0, -3.0, 5.0],
         "rotation" : [0.9, 0.0, 1.1],
-        "result" : "test_render.png",
-        "shader" : "uv_to_color"
+        "result" : "test_render",
     },
     "meshes" : [
         {
             "position" : [-0.5, -0.5, 0.0],
             "scale" : [0.5, 0.5, 0.5],
             "file" : os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj"),
-            "shader" : "module_test",
-            "params" :
+            "shader" :
             {
-                "color" : (0.5, 0.3, 0.7)
+                "name" : "simple_texture",
+                "textures" : [
+                    {
+                        "filePath" : "BlenderModule\\Test\\module_test.png"
+                    }
+                ],
+                "params" :
+                {
+                    "filename" : "BlenderModule\\Test\\module_test.png"
+                }
             }
         },
         {
             "position" : [1.0, 1.0, 0.0],
             "scale" : [0.5, 0.5, 0.5],
             "file" : os.path.join(os.getcwd(), "BlenderModule\\Test\\module_test.obj"),
-            "shader" : "module_test",
-            "params" :
+            "shader" :
             {
-                "color" : (0.3, 0.7, 0.5)
+                "name" : "module_test",
+                "params" :
+                {
+                    "color" : (0.3, 0.7, 0.5)
+                }
             }
         }
     ],

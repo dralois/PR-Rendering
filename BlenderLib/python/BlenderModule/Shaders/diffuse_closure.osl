@@ -1,0 +1,14 @@
+surface shader_closure
+[[
+    string as_node_name = "asDiffuseClosure",
+    string as_category = "surface"
+]]
+(
+    color in_color = 0
+    [[
+        string label = "Final Pixel Color"
+    ]]
+)
+{
+    Ci = in_color * diffuse(Ng);
+}

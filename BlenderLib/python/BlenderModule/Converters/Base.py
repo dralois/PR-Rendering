@@ -26,6 +26,10 @@ class BaseWrapper(object):
     def Blueprint(self):
         raise NotImplementedError
 
+    # Forwarded: Create from json data
+    def CreateFromJSON(self, data : dict):
+        raise NotImplementedError
+
     # Forwarded: Cleanup internal data
     def _Cleanup(self):
         raise NotImplementedError

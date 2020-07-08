@@ -3,7 +3,7 @@ from ..Utils.ShaderCompiler import CompileFolder
 from ..Utils.Logger import GetLogger, GetLevel, SetLevel
 from ..Utils import FileDir, FileName, FullFileName, FullPath
 from ..Converters import Camera, Lights, Material, Mesh, Shader
-from . import ObjectManager
+from . import ObjectManager, TextureManager
 
 # Blender for multiprocessing
 bpy = ImportBpy()
@@ -40,7 +40,8 @@ class Scene(object):
         ctx = bpy.context.scene
         ctx.camera = self.__camera.ObjectInstance
         # Adjust render settings
-        ctx.render.filepath = self.__settings.get("output", "output\\") + self.__camera.CameraResultFile
+        outputDir = self.__settings.get("outputDir", "output")
+        ctx.render.filepath = f"{outputDir}\\{self.__camera.CameraResultFile}.png"
         ctx.render.image_settings.compression = (15, 0)[self.__settings.get("depthOnly", False)]
         ctx.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]
         ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.get("depthOnly", False)]
@@ -49,37 +50,34 @@ class Scene(object):
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
         # Possibly store to blend file
         if self.__settings.get("storeBlend", False):
-            saveFile = FileDir(ctx.render.filepath) + FileName(ctx.render.filepath) + ".blend"
+            saveFile = f"{outputDir}\\{self.__camera.CameraResultFile}.blend"
             bpy.ops.wm.save_mainfile(filepath = saveFile, check_existing = False)
         # Render scene to file
         bpy.ops.render.render(write_still = True)
         self.__isActive = False
 
-    # TODO
     # Initialize scene for rendering
     def __Setup(self):
         logger.info("Setting up scene")
         # Compile all shaders
         searchPaths = ""
-        asPath = bpy.utils.user_resource("SCRIPTS", "addons") + "\\blenderseed"
-        compilePaths = self.__settings.get("shaderPaths", [])
-        compilePaths.append(FullPath(FileDir(__file__) + "\\..\\Shaders\\"))
-        # For each shader path
+        modulePath = f'{bpy.utils.user_resource("SCRIPTS", "addons")}\\blenderseed'
+        compilePaths = self.__settings.get("shaderDirs", [])
+        compilePaths.append(FullPath(f"{FileDir(__file__)}\\..\\Shaders\\"))
+        # Compile & add each shader directory
         for shaderPath in [FullPath(path) for path in compilePaths]:
-            # Compile and add to appleseed search
-            CompileFolder(shaderPath, asPath)
+            CompileFolder(shaderPath, modulePath)
             searchPaths += os.path.pathsep + shaderPath
-        # Set shader searchpath
+        # Set shader searchpaths
         os.environ["APPLESEED_SEARCHPATH"] = searchPaths
-        # TODO: Read & convert textures from paths
-        for texPath in [FullPath(path) for path in self.__settings.get("texturePaths", [])]:
-            pass
+        # Init texture system
+        Shader.SetTextureSystem(TextureManager.TextureFactory(modulePath))
         # Init blenderseed plugin
         try:
             bpy.ops.preferences.addon_refresh()
             bpy.ops.preferences.addon_enable(module = "blenderseed")
         except:
-            pluginPath = self.__settings.get("plugin", "blenderseed.zip")
+            pluginPath = FullPath(self.__settings.get("pluginDir", "blenderseed.zip"))
             bpy.ops.preferences.addon_install(filepath = pluginPath)
             bpy.ops.preferences.addon_enable(module = "blenderseed")
         # Remove default stuff from scene

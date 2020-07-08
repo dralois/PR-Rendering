@@ -1,9 +1,24 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
+from ..Managers.TextureManager import TextureFactory
 
 # Blender for multiprocessing
 bpy = ImportBpy()
 logger = GetLogger()
+
+# Shader texture storage
+__textureSystem : TextureFactory
+__textureSystem = None
+
+# Get shader texture storage
+def GetTextureSystem():
+    global __textureSystem
+    return __textureSystem
+
+# Set shader texture storage
+def SetTextureSystem(value):
+    global __textureSystem
+    __textureSystem = value
 
 # Shader generator
 class Shader(object):
@@ -15,10 +30,15 @@ class Shader(object):
         assert data is not None
         # Only allow to add to empty tree
         if not len(tree.nodes) > 0:
-            shader = GetShader(data.get("shader", "default"))
+            shader = GetShader(data.get("name", "default"))
+            # Add textures
+            for tex in data.get("textures", []):
+                GetTextureSystem().AddTexture(tex.get("filePath"),
+                                            tex.get("colorSpace"),
+                                            tex.get("colorDepth"))
             # Build shader and add closure to final node
             finalNode = shader.BuildShader(tree, data.get("params", {}))
-            cls.__AddClosure(finalNode, tree)
+            cls.__AddShaderClosure(finalNode, tree)
 
     # Builds fullscreen post processing effect from json params & adds nodes to tree
     @classmethod
@@ -27,13 +47,26 @@ class Shader(object):
         assert data is not None
         # Only allow to add to empty tree
         if not len(tree.nodes) > 0:
-            shader = GetShader(data.get("shader", "uv_to_color"))
-            shader.BuildShader(tree, data.get("params", {}))
+            shader = GetShader(data.get("name", "uv_to_color"))
+            # Add textures
+            for tex in data.get("textures", []):
+                GetTextureSystem().AddTexture(tex.get("filePath", ""),
+                                            tex.get("colorSpace", ""),
+                                            tex.get("colorDepth", ""))
+            # Build shader and add closure to final node
+            finalNode = shader.BuildShader(tree, data.get("params", {}))
+            cls.__AddEffectClosure(finalNode, tree)
 
-    # Add closure node and connect to closure output node
+    # Add shader closure node and connect to closure output node
     @classmethod
-    def __AddClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree):
-        closure = tree.nodes.new("AppleseedasClosure2SurfaceNode")
+    def __AddShaderClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree):
+        closure = tree.nodes.new("AppleseedasDiffuseClosureNode")
+        tree.links.new(closure.inputs[0], finalNode.outputs[0])
+
+    # Add effect closure node and connect to closure output node
+    @classmethod
+    def __AddEffectClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree):
+        closure = tree.nodes.new("AppleseedasEffectClosureNode")
         tree.links.new(closure.inputs[0], finalNode.outputs[0])
 
 # Generic shader generator
@@ -67,9 +100,22 @@ class UV2Color(ShaderBase):
     def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
         return tree.nodes.new("AppleseedasUV2ColorNode")
 
+# Generator for diffuse 2D texture shader
+class SimpleTexture(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        textureNode = tree.nodes.new("AppleseedasSimpleTextureNode")
+        textureNode.in_filename = GetTextureSystem().GetTexture(data.get("filename", ""))
+        return textureNode
+
 # Get appropriate shader generator
 def GetShader(shaderID) -> ShaderBase:
+    # Build mapping
     mapping = { "default" : DefaultShader,
                 "module_test" : TestShader,
-                "uv_to_color" : UV2Color }
+                "uv_to_color" : UV2Color,
+                "simple_texture" : SimpleTexture
+    }
+    # Return appropriate class
     return mapping.get(shaderID, DefaultShader)

@@ -1,10 +1,14 @@
-surface uv_to_color
+shader uv_to_color
 [[
     string as_node_name = "asUV2Color",
-    string as_category = "surface"
+    string as_category = "shader"
 ]]
 (
+    output color out_color = 0
+    [[
+        string label = "Output"
+    ]]
 )
 {
-    Ci = color(u, v, 0) * emission();
+    out_color = color(u, v, 0);
 }

@@ -11,10 +11,9 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "storeBlend" : bool,
             "resolution" : [ int, int ],
             "depthOnly" : bool,
-            "output" : string,
-            "plugin" : string,
-            "shaderPaths" : [ string, ... ],
-            "texturePaths" : [ string, ... ]
+            "outputDir" : string,
+            "pluginDir" : string,
+            "shaderDirs" : [ string, ... ]
         },
         "camera" :
         {
@@ -24,12 +23,24 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "fov" : [ float, float ],
             "shift" : [ float, float ],
             "result" : string,
-            "shader" : string,
-            "params" :
+            "shader" :
+            {
+                "name" : string,
+                "textures" :
+                [
+                    {
+                        "filePath" : string,
+                        "colorSpace" : string,
+                        "colorDepth" : string
+                    },
+                    ...
+                ],
+                "params" :
                 {
                     "'shaderParam'" : 'value',
                     ...
                 }
+            }
         },
         "meshes" : [
             {
@@ -37,12 +48,24 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "rotation" : [ float, float, float, float ],
                 "scale" : [ float, float, float ],
                 "file" : string,
-                "shader" : string,
-                "params" :
+                "shader" :
+                {
+                    "name" : string,
+                    "textures" :
+                    [
+                        {
+                            "filePath" : string,
+                            "colorSpace" : string,
+                            "colorDepth" : string
+                        },
+                        ...
+                    ],
+                    "params" :
                     {
                         "'shaderParam'" : 'value',
                         ...
                     }
+                }
             },
             ...
         ],

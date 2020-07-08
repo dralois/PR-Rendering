@@ -11,7 +11,7 @@ def FileDir(filePath):
     if os.path.isdir(FullPath(filePath)):
         return path
     else:
-        return os.path.split(FullPath(filePath))[0] + "\\"
+        return os.path.split(FullPath(filePath))[0]
 
 # Full file name from path
 def FullFileName(filePath):
