@@ -13,11 +13,14 @@ function(AddAppleseed TO_TARGET INSTALL_PATH)
         # Download source code
         if(WIN32)
             FetchContent_Declare(${CONTENT_NAME}
-                                URL https://github.com/appleseedhq/blenderseed/releases/download/2.0.0-beta/blenderseed-2.0.0-beta-0-g6b8f474-blender-2.80-win64.zip
-                                URL_HASH MD5=1af7351efe5907a3b51dec139c4de5b6
+                                URL https://github.com/dralois/Blender-Python-Module-Docker/releases/download/v2.0/blenderseed-windows.zip
+                                URL_HASH MD5=bcaa490e54ba027c11640cc0bbe634b4
             )
         else()
-            # TODO
+            FetchContent_Declare(${CONTENT_NAME}
+                                URL https://github.com/dralois/Blender-Python-Module-Docker/releases/download/v2.0/blenderseed-linux.zip
+                                URL_HASH MD5=bec012fa46a71ad07d72d64ecd454ae8
+            )
         endif()
         # TODO
         # Make available

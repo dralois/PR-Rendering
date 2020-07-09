@@ -1,7 +1,9 @@
 from ..Utils.Importer import GetPaths, SetPaths
+from ..Utils import FullPath, FileDir
 from .SceneManager import CreateFromJSON, Scene
 
 from typing import List
+from os import chdir
 import multiprocessing
 import json
 
@@ -10,6 +12,8 @@ __orgPaths, __bpyPaths = GetPaths()
 
 # Renders a single scene
 def RenderSceneSingle(sceneData):
+    # Change working dir in process
+    chdir(FullPath(f"{FileDir(__file__)}\\..\\"))
     # Create scene from proxy
     scene = CreateFromJSON(sceneData)
     # Render the scene

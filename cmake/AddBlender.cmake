@@ -11,22 +11,15 @@ function(AddBlender TO_TARGET INSTALL_PATH)
         include(FetchContent)
         include(ContentHelpers)
         # Download source code
-        FetchContent_Declare(${CONTENT_NAME}
-                            GIT_REPOSITORY https://git.blender.org/blender.git
-                            GIT_TAG v2.82a
-                            GIT_SHALLOW True
-                            GIT_PROGRESS True
-        )
-        # Blender: Download precompiled dependencies
         if(WIN32)
-            FetchContent_Declare(${CONTENT_NAME}_deps
-                                SVN_REPOSITORY https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15
-                                SVN_TRUST_CERT True
+            FetchContent_Declare(${CONTENT_NAME}
+                                URL https://github.com/dralois/Blender-Python-Module-Docker/releases/download/v2.0/bpy-2.82a-windows.zip
+                                URL_HASH MD5=4dbfcb47e1d93fe81138477064392bd1
             )
         else()
-            FetchContent_Declare(${CONTENT_NAME}_deps
-                                SVN_REPOSITORY https://svn.blender.org/svnroot/bf-blender/trunk/lib/linux_centos7_x86_64/
-                                SVN_TRUST_CERT True
+            FetchContent_Declare(${CONTENT_NAME}
+                                URL https://github.com/dralois/Blender-Python-Module-Docker/releases/download/v2.0/bpy-2.82a-linux.zip
+                                URL_HASH MD5=99ab0e484dfa7d360f62a57f42c4d713
             )
         endif()
         # TODO

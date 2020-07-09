@@ -40,7 +40,7 @@ class Scene(object):
         ctx = bpy.context.scene
         ctx.camera = self.__camera.ObjectInstance
         # Adjust render settings
-        outputDir = self.__settings.get("outputDir", "output")
+        outputDir = FullPath(self.__settings.get("outputDir", "output"))
         ctx.render.filepath = f"{outputDir}\\{self.__camera.CameraResultFile}.png"
         ctx.render.image_settings.compression = (15, 0)[self.__settings.get("depthOnly", False)]
         ctx.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]

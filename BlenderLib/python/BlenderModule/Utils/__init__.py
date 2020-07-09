@@ -1,6 +1,15 @@
-__all__ = ["Importer", "Logger", "ShaderCompiler"]
+__all__ = ["Importer", "Logger", "ShaderCompiler", "TextureConverter"]
 
 import os
+import sys
+
+# Called from C++
+def SetupMultiprocessing(pythonExePath):
+    # Set argv (not set for embedded interpreters)
+    sys.argv = [FullPath(f"{FileDir(__file__)}\\..\\__init__.py")]
+    # Set executable path
+    from multiprocessing import set_executable
+    set_executable(FullPath(pythonExePath))
 
 # Full path from (relative) path
 def FullPath(filePath):

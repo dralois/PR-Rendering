@@ -1,1 +1,1 @@
-__all__ = ["Converters", "Managers", "Utils"]
+__all__ = ["Converters", "Managers", "Test", "Utils"]
