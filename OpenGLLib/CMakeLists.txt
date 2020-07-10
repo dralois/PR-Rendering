@@ -31,12 +31,12 @@ endif()
 ###########################################################################################
 
 # Generate code file lists
-file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
+file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/OpenGLLib/*.h")
 file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB SHADER_LIST CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.*")
 
 # Set IDE folder structure
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include/OpenGLLib" PREFIX "Header Files" FILES ${HEADER_LIST})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${SOURCE_LIST})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shader Files" FILES ${SHADER_LIST})
 
@@ -44,7 +44,8 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/shaders" PREFIX "Shader Files" FI
 add_library(OpenGLLib SHARED ${HEADER_LIST} ${SOURCE_LIST} ${SHADER_LIST})
 
 # Make includes available
-target_include_directories(OpenGLLib PUBLIC include)
+target_include_directories(OpenGLLib INTERFACE include)
+target_include_directories(OpenGLLib PRIVATE include/OpenGLLib)
 
 # Configure output
 set_target_properties(OpenGLLib PROPERTIES

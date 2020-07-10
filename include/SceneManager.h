@@ -11,9 +11,9 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
-#include "PxPhysicsAPI.h"
+#include <PxPhysicsAPI.h>
 
-#include <render.h>
+#include <OpenGLLib/render.h>
 #include <AiMesh.h>
 #include <PxMeshConvex.h>
 #include <PxMeshTriangle.h>
