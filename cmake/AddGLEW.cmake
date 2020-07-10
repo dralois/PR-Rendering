@@ -1,6 +1,7 @@
 function(AddGLEW TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME glew)
+    include(ContentHelpers)
 
     # Check if package available
     CheckGLEW(CHECK_FOUND)
@@ -9,7 +10,6 @@ function(AddGLEW TO_TARGET INSTALL_PATH)
     if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
-        include(ContentHelpers)
         # Download source code (complete release)
         FetchContent_Declare(${CONTENT_NAME}
                             URL https://github.com/nigels-com/glew/releases/download/glew-2.1.0/glew-2.1.0.zip

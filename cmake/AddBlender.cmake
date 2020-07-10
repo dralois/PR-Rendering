@@ -1,6 +1,7 @@
 function(AddBlender TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME blender)
+    include(ContentHelpers)
 
     # Check if package available
     CheckBlender(CHECK_FOUND)
@@ -9,7 +10,6 @@ function(AddBlender TO_TARGET INSTALL_PATH)
     if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
-        include(ContentHelpers)
         # Download source code
         if(WIN32)
             FetchContent_Declare(${CONTENT_NAME}

@@ -1,6 +1,7 @@
 function(AddAssimp TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME assimp)
+    include(ContentHelpers)
 
     # Check if package available
     CheckAssimp(CHECK_FOUND)
@@ -9,7 +10,6 @@ function(AddAssimp TO_TARGET INSTALL_PATH)
     if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
-        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/assimp/assimp.git

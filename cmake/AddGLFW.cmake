@@ -1,6 +1,7 @@
 function(AddGLFW TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME glfw)
+    include(ContentHelpers)
     
     # Check if package available
     CheckGLFW(CHECK_FOUND)
@@ -9,7 +10,6 @@ function(AddGLFW TO_TARGET INSTALL_PATH)
     if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
-        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/glfw/glfw.git

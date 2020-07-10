@@ -1,6 +1,7 @@
 function(AddOpenCV TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME opencv)
+    include(ContentHelpers)
 
     # Parse components
     if(${ARGC} GREATER 2)
@@ -16,7 +17,6 @@ function(AddOpenCV TO_TARGET INSTALL_PATH)
     if(NOT ${CHECK_FOUND})
         # Enable dependency download module
         include(FetchContent)
-        include(ContentHelpers)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/opencv/opencv.git
