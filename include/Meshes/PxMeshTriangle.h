@@ -1,19 +1,19 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <PxMesh.h>
+#include <Meshes/PxMesh.h>
 #pragma warning(pop)
 
 //---------------------------------------
-// Convex mesh, limited to 256 tris
+// Triangle mesh, to be used sparingly
 //---------------------------------------
-class PxMeshConvex : public PxMesh
+class PxMeshTriangle : public PxMesh
 {
 private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	PxConvexMesh* pPxMesh = NULL;
+	PxTriangleMesh* pPxMesh = NULL;
 
 	//---------------------------------------
 	// Methods
@@ -29,5 +29,5 @@ public:
 	// Constructors
 	//---------------------------------------
 	using PxMesh::PxMesh;
-	~PxMeshConvex();
+	~PxMeshTriangle();
 };

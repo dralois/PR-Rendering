@@ -1,4 +1,4 @@
-#include <MeshBase.h>
+#include <Meshes/MeshBase.h>
 
 #pragma warning(push, 0)
 #include <assimp/Importer.hpp>

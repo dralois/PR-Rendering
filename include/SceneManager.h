@@ -14,9 +14,9 @@
 #include <PxPhysicsAPI.h>
 
 #include <OpenGLLib/render.h>
-#include <AiMesh.h>
-#include <PxMeshConvex.h>
-#include <PxMeshTriangle.h>
+#include <Meshes/AiMesh.h>
+#include <Meshes/PxMeshConvex.h>
+#include <Meshes/PxMeshTriangle.h>
 #pragma warning(pop)
 
 using namespace Eigen;

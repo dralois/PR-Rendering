@@ -33,9 +33,9 @@ if(NOT WIN32)
 endif()
 
 # Generate code file lists
-file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/*.h")
+file(GLOB_RECURSE HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/*.h")
+file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
 list(FILTER HEADER_LIST EXCLUDE REGEX "dirent.h")
-file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 # Set IDE folder structure
 source_group(TREE "${CMAKE_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})
@@ -60,10 +60,6 @@ target_include_directories(PRRendering PRIVATE include)
 set(Boost_ADDITIONAL_VERSIONS "1.73.0")
 find_package(Boost REQUIRED system thread filesystem)
 target_link_libraries(PRRendering PRIVATE Boost::thread Boost::filesystem)
-
-# Find & add Arnold
-find_package(AI REQUIRED MODULE)
-target_link_libraries(PRRendering PRIVATE AI::AI)
 
 # Set external path
 set(PROJECT_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
@@ -95,8 +91,6 @@ endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/OpenGLLib)
-add_subdirectory(${CMAKE_SOURCE_DIR}/ShadersLib)
 
 target_link_libraries(PRRendering PRIVATE BlenderLib)
 target_link_libraries(PRRendering PRIVATE OpenGLLib)
-target_link_libraries(PRRendering PRIVATE ShadersLib)

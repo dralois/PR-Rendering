@@ -3,7 +3,7 @@
 #pragma warning(push, 0)
 #include <PxPhysicsAPI.h>
 
-#include <MeshBase.h>
+#include <Meshes/MeshBase.h>
 #include <Transformable.h>
 #pragma warning(pop)
 

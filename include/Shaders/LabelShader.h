@@ -1,33 +1,36 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <PxMesh.h>
+#include <Shaders/Shading.h>
 #pragma warning(pop)
 
 //---------------------------------------
-// Triangle mesh, to be used sparingly
+// Shader for mask creation
 //---------------------------------------
-class PxMeshTriangle : public PxMesh
+class LabelShader : OSLShader
 {
-private:
+protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	PxTriangleMesh* pPxMesh = NULL;
+	int maskId;
 
 	//---------------------------------------
-	// Methods
+	// Add shader params
 	//---------------------------------------
-	virtual bool X_IsStatic() override;
-	virtual void X_CookMesh() override;
-	virtual void X_ExportMesh() override;
-	virtual void X_CreateMesh() override;
-	virtual void X_CreateShape() override;
+	void LabelShader::X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	{
+		writer.Key("maskId");
+		writer.Int(maskId);
+	}
 
 public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	using PxMesh::PxMesh;
-	~PxMeshTriangle();
+	LabelShader(const string& name, const vector<OSLTexture>& textures, int maskId):
+		OSLShader(name, textures),
+		maskId(maskId)
+	{
+	}
 };

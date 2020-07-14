@@ -5,7 +5,7 @@
 
 #include <Eigen/Dense>
 
-#include <MeshBase.h>
+#include <Meshes/MeshBase.h>
 #include <Transformable.h>
 #pragma warning(pop)
 

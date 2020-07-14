@@ -3,7 +3,7 @@
 //---------------------------------------
 // Necessary for every movable object
 //---------------------------------------
-template<class T>
+template<typename T>
 class Transformable
 {
 protected:
