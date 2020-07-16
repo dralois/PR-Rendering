@@ -6,7 +6,6 @@ testScene = {
     "settings" :
     {
         "logLevel" : "info",
-        "storeBlend" : False,
         "resolution" : [1280, 720],
         "pluginDir" : "blenderseed.zip",
         "outputDir" : "Test",

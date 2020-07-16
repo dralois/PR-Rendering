@@ -42,9 +42,9 @@ class Scene(object):
         # Adjust render settings
         outputDir = FullPath(self.__settings.get("outputDir", "output"))
         ctx.render.filepath = f"{outputDir}\\{self.__camera.CameraResultFile}.png"
-        ctx.render.image_settings.compression = (15, 0)[self.__settings.get("depthOnly", False)]
-        ctx.render.image_settings.color_depth = ("8", "32")[self.__settings.get("depthOnly", False)]
-        ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__settings.get("depthOnly", False)]
+        ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDepthOnly]
+        ctx.render.image_settings.color_depth = ("8", "32")[self.__camera.CameraDepthOnly]
+        ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__camera.CameraDepthOnly]
         ctx.render.image_settings.file_format = "PNG"
         ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]

@@ -1,0 +1,102 @@
+#pragma once
+
+#include <iostream>
+
+#pragma warning(push, 0)
+#include <Meshes/MeshBase.h>
+#include <Shaders/Shading.h>
+#include <Renderfile.h>
+#pragma warning(pop)
+
+using namespace std;
+using namespace Eigen;
+
+//---------------------------------------
+// Mesh object wrapper for rendering
+//---------------------------------------
+class RenderMesh : public RenderfileObject, MeshBase
+{
+protected:
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+
+	OSLShader* oslShader;
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	{
+		writer.Key("file");
+		const string& path = ((MeshBase*)this)->GetMeshPath();
+		RenderfileData::AddString(writer, path);
+		// Mesh should always have a shader
+		if (oslShader)
+		{
+			writer.Key("shader");
+			oslShader->AddToJSON(writer);
+		}
+		else
+		{
+			cout << "Mesh " << path << " has no shader!" << endl;
+		}
+	}
+
+	void RenderMesh::X_ExportMesh()	{ /* Does not apply to render mesh */ }
+
+public:
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+
+	inline const OSLShader* GetShader() { return oslShader; }
+	inline void SetShader(OSLShader* shader)
+	{
+		delete oslShader;
+		oslShader = shader;
+	}
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	void RenderMesh::SetScale(float scale)
+	{
+		Affine3f trans = Affine3f(GetTransform());
+
+		trans.fromPositionOrientationScale
+
+		SetTransform(trans.matrix());
+	}
+
+	void RenderMesh::CreateMesh() { /* Does not apply to render mesh */ }
+
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+
+	RenderMesh(const string& meshFile, const string& textureFile, int meshId) :
+		MeshBase(meshFile, textureFile, meshId),
+		oslShader(NULL)
+	{
+	}
+
+	RenderMesh(const string& meshFile, int meshId) :
+		MeshBase(meshFile, meshId),
+		oslShader(NULL)
+	{
+	}
+
+	~RenderMesh()
+	{
+		// Shader is unique to mesh
+		delete oslShader;
+	}
+
+	// Geerbt über MeshBase
+	virtual void X_ExportMesh() override;
+	virtual void CreateMesh() override;
+	virtual void SetScale(float scale) override;
+};

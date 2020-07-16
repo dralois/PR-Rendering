@@ -30,7 +30,7 @@ bool MeshBase::X_LoadFile()
 	}
 	else if (!scene->HasMeshes())
 	{
-		std::cout << "Mesh load error:" << meshPath << " has no mesh" << endl;
+		std::cout << "Mesh load error:" << meshPath << " has no mesh" << std::endl;
 		return false;
 	}
 
@@ -201,7 +201,6 @@ MeshBase::MeshBase(const MeshBase& copy) :
 	objId(-1),
 	meshPath(copy.meshPath),
 	texturePath(copy.texturePath),
-	metalness(copy.metalness),
 	meshScale(copy.meshScale)
 {
 }

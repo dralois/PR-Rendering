@@ -113,7 +113,7 @@ void PxMeshConvex::X_CreateShape()
 	PxConvexMeshGeometry meshGeom;
 	meshGeom.convexMesh = pPxMesh;
 	meshGeom.meshFlags = PxConvexMeshGeometryFlag::eTIGHT_BOUNDS;
-	meshGeom.scale = PxMeshScale(meshScale);
+	meshGeom.scale = PxMeshScale(GetScale());
 
 	// Create shape from the descriptor
 	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *pPxMaterial);

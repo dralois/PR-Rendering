@@ -20,7 +20,9 @@ private:
 
 	Vector2f fieldOfView;
 	Vector2f lensShift;
+	Vector2f clipPlanes;
 	string resultName;
+	bool depthOnly;
 	OSLShader* cameraEffect;
 
 	//---------------------------------------
@@ -35,8 +37,14 @@ private:
 		writer.Key("shift");
 		RenderfileData::AddEigenVector<Vector2f>(writer, lensShift);
 
+		writer.Key("nearZ");
+		RenderfileData::AddFloat(writer, clipPlanes.x());
+
 		writer.Key("result");
 		RenderfileData::AddString(writer, resultName);
+
+		writer.Key("depthOnly");
+		writer.Bool(depthOnly);
 
 		// Camera does not always have an effect set
 		if (cameraEffect)
@@ -48,14 +56,33 @@ private:
 
 public:
 	//---------------------------------------
+	// Properties
+	//---------------------------------------
+
+	inline void SetFOV(Vector2f fov) { fieldOfView = fov; }
+	inline Vector2f GetFOV() { return fieldOfView; }
+	inline void SetShift(Vector2f shift) { lensShift = shift; }
+	inline Vector2f GetShift(Vector2f shift) { return shift; }
+	inline void SetClipping(float near, float far) { clipPlanes = Vector2f(near, far); }
+	inline Vector2f GetClipping() { return clipPlanes; }
+	inline void SetResultFile(const string& result) { resultName = result; }
+	inline const string& GetResultFile() { return resultName; }
+	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
+	inline bool GetDepthOnly() { return depthOnly; }
+	inline void SetEffect(OSLShader* effect) { cameraEffect = effect; }
+	inline const OSLShader* GetEffect() { return cameraEffect; }
+
+	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
-	Camera(Vector2f fieldOfView, Vector2f lensShift, const string& resultName, OSLShader* cameraEffect = NULL) :
-		fieldOfView(fieldOfView),
-		lensShift(lensShift),
-		resultName(resultName),
-		cameraEffect(cameraEffect)
+	Camera() :
+		fieldOfView(Vector2f(0.6911f, 0.4711f)),
+		lensShift(Vector2f(0.0f, 0.0f)),
+		clipPlanes(Vector2f(0.1f, 10.0f)),
+		resultName(""),
+		depthOnly(false),
+		cameraEffect(NULL)
 	{
 	}
 };

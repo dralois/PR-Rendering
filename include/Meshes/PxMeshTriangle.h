@@ -13,11 +13,13 @@ private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
+
 	PxTriangleMesh* pPxMesh = NULL;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+
 	virtual bool X_IsStatic() override;
 	virtual void X_CookMesh() override;
 	virtual void X_ExportMesh() override;
@@ -28,6 +30,7 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
+
 	using PxMesh::PxMesh;
 	~PxMeshTriangle();
 };

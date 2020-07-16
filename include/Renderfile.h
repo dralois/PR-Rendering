@@ -69,6 +69,7 @@ public:
 	//---------------------------------------
 
 	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
+	const Eigen::Matrix4f GetTransform() const { return meshTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override { meshTrans = trans; }
 
 	//---------------------------------------

@@ -18,13 +18,10 @@ protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	unsigned int meshId;
 	int objId;
+	unsigned int meshId;
 	string meshPath;
 	string texturePath;
-
-	float metalness = 0.1f;
-	float meshScale = 1.0f;
 
 	vector<float> vecVertices;
 	vector<int> vecIndices;
@@ -47,18 +44,12 @@ public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline const string GetName() { return "mesh_" + to_string(meshId) + "_" + to_string(objId); };
-
-	inline const int GetMeshId() { return meshId; };
-
-	inline const int GetObjId() { return objId; };
+	inline int GetMeshId() { return meshId; };
+	inline int GetObjId() { return objId; };
 	inline void SetObjId(int id) { objId = id; };
-
-	inline const float GetMetallic() { return metalness; };
-	inline void SetMetallic(float metallic) { metalness = metallic; };
-
-	inline const float GetScale() { return meshScale; };
-	virtual void SetScale(float scale) = 0;
+	inline const string& GetMeshPath() { return meshPath; }
+	inline const string& GetTexturePath() { return texturePath; }
+	inline const string GetName() { return "mesh_" + to_string(meshId) + "_" + to_string(objId); };
 
 	//---------------------------------------
 	// Constructors

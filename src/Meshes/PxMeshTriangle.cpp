@@ -123,7 +123,7 @@ void PxMeshTriangle::X_CreateShape()
 	PxTriangleMeshGeometry meshGeom;
 	meshGeom.triangleMesh = pPxMesh;
 	meshGeom.meshFlags = PxMeshGeometryFlag::eDOUBLE_SIDED;
-	meshGeom.scale = PxMeshScale(meshScale);
+	meshGeom.scale = PxMeshScale(GetScale());
 
 	// Create shape from the descriptor
 	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *pPxMaterial);

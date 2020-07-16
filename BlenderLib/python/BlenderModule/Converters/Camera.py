@@ -78,6 +78,7 @@ class CameraData(DataWrapper):
         assert data is not None
         self.CameraFOV = data.get("fov", (0.6911,0.4711))
         self.CameraShift = data.get("shift", (0.0,0.0))
+        self.CameraNearZ = data.get("nearZ", 0.001)
 
 # Camera object in scene
 class CameraInstance(ObjectWrapper):
@@ -89,6 +90,7 @@ class CameraInstance(ObjectWrapper):
         self.__camData : CameraData
         self.__camData = blueprint
         self.__result = ""
+        self.__depthOnly = False
         self.__ppcActive = False
         # Create postprocessing effect quad
         self.__ppcMesh = bpy.data.meshes.new("mesh_camera_ppc")
@@ -120,6 +122,16 @@ class CameraInstance(ObjectWrapper):
     def CameraResultFile(self, value):
         self.__result = value
 
+    # Get result file name
+    @property
+    def CameraDepthOnly(self):
+        return self.__depthOnly
+
+    # Set result file name
+    @CameraDepthOnly.setter
+    def CameraDepthOnly(self, value):
+        self.__depthOnly = value
+
     # Update camera postprocessing effect
     def ChangeFullscreenEffect(self, effect):
         # If effect is None deactivate current effect
@@ -142,6 +154,7 @@ class CameraInstance(ObjectWrapper):
         assert data is not None
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("result", "")
+        self.CameraDepthOnly = data.get("depthOnly", False)
         self.ChangeFullscreenEffect(data.get("shader", None))
 
     # Override: Called when transform changes

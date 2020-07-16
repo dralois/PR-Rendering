@@ -16,15 +16,29 @@ private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
+
 	string logLevel;
 	bool storeBlend;
 	Eigen::Vector2i resolution;
-	bool depthOnly;
 	string outputDir;
 	string pluginDir;
 	vector<string> shaderDirs;
 
 public:
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+
+	inline void SetLogLevel(const string& level) { logLevel = level; }
+	inline const string& GetLogLevel() { return logLevel; }
+	inline void SetOutputDir(const string& dir) { outputDir = dir; }
+	inline const string& GetOutputDir() { return outputDir; }
+	inline void SetPluginDir(const string& dir) { pluginDir = dir; }
+	inline const string& GetPluginDir() { return pluginDir; }
+	inline void SetShaderDirs(const vector<string>& dirs) { shaderDirs = dirs; }
+	inline const vector<string>& GetShaderDirs() { return shaderDirs; }
+	inline void SetStoreBlend(bool saveScene) { storeBlend = saveScene; }
+	inline bool GetStoreBlend() { return storeBlend; }
 
 	//---------------------------------------
 	// Methods
@@ -42,9 +56,6 @@ public:
 
 		writer.Key("resolution");
 		RenderfileData::AddEigenVector<Vector2i>(writer, resolution);
-
-		writer.Key("depthOnly");
-		writer.Bool(depthOnly);
 
 		writer.Key("outputDir");
 		AddString(writer, outputDir);
@@ -65,20 +76,13 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	Settings(const string& logLevel, bool storeBlend, Vector2i resolution, bool depthOnly,
-		const string& outputDir, const string& pluginDir, const vector<string>& shaderDirs) :
-		logLevel(logLevel),
-		storeBlend(storeBlend),
-		resolution(resolution),
-		depthOnly(depthOnly),
-		outputDir(outputDir),
-		pluginDir(pluginDir),
-		shaderDirs(shaderDirs)
-	{
-	}
-
-	Settings(Vector2i resolution, const string& outputDir, const string& pluginDir, const vector<string>& shaderDirs) :
-		Settings("error", false, resolution, false, outputDir, pluginDir, shaderDirs)
+	Settings() :
+		logLevel("error"),
+		storeBlend(false),
+		resolution(Vector2i(1920, 1080)),
+		outputDir(""),
+		pluginDir(""),
+		shaderDirs(NULL)
 	{
 	}
 };

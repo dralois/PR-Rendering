@@ -16,12 +16,13 @@ using namespace physx;
 //---------------------------------------
 // Base class for physx meshes
 //---------------------------------------
-class PxMesh : public MeshBase, Transformable<PxTransform>
+class PxMesh : public MeshBase, Transformable<PxTransform, PxVec3, PxQuat>
 {
 protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
+
 	PxShape* pPxShape;
 	PxRigidActor* pPxActor;
 	const PxCooking* pPxCooking;
@@ -34,6 +35,7 @@ protected:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+
 	virtual bool X_IsStatic() = 0;
 	virtual void X_CookMesh() = 0;
 	virtual void X_ExportMesh() = 0;
@@ -43,6 +45,7 @@ protected:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
+
 	inline PxVec3* X_GetVertices() { return (PxVec3*) &vecVertices[0]; };
 	inline PxU32* X_GetIndices() { return (PxU32*) &vecIndices[0]; };
 
@@ -50,6 +53,7 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+
 	virtual void CreateMesh() override;
 	void AddRigidActor(PxScene* scene);
 	void RemoveRigidActor(PxScene* scene);
@@ -57,16 +61,24 @@ public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline const PxVec3 GetMinimum() { return minimum * meshScale; };
-	inline const PxVec3 GetMaximum() { return maximum * meshScale; };
-	virtual void SetScale(float scale) override;
+
+	inline const PxVec3 GetMinimum() { return minimum.multiply(meshScale); };
+	inline const PxVec3 GetMaximum() { return maximum.multiply(meshScale); };
 	virtual const PxTransform GetTransform() override;
 	virtual void SetTransform(PxTransform trans) override;
+	virtual const PxVec3 GetPosition() override;
+	virtual void SetPosition(PxVec3 pos) override;
+	virtual const PxQuat GetRotation() override;
+	virtual void SetRotation(PxQuat rot) override;
+	virtual const PxVec3 GetScale() override;
+	virtual void SetScale(PxVec3 scale) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
+
 	PxMesh(const string& meshPath, int meshId, const PxCooking* cooking, const PxMaterial* material);
 	PxMesh(const PxMesh& copy);
 	~PxMesh();
+
 };

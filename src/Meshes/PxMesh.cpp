@@ -48,9 +48,76 @@ void PxMesh::CreateMesh()
 }
 
 //---------------------------------------
+// Get position of actor
+//---------------------------------------
+const PxVec3 PxMesh::GetPosition()
+{
+	return GetTransform().p;
+}
+
+//---------------------------------------
+// Set position of actor
+//---------------------------------------
+void PxMesh::SetPosition(PxVec3 pos)
+{
+	PxTransform trans = PxTransform(pos, GetTransform().q);
+	SetTransform(trans);
+}
+
+//---------------------------------------
+// Get rotation of actor
+//---------------------------------------
+const PxQuat PxMesh::GetRotation()
+{
+	return GetTransform().q;
+}
+
+//---------------------------------------
+// Set rotation of actor
+//---------------------------------------
+void PxMesh::SetRotation(PxQuat rot)
+{
+	PxTransform trans = PxTransform(GetTransform().p, rot);
+	SetTransform(trans);
+}
+
+//---------------------------------------
+// Get scale of physx mesh
+//---------------------------------------
+const PxVec3 PxMesh::GetScale()
+{
+	// Shape has to exist
+	if (!pPxShape)
+		return meshScale;
+
+	PxGeometryHolder geom = pPxShape->getGeometry();
+	// Update scale depending on geometry type
+	switch (geom.getType())
+	{
+	case PxGeometryType::eCONVEXMESH:
+	{
+		meshScale = pPxShape->getGeometry().convexMesh().scale.scale;
+		break;
+	}
+	case PxGeometryType::eTRIANGLEMESH:
+	{
+		meshScale = pPxShape->getGeometry().triangleMesh().scale.scale;
+		break;
+	}
+	default:
+	{
+		std::cout << "Get scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
+		break;
+	}
+	}
+	// Return updated scale
+	return meshScale;
+}
+
+//---------------------------------------
 // Set scale of physx mesh
 //---------------------------------------
-void PxMesh::SetScale(float scale)
+void PxMesh::SetScale(PxVec3 scale)
 {
 	// Save
 	meshScale = scale;
@@ -87,14 +154,14 @@ void PxMesh::SetScale(float scale)
 	default:
 	{
 		// Everything else is unsupported
-		std::cout << "Change scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
+		std::cout << "Set scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
 		break;
 	}
 	}
 }
 
 //---------------------------------------
-// Set transform of physx mesh
+// Set transform of actor
 //---------------------------------------
 void PxMesh::SetTransform(PxTransform trans)
 {
@@ -110,7 +177,7 @@ void PxMesh::SetTransform(PxTransform trans)
 }
 
 //---------------------------------------
-// Get transform of physx mesh
+// Get transform of actor
 //---------------------------------------
 const PxTransform PxMesh::GetTransform()
 {
