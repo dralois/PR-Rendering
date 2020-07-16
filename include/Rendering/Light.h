@@ -8,59 +8,6 @@ using namespace std;
 using namespace Eigen;
 
 //---------------------------------------
-// Generic light object wrapper for rendering
-//---------------------------------------
-class Light : public RenderfileObject
-{
-protected:
-	//---------------------------------------
-	// Fields
-	//---------------------------------------
-
-	Vector3f color;
-	float intensity;
-	float exposure;
-	bool castsIndirect;
-	LightParamsBase* params;
-
-	//---------------------------------------
-	// Methods
-	//---------------------------------------
-
-	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
-	{
-		writer.Key("color");
-		RenderfileData::AddEigenVector<Vector3f>(writer, color);
-
-		writer.Key("intensity");
-		RenderfileData::AddFloat(writer, intensity);
-
-		writer.Key("exposure");
-		RenderfileData::AddFloat(writer, exposure);
-
-		writer.Key("castsIndirect");
-		writer.Bool(castsIndirect);
-
-		// Specific params & type
-		params->AddToJSON(writer);
-	}
-
-public:
-	//---------------------------------------
-	// Constructors
-	//---------------------------------------
-
-	Light(LightParamsBase* params, Vector3f color, float intensity, float exposure, bool castsIndirect = true) :
-		params(params),
-		color(color),
-		intensity(intensity),
-		exposure(exposure),
-		castsIndirect(castsIndirect)
-	{
-	}
-};
-
-//---------------------------------------
 // Generic light params wrapper
 //---------------------------------------
 class LightParamsBase : RenderfileData
@@ -86,7 +33,7 @@ public:
 	virtual void AddToJSON(PrettyWriter<std::stringstream>& writer) override
 	{
 		writer.Key("type");
-		RenderfileData::AddString(writer, type);
+		AddString(writer, type);
 
 		// Add specific params
 		writer.Key("params");
@@ -101,6 +48,59 @@ public:
 
 	LightParamsBase(const string& type) :
 		type(type)
+	{
+	}
+};
+
+//---------------------------------------
+// Generic light object wrapper for rendering
+//---------------------------------------
+class Light : public RenderfileObject
+{
+protected:
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+
+	Vector3f color;
+	float intensity;
+	float exposure;
+	bool castsIndirect;
+	LightParamsBase* params;
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	{
+		writer.Key("color");
+		AddEigenVector<Vector3f>(writer, color);
+
+		writer.Key("intensity");
+		AddFloat(writer, intensity);
+
+		writer.Key("exposure");
+		AddFloat(writer, exposure);
+
+		writer.Key("castsIndirect");
+		writer.Bool(castsIndirect);
+
+		// Specific params & type
+		params->AddToJSON(writer);
+	}
+
+public:
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+
+	Light(LightParamsBase* params, Vector3f color, float intensity, float exposure, bool castsIndirect = true) :
+		params(params),
+		color(color),
+		intensity(intensity),
+		exposure(exposure),
+		castsIndirect(castsIndirect)
 	{
 	}
 };
@@ -149,7 +149,7 @@ protected:
 	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
 	{
 		writer.Key("spotAngle");
-		RenderfileData::AddFloat(writer, spotAngle);
+		AddFloat(writer, spotAngle);
 	}
 
 public:
@@ -209,10 +209,10 @@ protected:
 	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
 	{
 		writer.Key("shape");
-		RenderfileData::AddString(writer, shape);
+		AddString(writer, shape);
 
 		writer.Key("size");
-		RenderfileData::AddEigenVector<Vector2f>(writer, size);
+		AddEigenVector<Vector2f>(writer, size);
 	}
 
 public:

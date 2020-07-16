@@ -200,8 +200,7 @@ MeshBase::MeshBase(const MeshBase& copy) :
 	meshId(copy.meshId),
 	objId(-1),
 	meshPath(copy.meshPath),
-	texturePath(copy.texturePath),
-	meshScale(copy.meshScale)
+	texturePath(copy.texturePath)
 {
 }
 

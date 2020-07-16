@@ -30,8 +30,7 @@ protected:
 	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
 	{
 		writer.Key("file");
-		const string& path = ((MeshBase*)this)->GetMeshPath();
-		RenderfileData::AddString(writer, path);
+		AddString(writer, GetMeshPath());
 		// Mesh should always have a shader
 		if (oslShader)
 		{
@@ -40,7 +39,7 @@ protected:
 		}
 		else
 		{
-			cout << "Mesh " << path << " has no shader!" << endl;
+			cout << "Mesh " << GetMeshPath() << " has no shader!" << endl;
 		}
 	}
 
@@ -61,15 +60,6 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-
-	void RenderMesh::SetScale(float scale)
-	{
-		Affine3f trans = Affine3f(GetTransform());
-
-		trans.fromPositionOrientationScale
-
-		SetTransform(trans.matrix());
-	}
 
 	void RenderMesh::CreateMesh() { /* Does not apply to render mesh */ }
 
@@ -94,9 +84,4 @@ public:
 		// Shader is unique to mesh
 		delete oslShader;
 	}
-
-	// Geerbt über MeshBase
-	virtual void X_ExportMesh() override;
-	virtual void CreateMesh() override;
-	virtual void SetScale(float scale) override;
 };

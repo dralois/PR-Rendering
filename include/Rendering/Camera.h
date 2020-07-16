@@ -32,16 +32,16 @@ private:
 	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer) override
 	{
 		writer.Key("fov");
-		RenderfileData::AddEigenVector<Vector2f>(writer, fieldOfView);
+		AddEigenVector<Vector2f>(writer, fieldOfView);
 
 		writer.Key("shift");
-		RenderfileData::AddEigenVector<Vector2f>(writer, lensShift);
+		AddEigenVector<Vector2f>(writer, lensShift);
 
 		writer.Key("nearZ");
-		RenderfileData::AddFloat(writer, clipPlanes.x());
+		AddFloat(writer, clipPlanes.x());
 
 		writer.Key("result");
-		RenderfileData::AddString(writer, resultName);
+		AddString(writer, resultName);
 
 		writer.Key("depthOnly");
 		writer.Bool(depthOnly);

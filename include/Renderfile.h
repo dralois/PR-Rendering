@@ -14,6 +14,31 @@
 using namespace rapidjson;
 
 //---------------------------------------
+// Static Methods
+//---------------------------------------
+
+static void AddString(PrettyWriter<std::stringstream>& writer, const std::string& toAdd)
+{
+	writer.String(toAdd.c_str(), static_cast<SizeType>(toAdd.length()));
+}
+
+static void AddFloat(PrettyWriter<std::stringstream>& writer, float toAdd)
+{
+	writer.Double(static_cast<double>(toAdd));
+}
+
+template<typename VectorType>
+static void AddEigenVector(PrettyWriter<std::stringstream>& writer, VectorType toAdd)
+{
+	writer.StartArray();
+	for (int i = 0; i < toAdd.rows(); i++)
+	{
+		writer.Double(static_cast<double>(toAdd[i]));
+	}
+	writer.EndArray();
+}
+
+//---------------------------------------
 // Necessary for render related data
 //---------------------------------------
 class RenderfileData
@@ -24,38 +49,47 @@ public:
 	//---------------------------------------
 
 	virtual void AddToJSON(PrettyWriter<std::stringstream>& writer) = 0;
-
-	//---------------------------------------
-	// Static Methods
-	//---------------------------------------
-
-	inline static void AddString(PrettyWriter<std::stringstream>& writer, const std::string& toAdd)
-	{
-		writer.String(toAdd.c_str(), static_cast<SizeType>(toAdd.length()));
-	}
-
-	inline static void AddFloat(PrettyWriter<std::stringstream>& writer, float toAdd)
-	{
-		writer.Double(static_cast<double>(toAdd));
-	}
-
-	template<typename VectorType>
-	inline static void AddEigenVector(PrettyWriter<std::stringstream>& writer, VectorType toAdd)
-	{
-		writer.StartArray();
-		for (int i = 0; i < toAdd.rows(); i++)
-		{
-			writer.Double(static_cast<double>(toAdd[i]));
-		}
-		writer.EndArray();
-	}
 };
 
 //---------------------------------------
 // Necessary for renderable objects
 //---------------------------------------
-class RenderfileObject : RenderfileData, Transformable<Eigen::Matrix4f>
+class RenderfileObject : RenderfileData, Transformable<Eigen::Matrix4f, Eigen::Vector3f, Eigen::Quaternionf>
 {
+private:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	void X_SetPosRotScale(Eigen::Vector3f* pos, Eigen::Quaternionf* rot, Eigen::Vector3f* scale)
+	{
+		Eigen::Affine3f trans(GetTransform());
+		// Compute current values
+		Eigen::Affine3f::VectorType position = trans.translation();
+		Eigen::Affine3f::LinearMatrixType rotation, scaling;
+		trans.computeRotationScaling(&rotation, &scaling);
+		// Update with new / current values
+		trans.fromPositionOrientationScale(
+			pos ? *pos : position,
+			rot ? *rot : Eigen::Quaternionf(rotation),
+			scale ? *scale : scaling.diagonal()
+		);
+		// Update transform
+		SetTransform(trans.matrix());
+	}
+
+	void X_GetPosRotScale()
+	{
+		Eigen::Affine3f trans(GetTransform());
+		// Compute current values
+		Eigen::Affine3f::LinearMatrixType rotation, scale;
+		trans.computeRotationScaling(&rotation, &scale);
+		// Store internally
+		meshPos = trans.translation();
+		meshRot = Eigen::Quaternionf(rotation);
+		meshScale = scale.diagonal();
+	}
+
 protected:
 	//---------------------------------------
 	// Methods
@@ -68,9 +102,39 @@ public:
 	// Properties
 	//---------------------------------------
 
-	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
 	const Eigen::Matrix4f GetTransform() const { return meshTrans; }
+	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override { meshTrans = trans; }
+
+	virtual const Eigen::Vector3f RenderfileObject::GetPosition() override
+	{
+		X_GetPosRotScale();
+		return meshPos;
+	}
+	virtual void RenderfileObject::SetPosition(Eigen::Vector3f pos) override
+	{
+		X_SetPosRotScale(&pos, NULL, NULL);
+	}
+
+	virtual const Eigen::Quaternionf RenderfileObject::GetRotation() override
+	{
+		X_GetPosRotScale();
+		return meshRot;
+	}
+	virtual void RenderfileObject::SetRotation(Eigen::Quaternionf rot) override
+	{
+		X_SetPosRotScale(NULL, &rot, NULL);
+	}
+
+	virtual const Eigen::Vector3f RenderfileObject::GetScale() override
+	{
+		X_GetPosRotScale();
+		return meshScale;
+	}
+	virtual void RenderfileObject::SetScale(Eigen::Vector3f scale) override
+	{
+		X_SetPosRotScale(NULL, NULL, &scale);
+	}
 
 	//---------------------------------------
 	// Methods
@@ -80,21 +144,15 @@ public:
 	{
 		writer.StartObject();
 
-		// Decompose transform
-		Eigen::Affine3f trans = Eigen::Affine3f(meshTrans);
-		Affine3f::LinearMatrixType rotation, scaling;
-		trans.computeRotationScaling(&rotation, &scaling);
-		Quaternionf rotQuat = Quaternionf(rotation);
-
-		// Write to json
+		// Add transform
 		writer.Key("position");
-		RenderfileData::AddEigenVector<Vector3f>(writer, trans.translation());
+		AddEigenVector<Eigen::Vector3f>(writer, GetPosition());
 		writer.Key("rotation");
-		RenderfileData::AddEigenVector<Vector4f>(writer, rotQuat.coeffs());
+		AddEigenVector<Eigen::Vector4f>(writer, GetRotation().coeffs());
 		writer.Key("scale");
-		RenderfileData::AddEigenVector<Vector3f>(writer, scaling.diagonal());
+		AddEigenVector<Eigen::Vector3f>(writer, GetScale());
 
-		// Lastly add rest of the object
+		// Add rest of the object
 		X_AddToJSON(writer);
 
 		writer.EndObject();

@@ -55,7 +55,7 @@ public:
 		writer.Bool(storeBlend);
 
 		writer.Key("resolution");
-		RenderfileData::AddEigenVector<Vector2i>(writer, resolution);
+		AddEigenVector<Vector2i>(writer, resolution);
 
 		writer.Key("outputDir");
 		AddString(writer, outputDir);
