@@ -49,53 +49,23 @@ void SimManager::X_InitPhysx()
 }
 
 //---------------------------------------
-// Initialize Arnold for rendering
-//---------------------------------------
-void SimManager::X_InitArnold()
-{
-	// Start arnold & load shader library
-	AiBegin(AI_SESSION_INTERACTIVE);
-	AiDeviceAutoSelect();
-	AiMsgSetConsoleFlags(AI_LOG_ALL);
-	AiLoadPlugins(CONFIG_FILE["shaders_ai"].GetString());
-
-	// Create initialize camera
-	aiRenderCamera = AiNode("persp_camera");
-
-	// Setup rendering
-	aiRenderOptions = AiUniverseGetOptions();
-	AiNodeSetInt(aiRenderOptions, "threads", 0);
-	AiNodeSetBool(aiRenderOptions, "skip_license_check", true);
-	AiNodeSetInt(aiRenderOptions, "AA_samples", 4);
-	AiNodeSetInt(aiRenderOptions, "GI_diffuse_depth", 6);
-	AiNodeSetPtr(aiRenderOptions, "camera", aiRenderCamera);
-
-	// Create render driver
-	aiOutputDriver = AiNode("driver_png");
-	AiNodeSetStr(aiOutputDriver, "name", "outputDriver");
-	aiOutputArray = AiArrayAllocate(1, 1, AI_TYPE_STRING);
-
-	// Initialize Shaders
-	aiShaderObjectDepth = AiNode("depthshader");
-	AiNodeSetBool(aiShaderObjectDepth, "is_body", true);
-	aiShaderSceneDepth = AiNode("depthshader");
-	aiShaderBlend = AiNode("blendshader");
-}
-
-//---------------------------------------
 // Load and parse json config file
 //---------------------------------------
 void SimManager::X_LoadConfig(const string& configPath)
 {
 	cout << "Reading config file:\t" << configPath << endl;
-
-	using namespace rapidjson;
-
-	// Open und parse config file
-	char buffer[16000];
+	// Open file in binary mode
 	FILE* pFile = fopen(configPath.c_str(), "rb");
-	FileReadStream is(pFile, buffer, sizeof(buffer));
-	CONFIG_FILE.ParseStream<0, UTF8<>, FileReadStream>(is);
+	// Determine size
+	fseek(pFile, 0, SEEK_END);
+	size_t fileSize = ftell(pFile);
+	rewind(pFile);
+	// Open und parse config file
+	char* buffer = new char[fileSize];
+	FileReadStream inFile(pFile, buffer, fileSize);
+	jsonConfig.ParseStream<0, UTF8<>, FileReadStream>(inFile);
+	// Create settings
+	pRenderSettings = new Settings(jsonConfig);
 }
 
 //---------------------------------------
@@ -104,75 +74,48 @@ void SimManager::X_LoadConfig(const string& configPath)
 void SimManager::X_LoadMeshes()
 {
 	DIR* dir;
-	// Path to 3D models
-	string meshesPath = CONFIG_FILE["models"].GetString();
-	string aiPath = meshesPath + "/ai_meshes.ass";
+	auto objects = jsonConfig["render_objs"].GetArray();
+	string meshesPath = pRenderSettings->GetMeshesPath();
 
 	// Initialize vectors
-	vecpPxMesh.reserve(CONFIG_FILE["objs"].Size());
-	vecpAiMesh.reserve(CONFIG_FILE["objs"].Size());
-
-	// Try to load the arnold mesh nodes
-	AtParamValueMap* params = AiParamValueMap();
-	AiParamValueMapSetInt(params, AtString("mask"), AI_NODE_SHAPE);
-	bool aiNodesLoaded = AiSceneLoad(NULL, aiPath.c_str(), params);
-	AiParamValueMapDestroy(params);
-
-	// Fasten up node creation
-	if (!aiNodesLoaded)
-	{
-		AiNodeSetBool(aiRenderOptions, "enable_procedural_cache", true);
-		AiNodeSetBool(aiRenderOptions, "parallel_node_init", true);
-	}
+	vecpPxMesh.reserve(objects.Size());
+	vecpRenderMesh.reserve(objects.Size());
 
 	// If path exists
 	if ((dir = opendir(meshesPath.c_str())) != NULL)
 	{
 		// For each object
-		for (int i = 0; i < CONFIG_FILE["objs"].Size(); i++)
+		for (int i = 0; i < objects.Size(); i++)
 		{
 			// Load path
-			string meshPath = meshesPath + "/" + CONFIG_FILE["objs"][i].GetString() + ".obj";
+			string meshPath = meshesPath + "/" + objects[i].GetString() + ".obj";
 			ifstream f(meshPath.c_str());
 
 			// Does mesh exist?
 			if (!f.good())
 			{
-				cerr << "Did not find obj " << CONFIG_FILE["objs"][i].GetString() << "... Skipping." << endl;
+				cout << "Did not find obj " << objects[i].GetString() << "... Skipping." << endl;
 				continue;
 			}
 			else
 			{
-				cout << "Loading obj " << CONFIG_FILE["objs"][i].GetString() << endl;
+				cout << "Loading obj " << objects[i].GetString() << endl;
 			}
 
 			// Create and save physx mesh
 			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, pPxCooking, pPxMaterial);
-			pxCurr->SetScale(CONFIG_FILE["obj_scale"].GetFloat());
+			pxCurr->SetScale(PxVec3(jsonConfig["obj_scale"].GetFloat()));
 			pxCurr->CreateMesh();
 			vecpPxMesh.push_back(pxCurr);
 
 			string texturePath(meshPath);
 			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
 			// Create and save arnold mesh
-			AiMesh* aiCurr = new AiMesh(meshPath, texturePath, i);
-			aiCurr->SetMetallic(CONFIG_FILE["metallic"][i].GetFloat());
-			vecpAiMesh.push_back(aiCurr);
+			RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
+			vecpRenderMesh.push_back(renderCurr);
 		}
 		// Finally close
 		closedir(dir);
-	}
-
-	// If base nodes were not yet created
-	if (!aiNodesLoaded)
-	{
-		// Store arnold base nodes in file
-		AtParamValueMap* params = AiParamValueMap();
-		AiParamValueMapSetInt(params, AtString("mask"), AI_NODE_SHAPE);
-		AiParamValueMapSetBool(params, AtString("binary"), true);
-		AiParamValueMapSetBool(params, AtString("open_procs"), true);
-		AiSceneWrite(NULL, aiPath.c_str(), params);
-		AiParamValueMapDestroy(params);
 	}
 }
 
@@ -210,27 +153,11 @@ void SimManager::X_SaveSceneFolders(const string& path)
 //---------------------------------------
 int SimManager::RunSimulation()
 {
-	// Fetch 3R scan scenes
-	X_SaveSceneFolders(CONFIG_FILE["3RScan_path"].GetString());
-
 	// Create mananger
 	SceneManager curr(pPxDispatcher, pPxCooking, pPxMaterial,
-		aiRenderCamera, aiRenderOptions, aiOutputDriver, aiOutputArray,
-		vecpPxMesh, vecpAiMesh,
-		0, CONFIG_FILE["objects_per_sim"].GetInt(), &CONFIG_FILE,
-		aiShaderObjectDepth, aiShaderSceneDepth, aiShaderBlend);
-
-	// Create lights
-	AtNode* light = AiNode("point_light");
-	AtNode* light1 = AiNode("point_light");
-	AtNode* light2 = AiNode("point_light");
-	AtNode* light3 = AiNode("point_light");
-	AtNode* light4 = AiNode("point_light");
-	AtNode* light5 = AiNode("point_light");
-	AtNode* light6 = AiNode("point_light");
+		vecpPxMesh, vecpRenderMesh, pRenderSettings);
 
 	// Setup lights
-	AiNodeSetStr(light, "name", "mylight");
 	AiNodeSetVec(light, "position", -1000.f, 100.f, -1000.f);
 	AiNodeSetFlt(light, "intensity", 2.f);
 	AiNodeSetFlt(light, "radius", 10.f);
@@ -253,16 +180,15 @@ int SimManager::RunSimulation()
 	AiNodeSetFlt(light6, "intensity", 2.f);
 	AiNodeSetFlt(light6, "radius", 10.f);
 
-	// Load config
-	int maxImages = CONFIG_FILE["max_images"].GetInt();
-	int sceneIters = CONFIG_FILE["iter_per_scene"].GetInt();
-
 	// Render all scenes
+	int currImageCount = 0;
 	for (string folder : vecSceneFolders)
 	{
-		curr.SetScenePath(folder);
-		bool maxReached = curr.Run(sceneIters, maxImages);
-		if (!maxReached)
+		// Set path
+		pRenderSettings->SetScenePath(folder);
+		// Stop at max rendered images
+		currImageCount += curr.Run(currImageCount);
+		if (currImageCount >= pRenderSettings->GetMaxImageCount())
 			break;
 	}
 
@@ -276,8 +202,8 @@ SimManager::SimManager(const string& configPath)
 {
 	X_LoadConfig(configPath);
 	X_InitPhysx();
-	X_InitArnold();
 	X_LoadMeshes();
+	X_SaveSceneFolders(jsonConfig["scenes_path"].GetString());
 }
 
 //---------------------------------------
@@ -308,13 +234,13 @@ SimManager::~SimManager()
 #endif // DEBUG || _DEBUG
 	PX_RELEASE(pPxFoundation);
 
-	// Cleanup arnold meshes
-	for (auto curr : vecpAiMesh)
+	// Cleanup render meshes
+	for (auto curr : vecpRenderMesh)
 	{
 		delete curr;
 	}
-	vecpAiMesh.clear();
+	vecpRenderMesh.clear();
 
-	// Shutdown arnold
-	AiEnd();
+	// Other
+	delete pRenderSettings;
 }

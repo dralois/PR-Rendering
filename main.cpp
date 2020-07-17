@@ -31,8 +31,8 @@ int main(int argc, char** argv)
 	SimManager man(config_path);
 
 	// Save the paths
-	boost::filesystem::path final_dir(man.GetFinalPath());
-	boost::filesystem::path temp_dir(man.GetTemporaryPath());
+	boost::filesystem::path final_dir(man.GetSettings()->GetFinalPath());
+	boost::filesystem::path temp_dir(man.GetSettings()->GetTemporaryPath());
 
 	// Create final output directories
 	if (!boost::filesystem::exists(final_dir))

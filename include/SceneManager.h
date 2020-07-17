@@ -1,8 +1,6 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <ai.h>
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -14,9 +12,14 @@
 #include <PxPhysicsAPI.h>
 
 #include <OpenGLLib/render.h>
-#include <Meshes/AiMesh.h>
+
+#include <Meshes/RenderMesh.h>
 #include <Meshes/PxMeshConvex.h>
 #include <Meshes/PxMeshTriangle.h>
+
+#include <Rendering/Camera.h>
+#include <Rendering/Light.h>
+#include <Rendering/Settings.h>
 #pragma warning(pop)
 
 using namespace Eigen;
@@ -79,47 +82,30 @@ private:
 
 	// Rendering
 	Renderer::Render* pRenderer;
-	AtNode* aiCamera;
-	AtNode* aiOptions;
-	AtNode* aiDriver;
-	AtArray* aiArrOutputs;
-	AtNode* aiShaderDepthObj;
-	AtNode* aiShaderDepthScene;
-	AtNode* aiShaderBlendImage;
-
-	// Meshes (Reference)
-	const vector<PxMeshConvex*> vecpPxMeshObjs;
-	const vector<AiMesh*> vecpAiMeshObjs;
-
-	// Meshes (Copies)
-	vector<PxMeshConvex*> vecpPxMeshCurrObjs;
-	vector<AiMesh*> vecpAiMeshCurrObjs;
-	PxMeshTriangle* pPxMeshScene;
-	AiMesh* pAiMeshScene;
-
-	// Camera
+	Settings renderSettings;
+	vector<Light> vecLights;
+	Camera renderCam;
 	Intrinsics intrOriginal, intrCustom;
+	bool useCustomIntr = false;
 	vector<string> vecCameraPoses;
 	vector<string> vecCameraImages;
-	Matrix4f matCamera;
-	float nearClip, farClip;
-	bool useCustomIntr = false;
 
-	// Objects
-	vector<ObjectInfo> vecCurrObjs;
+	// Meshes (Blueprint)
+	const vector<PxMeshConvex*> vecpPxMeshObjs;
+	const vector<RenderMesh*> vecpAiMeshObjs;
+
+	// Meshes (Instances)
+	vector<PxMeshConvex*> vecpPxMeshCurrObjs;
+	vector<RenderMesh*> vecpRenderMeshCurrObjs;
+	PxMeshTriangle* pPxMeshScene;
+	RenderMesh* pRenderMeshScene;
 
 	// OpenCV
 	cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
 
-	// Files
-	std::ofstream ANNOTATIONS_FILE;
-	const rapidjson::Document* CONFIG_FILE;
-
 	// Other
-	int poseCount;
-	int imageCount;
-	int objsPerSim;
-	string scenePath;
+	ofstream osAnnotationsFile;
+	const Settings* pRenderSettings;
 
 	//---------------------------------------
 	// Methods
@@ -130,52 +116,42 @@ private:
 	void X_PxCreateObjs();
 	void X_PxRunSim(float timestep, int stepCount) const;
 	void X_PxSaveSimResults();
-	void X_PxDestroy();
-
-	// Arnold
-	void X_AiCreateObjs();
-	void X_AiDestroy();
-
+	
 	// Rendering
 	vector<tuple<cv::Mat, cv::Mat>> X_RenderSceneDepth() const;
 	bool X_RenderObjsDepth();
 	void X_RenderObjsLabel();
 	void X_RenderImageBlend();
 
-	// Helpers
-	void X_GetImagesToProcess(const string& dir, float varThreshold);
-	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
-	void X_LoadCameraExtrinsics(const Intrinsics& intr);
-	void X_LoadCameraIntrinsics();
-
 	// Image processing
 	float X_CvComputeImageVariance(const cv::Mat& image) const;
-	bool X_CvComputeObjsMask();
-	void X_CvBlendDepth();
-	void X_CvBlendLabel();
+	bool X_CvComputeObjsMask(int currPose);
+	void X_CvBlendDepth(int currImage, int currPose);
+	void X_CvBlendLabel(int currImage, int currPose);
 
 	// Annotation
 	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const;
-	void X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked);
+	void X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked, int currImage);
+
+	// Other
+	void X_GetImagesToProcess(const string& dir, float varThreshold);
+	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
+	void X_LoadCameraExtrinsics(const Intrinsics& intr, int currPose);
+	void X_LoadCameraIntrinsics();
+	void X_CleanupScene();
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-	bool Run(int sceneIters, int maxImages);
 
-	//---------------------------------------
-	// Properties
-	//---------------------------------------
-	inline void SetScenePath(const string& path) { scenePath = path; };
+	int Run(int imageCount);
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
+
 	SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxCooking, const PxMaterial* pPxMaterial,
-		AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
-		const vector<PxMeshConvex*> vecPhysxObjs, const vector<AiMesh*> vecArnoldObjs,
-		int startCount, int objPerSim, const rapidjson::Document* CONFIG_FILE,
-		AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend);
+		const vector<PxMeshConvex*> vecPhysxObjs, const vector<RenderMesh*> vecArnoldObjs, const Settings* settings);
 	~SceneManager();
 };

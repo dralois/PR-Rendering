@@ -4,9 +4,8 @@
 #include <dirent.h>
 #pragma warning(pop)
 
-string FILE_TEMP_PATH = "";
-string FILE_FINAL_PATH = "";
-string FILE_OBJ_PATH = "";
+#define PI (3.1415926535897931f)
+#define PIOVER2 (1.5707963267948966f)
 
 //---------------------------------------
 // Splits string into vector of strings
@@ -29,6 +28,7 @@ std::vector<std::string> split(const std::string& str, char delimiter)
 
 //---------------------------------------
 // Calculate and saves 2D bounding box
+// FIXME: Switch to RenderMesh*
 //---------------------------------------
 void SetBBox(BodyAnnotation& ann, const cv::Mat& mask)
 {
@@ -49,9 +49,9 @@ void SetBBox(BodyAnnotation& ann, const cv::Mat& mask)
 void SceneManager::X_PxCreateScene()
 {
 	// Create physx mesh of scan scene
-	string path = scenePath + "/mesh.refined.obj";
+	string path = pRenderSettings->GetScenePath() + "/mesh.refined.obj";
 	pPxMeshScene = new PxMeshTriangle(path, 0, pPxCooking, pPxMaterial);
-	pPxMeshScene->SetScale((*CONFIG_FILE)["scene_scale"].GetFloat());
+	pPxMeshScene->SetScale(PxVec3(pRenderSettings->GetJSONConfig()["scene_scale"].GetFloat()));
 	pPxMeshScene->SetObjId(0);
 	pPxMeshScene->CreateMesh();
 
@@ -68,7 +68,7 @@ void SceneManager::X_PxCreateScene()
 	pPxScene = PxGetPhysics().createScene(sceneDesc);
 
 	// Scene meshes need to be rotated 90* around X during the simulation
-	PxTransform pose(PxVec3(0, 0, 0), PxQuat(-AI_PIOVER2, PxVec3(1, 0, 0)));
+	PxTransform pose(PxVec3(0, 0, 0), PxQuat(-PIOVER2, PxVec3(1, 0, 0)));
 	pPxMeshScene->SetTransform(pose);
 	pPxMeshScene->AddRigidActor(pPxScene);
 }
@@ -80,10 +80,10 @@ void SceneManager::X_PxCreateObjs()
 {
 	// Seed & setup
 	srand(time(NULL) % 1000);
-	vecpPxMeshCurrObjs.reserve(objsPerSim);
+	vecpPxMeshCurrObjs.reserve(pRenderSettings->GetObjectsPerSimulation());
 
 	// For each object
-	for (PxU32 i = 0; i < objsPerSim; i++)
+	for (PxU32 i = 0; i < pRenderSettings->GetObjectsPerSimulation(); i++)
 	{
 		int currPos = rand() % vecpPxMeshObjs.size();
 		// Fetch random object & create instance with new id
@@ -107,7 +107,7 @@ void SceneManager::X_PxCreateObjs()
 //---------------------------------------
 // Cleanup physx
 //---------------------------------------
-void SceneManager::X_PxDestroy()
+void SceneManager::X_CleanupScene()
 {
 	// Cleanup scene mesh
 	if (pPxMeshScene != NULL)
@@ -129,6 +129,16 @@ void SceneManager::X_PxDestroy()
 		pPxScene->flushSimulation();
 		PX_RELEASE(pPxScene);
 	}
+
+	// Cleanup render meshes
+	for (auto curr : vecpRenderMeshCurrObjs)
+	{
+		delete curr;
+	}
+	vecpRenderMeshCurrObjs.clear();
+
+	// Close open streams
+	osAnnotationsFile.close();
 }
 
 //---------------------------------------
@@ -149,14 +159,14 @@ void SceneManager::X_PxRunSim(float timestep, int stepCount) const
 //---------------------------------------
 void SceneManager::X_PxSaveSimResults()
 {
-	float undoScale = 1.0f / (*CONFIG_FILE)["scene_scale"].GetFloat();
+	float undoScale = 1.0f / pRenderSettings->GetJSONConfig()["scene_scale"].GetFloat();
 	// For each physx object
 	for (auto obj : vecpPxMeshCurrObjs)
 	{
 		// Get position
 		PxTransform pose = obj->GetTransform();
 		// Undo 90* around X rotation
-		PxQuat undoRot(AI_PIOVER2, PxVec3(1, 0, 0));
+		PxQuat undoRot(PIOVER2, PxVec3(1, 0, 0));
 		pose.q = (pose.q * undoRot).getNormalized();
 		pose.p = undoRot.rotate(pose.p);
 		// Undo scene scaling
@@ -165,18 +175,13 @@ void SceneManager::X_PxSaveSimResults()
 		// Convert physx position & rotation
 		PxMat44 pxmat(pose);
 		Matrix4f mat(pxmat.front());
-		Vector3f pos(pose.p.x, pose.p.y, pose.p.z);
-		Quaternionf rot(pose.q.w, pose.q.x, pose.q.y, pose.q.z);
 
-		// Save poses in vector
-		ObjectInfo currInfo;
-		currInfo.meshId = obj->GetMeshId();
-		currInfo.objId = obj->GetObjId();
-		currInfo.objName = obj->GetName();
-		currInfo.pos = pos;
-		currInfo.rot = rot;
-		currInfo.mat = mat;
-		vecCurrObjs.push_back(currInfo);
+		// Save & create mesh for rendering
+		RenderMesh* currMesh = new RenderMesh(*this->vecpAiMeshObjs[obj->GetMeshId()]);
+		((MeshBase*)currMesh)->SetObjId(obj->GetObjId());
+		currMesh->SetTransform(mat);
+		vecpRenderMeshCurrObjs.push_back(currMesh);
+
 #if DEBUG || _DEBUG
 		// Object transform update for pvd
 		obj->SetTransform(pose);
@@ -194,43 +199,14 @@ void SceneManager::X_PxSaveSimResults()
 }
 
 //---------------------------------------
-// Create arnold object meshes
-//---------------------------------------
-void SceneManager::X_AiCreateObjs()
-{
-	// For each created object
-	for (auto body : vecCurrObjs)
-	{
-		// Create the mesh & save in vector
-		AiMesh* mesh = new AiMesh(*vecpAiMeshObjs[body.meshId]);
-		mesh->SetObjId(body.objId);
-		mesh->CreateMesh();
-		mesh->SetTransform(body.mat);
-		vecpAiMeshCurrObjs.push_back(mesh);
-	}
-}
-
-//---------------------------------------
-// Cleanup arnold object meshes
-//---------------------------------------
-void SceneManager::X_AiDestroy()
-{
-	// Destroy arnold nodes
-	for (auto curr : vecpAiMeshCurrObjs)
-	{
-		delete curr;
-	}
-	vecpAiMeshCurrObjs.clear();
-}
-
-//---------------------------------------
 // Render scene depth
 //---------------------------------------
 vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 {
 	// Render depth with OpenGL
 	vector<tuple<cv::Mat, cv::Mat> > renderings =
-		pRenderer->RenderScenes(scenePath, vecCameraPoses,
+		pRenderer->RenderScenes(pRenderSettings->GetScenePath(),
+			vecCameraPoses,
 			useCustomIntr ? intrCustom.fx : intrOriginal.fx,
 			useCustomIntr ? intrCustom.fy : intrOriginal.fy,
 			useCustomIntr ? intrCustom.ox : intrOriginal.ox,
@@ -241,8 +217,8 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 	{
 		ostringstream out;
 		out << std::internal << std::setfill('0') << std::setw(6) << render_count;
-		string tmp_depth_path = FILE_TEMP_PATH + "/scene_depth/img_" + out.str() + ".png";
-		string tmp_rgb_path = FILE_TEMP_PATH + "/rgb/img_" + out.str() + ".png";
+		string tmp_depth_path = pRenderSettings->GetTemporaryPath() + "/scene_depth/img_" + out.str() + ".png";
+		string tmp_rgb_path = pRenderSettings->GetTemporaryPath() + "/rgb/img_" + out.str() + ".png";
 
 		// Write rgb and depth out
 		cv::imwrite(tmp_rgb_path, get<0>(renderings[render_count]));
@@ -254,7 +230,7 @@ vector<tuple<cv::Mat, cv::Mat> > SceneManager::X_RenderSceneDepth() const
 
 //---------------------------------------
 // Saves world position and rotation of annotation
-// FIXME: Might be broken now
+// FIXME: Might be broken now, switch to RenderMesh
 //---------------------------------------
 void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const
 {
@@ -263,7 +239,7 @@ void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos
 	bTransMat = bTransMat.fromPositionOrientationScale(pos, rot, Vector3f::Identity());
 
 	// Camera space -> World space
-	bTransMat = matCamera.transpose().inverse().matrix() * bTransMat.matrix();
+	bTransMat = renderCam.GetTransform().transpose().inverse().matrix() * bTransMat.matrix();
 
 	// Save position in vector
 	ann.vecPos.push_back(bTransMat.translation().x() * 10);
@@ -279,20 +255,21 @@ void SceneManager::X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos
 
 //---------------------------------------
 // Write out annotation file for rendered objects
-// FIXME: Might be broken now
+// FIXME: Might be broken now, also not very pretty
 //---------------------------------------
-void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked)
+void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked, int currImage)
 {
 	// For each mesh
-	for (auto currBody : vecCurrObjs)
+	for (auto currBody : vecpRenderMeshCurrObjs)
 	{
+		MeshBase* currMesh = (MeshBase*)currBody;
 		// Determine label sum unmasked
-		float segBodySum = cv::sum(seg == (currBody.objId + 1) * 10)[0];
+		float segBodySum = cv::sum(seg == (currMesh->GetObjId() + 1) * 10)[0];
 		// Stop if object completely covered
 		if (segBodySum == 0)
 			continue;
 		// Determine label sum masked
-		float segBodySumMasked = cv::sum(segMasked == (currBody.objId + 1) * 10)[0];
+		float segBodySumMasked = cv::sum(segMasked == (currMesh->GetObjId() + 1) * 10)[0];
 		float percent = segBodySumMasked / segBodySum;
 		// Stop if less then 30% coverage
 		if (percent <= 0.3 || segBodySumMasked / 255 < 2000)
@@ -302,19 +279,19 @@ void SceneManager::X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMaske
 		currAnn.vecPos = std::vector<float>();
 		currAnn.vecRot = std::vector<float>();
 		currAnn.vecBBox = std::vector<float>();
-		currAnn.meshId = currBody.meshId;
-		currAnn.labelId = (currBody.objId + 1) * 10;
+		currAnn.meshId = currMesh->GetMeshId();
+		currAnn.labelId = (currMesh->GetObjId() + 1) * 10;
 
 		// Set bounding box & annotiation
-		SetBBox(currAnn, seg == (currBody.objId + 1) * 10);
-		X_SaveAnnotationPose(currAnn, currBody.pos, currBody.rot);
+		SetBBox(currAnn, seg == (currMesh->GetObjId() + 1) * 10);
+		X_SaveAnnotationPose(currAnn, currBody->GetPosition(), currBody->GetRotation());
 
 		ostringstream out;
 		out << std::internal << std::setfill('0') << std::setw(2) << currAnn.meshId;
 		string buf = "obj_" + out.str();
 
 		// Add to annotation file
-		ANNOTATIONS_FILE << imageCount << ", " << currAnn.vecBBox[0] << ", " << currAnn.vecBBox[1] << ", "
+		osAnnotationsFile << currImage << ", " << currAnn.vecBBox[0] << ", " << currAnn.vecBBox[1] << ", "
 			<< currAnn.vecBBox[2] << ", " << currAnn.vecBBox[3] << ", " << buf << ", " << currAnn.vecRot[0] << ", "
 			<< currAnn.vecRot[1] << ", " << currAnn.vecRot[2] << ", " << currAnn.vecRot[3] << ", "
 			<< "0"
@@ -344,7 +321,7 @@ bool SceneManager::X_CheckIfImageCenter(const ObjectInfo& body) const
 	bRotMat(2, 3) = pos.z();
 
 	// Transform pose into camera space
-	bRotMat = matCamera.transpose().inverse() * bRotMat;
+	bRotMat = renderCam.GetTransform().transpose().inverse() * bRotMat;
 
 	// Some kind of camera to screen space transform
 	int width = (useCustomIntr ? intrCustom.w : intrOriginal.w) / 2;
@@ -360,6 +337,7 @@ bool SceneManager::X_CheckIfImageCenter(const ObjectInfo& body) const
 
 //---------------------------------------
 // Render objects depth
+// TODO
 //---------------------------------------
 bool SceneManager::X_RenderObjsDepth()
 {
@@ -414,12 +392,12 @@ bool SceneManager::X_RenderObjsDepth()
 //---------------------------------------
 // Determine depth mask
 //---------------------------------------
-bool SceneManager::X_CvComputeObjsMask()
+bool SceneManager::X_CvComputeObjsMask(int currPose)
 {
 	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << poseCount;
-	string sbuf = FILE_TEMP_PATH + "/scene_depth/img_" + out.str() + ".png";
-	string bbuf = FILE_TEMP_PATH + "/body_depth/img_" + out.str() + ".png";
+	out << std::internal << std::setfill('0') << std::setw(6) << currPose;
+	string sbuf = pRenderSettings->GetTemporaryPath() + "/scene_depth/img_" + out.str() + ".png";
+	string bbuf = pRenderSettings->GetTemporaryPath() + "/body_depth/img_" + out.str() + ".png";
 
 	// Read depth images
 	cvSceneD = cv::imread(sbuf, cv::IMREAD_ANYDEPTH);
@@ -435,6 +413,7 @@ bool SceneManager::X_CvComputeObjsMask()
 
 //---------------------------------------
 // Render object label image (IDs as color)
+// TODO
 //---------------------------------------
 void SceneManager::X_RenderObjsLabel()
 {
@@ -500,14 +479,14 @@ void SceneManager::X_RenderObjsLabel()
 //---------------------------------------
 // Combine scene and object depth images
 //---------------------------------------
-void SceneManager::X_CvBlendDepth()
+void SceneManager::X_CvBlendDepth(int currImage, int currPose)
 {
 	cv::Mat cvOut;
 
 	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << poseCount;
-	string sbuf = FILE_TEMP_PATH + "/scene_depth/img_" + out.str() + ".png";
-	string bbuf = FILE_TEMP_PATH + "/body_depth/img_" + out.str() + ".png";
+	out << std::internal << std::setfill('0') << std::setw(6) << currPose;
+	string sbuf = pRenderSettings->GetTemporaryPath() + "/scene_depth/img_" + out.str() + ".png";
+	string bbuf = pRenderSettings->GetTemporaryPath() + "/body_depth/img_" + out.str() + ".png";
 
 	// Calculate minimal depth from scene and objects
 	cvSceneD = cv::imread(sbuf, cv::IMREAD_ANYDEPTH);
@@ -516,28 +495,28 @@ void SceneManager::X_CvBlendDepth()
 
 	// Temp file
 	ostringstream out_start;
-	out_start << std::internal << std::setfill('0') << std::setw(6) << imageCount;
+	out_start << std::internal << std::setfill('0') << std::setw(6) << currImage;
 
 	// Write out blended image
-	string obuf = FILE_FINAL_PATH + "/depth/img_" + out_start.str() + ".png";
+	string obuf = pRenderSettings->GetFinalPath() + "/depth/img_" + out_start.str() + ".png";
 	cv::imwrite(obuf, cvOut);
 }
 
 //---------------------------------------
 // Combine mask and label images
 //---------------------------------------
-void SceneManager::X_CvBlendLabel()
+void SceneManager::X_CvBlendLabel(int currImage, int currPose)
 {
 	cv::Mat cvOut;
 
 	// Temp file
 	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << poseCount;
+	out << std::internal << std::setfill('0') << std::setw(6) << currPose;
 
 	ostringstream out_start;
-	out_start << std::internal << std::setfill('0') << std::setw(6) << imageCount;
-	string bbuf = FILE_TEMP_PATH + "/body_label/img_" + out.str() + ".png";
-	string obuf = FILE_FINAL_PATH + "/segs/img_" + out_start.str() + ".png";
+	out_start << std::internal << std::setfill('0') << std::setw(6) << currImage;
+	string bbuf = pRenderSettings->GetTemporaryPath() + "/body_label/img_" + out.str() + ".png";
+	string obuf = pRenderSettings->GetFinalPath() + "/segs/img_" + out_start.str() + ".png";
 
 	// Read label image
 	cvBodiesS = cv::imread(bbuf, cv::IMREAD_ANYDEPTH);
@@ -547,11 +526,12 @@ void SceneManager::X_CvBlendLabel()
 	cv::imwrite(obuf, cvOut);
 
 	// Write out annotation file
-	X_SaveAnnotations(cvBodiesS, cvOut);
+	X_SaveAnnotations(cvBodiesS, cvOut, currImage);
 }
 
 //---------------------------------------
 // Final image blend
+// TODO
 //---------------------------------------
 void SceneManager::X_RenderImageBlend()
 {
@@ -638,48 +618,33 @@ void SceneManager::X_RenderImageBlend()
 //---------------------------------------
 // Loads camera matrix with fov
 //---------------------------------------
-void SceneManager::X_LoadCameraExtrinsics(const Intrinsics& intr)
+void SceneManager::X_LoadCameraExtrinsics(const Intrinsics& intr, int currPose)
 {
 	std::ifstream inFile;
-
-	// Setup camera
-	AiNodeSetStr(aiCamera, "name", "renderCam");
+	Matrix4f matCam;
 
 	// Open camera pose file & save as matrix
-	inFile.open(vecCameraPoses.at(poseCount));
+	inFile.open(vecCameraPoses.at(currPose));
 	if (inFile.is_open())
 	{
 		for (int i = 0; i < 4; i++)
 			for (int j = 0; j < 4; j++)
-				inFile >> matCamera(i, j);
+				inFile >> matCam(i, j);
 		inFile.close();
 	}
 
-	// Calculate & save view vectors
-	Vector3f forward = matCamera.block<3, 3>(0, 0) * Eigen::Vector3f(0, 0, 1);
-	Vector3f right = matCamera.block<3, 3>(0, 0) * Eigen::Vector3f(1, 0, 0);
-	Vector3f up = right.cross(forward);
-	Vector3f position = matCamera.block<3, 1>(0, 3);
-	Vector3f lookat = position + 1 * forward;
-	AiNodeSetVec(aiCamera, "position", position.x(), position.y(), position.z());
-	AiNodeSetVec(aiCamera, "look_at", lookat.x(), lookat.y(), lookat.z());
-	AiNodeSetVec(aiCamera, "up", up.x(), up.y(), up.z());
-
-	// Save clipping planes
-	AiNodeSetFlt(aiCamera, "near_clip", 0.1f);
-	AiNodeSetFlt(aiCamera, "far_clip", 10.0f);
-
-	// Calculate & save fov
-	float fovx = 2.0f * atan(intr.w / (4.0f * intr.fx)) * (180.0f / AI_PI);
-	float fovy = 2.0f * atan(intr.h / (4.0f * intr.fy)) * (180.0f / AI_PI);
-	AtArray* fovArr = AiArray(2, 1, AI_TYPE_FLOAT, fovx, fovy);
-	AiNodeSetArray(aiCamera, "fov", fovArr);
-
-	// Calculate & save lens shift
+	// Calculate fov
+	float fovx = 2.0f * atan(intr.w / (4.0f * intr.fx)) * (180.0f / PI);
+	float fovy = 2.0f * atan(intr.h / (4.0f * intr.fy)) * (180.0f / PI);
+	
+	// Calculate lens shift
 	float shiftx = ((4.0f * intr.ox) - intr.w) / intr.w;
 	float shifty = ((4.0f * intr.oy) - intr.h) / intr.h;
-	AtArray* shiftArr = AiArray(2, 1, AI_TYPE_FLOAT, shiftx, shifty);
-	AiNodeSetArray(aiCamera, "lens_shift", shiftArr);
+
+	// Store in Camera
+	renderCam.SetFOV(Vector2f(fovx, fovy));
+	renderCam.SetShift(Vector2f(shiftx, shifty));
+	renderCam.SetTransform(matCam);
 }
 
 //---------------------------------------
@@ -691,7 +656,7 @@ void SceneManager::X_LoadCameraIntrinsics()
 	std::ifstream inFile;
 
 	// Input file
-	string buf = scenePath + "/rgbd/_info.txt";
+	string buf = pRenderSettings->GetScenePath() + "/rgbd/_info.txt";
 
 	// Try to open
 	inFile.open(buf);
@@ -710,8 +675,8 @@ void SceneManager::X_LoadCameraIntrinsics()
 			intrOriginal.fy = std::stof(entries[7]);
 			intrOriginal.ox = std::stof(entries[4]);
 			intrOriginal.oy = std::stof(entries[8]);
-			intrOriginal.h = (*CONFIG_FILE)["render_height"].GetInt();
-			intrOriginal.w = (*CONFIG_FILE)["render_width"].GetInt();
+			intrOriginal.h = pRenderSettings->GetResolution().x();
+			intrOriginal.w = pRenderSettings->GetResolution().y();
 			break;
 		}
 	}
@@ -782,13 +747,15 @@ void SceneManager::X_GetImagesToProcess(const string& path, float varThreshold)
 //---------------------------------------
 // Run simulation
 //---------------------------------------
-bool SceneManager::Run(int sceneIters, int maxImages)
+int SceneManager::Run(int imageCount)
 {
-	// Load camera intrinsics (fov)
+	int newImages = 0;
+
+	// Load camera intrinsics
 	X_LoadCameraIntrinsics();
 
 	// Get non blurry images
-	X_GetImagesToProcess(scenePath + "/rgbd", 400.f);
+	X_GetImagesToProcess(pRenderSettings->GetScenePath() + "/rgbd", 400.f);
 	if (vecCameraImages.size() <= 0)
 		return true;
 
@@ -796,7 +763,7 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 	vector<tuple<cv::Mat, cv::Mat> >  renderings = X_RenderSceneDepth();
 
 	// For each scene iteration
-	for (int iter = 0; iter < sceneIters; iter++)
+	for (int iter = 0; iter < pRenderSettings->GetIterationCount(); iter++)
 	{
 		// Create physx representation of scan scene
 		X_PxCreateScene();
@@ -806,31 +773,29 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 		X_PxRunSim(1.0f / 50.0f, 400);
 		// Save results
 		X_PxSaveSimResults();
-		// Create arnold meshes
-		X_AiCreateObjs();
 
 		// Create/open annotation file
-		string buf = FILE_FINAL_PATH + "/labels.csv";
-		ANNOTATIONS_FILE.open(buf, std::ios_base::app);
+		string buf = pRenderSettings->GetFinalPath() + "/labels.csv";
+		osAnnotationsFile.open(buf, std::ios_base::app);
 
 		// For each camera pose
-		for (poseCount = 0; poseCount < vecCameraPoses.size(); poseCount++)
+		for (int poseCount = 0; poseCount < vecCameraPoses.size(); poseCount++)
 		{
 			// Load camera matrix for pose
 			if(useCustomIntr)
-				X_LoadCameraExtrinsics(intrCustom);
+				X_LoadCameraExtrinsics(intrCustom, poseCount);
 			else
-				X_LoadCameraExtrinsics(intrOriginal);
+				X_LoadCameraExtrinsics(intrOriginal, poseCount);
 
 			// If object depths rendered and visible
-			if (X_RenderObjsDepth() && X_CvComputeObjsMask())
+			if (X_RenderObjsDepth() && X_CvComputeObjsMask(poseCount))
 			{
 				// Render object labels (IDs as color)
 				X_RenderObjsLabel();
 				// Blend depth images
-				X_CvBlendDepth();
+				X_CvBlendDepth(imageCount + newImages, poseCount);
 				// Blend label and mask images
-				X_CvBlendLabel();
+				X_CvBlendLabel(imageCount + newImages, poseCount);
 
 				// Read scene color image
 				cvScene = cv::imread(vecCameraImages.at(poseCount), cv::IMREAD_COLOR);
@@ -839,71 +804,62 @@ bool SceneManager::Run(int sceneIters, int maxImages)
 
 				// Final image blend
 				X_RenderImageBlend();
-				imageCount++;
+				newImages++;
 			}
 
 			// Exit if target reached
-			if (imageCount >= maxImages)
+			if (imageCount + newImages >= renderSettings.GetMaxImageCount())
 			{
-				// Cleanup
-				X_PxDestroy();
-				X_AiDestroy();
-				vecCurrObjs.clear();
-				ANNOTATIONS_FILE.close();
-				return false;
+				X_CleanupScene();
+				return newImages;
 			}
 		}
 
-		// Cleanup
-		X_PxDestroy();
-		X_AiDestroy();
-		vecCurrObjs.clear();
-		ANNOTATIONS_FILE.close();
-
-		return false;
+		// Done rendering
+		X_CleanupScene();
 	}
 
-	return true;
+	return newImages;
 }
 
 //---------------------------------------
 // Create new scene manager
 //---------------------------------------
 SceneManager::SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxCooking, const PxMaterial* pPxMaterial,
-	AtNode* aiCamera, AtNode* aiOptions, AtNode* aiDriver, AtArray* aiOutputArray,
-	const vector<PxMeshConvex*> vecPhysxObjs, const vector<AiMesh*> vecArnoldObjs,
-	int startCount, int objPerSim, const rapidjson::Document* CONFIG_FILE,
-	AtNode* aiShaderObjDepth, AtNode* aiShaderSceneDepth, AtNode* aiShaderBlend) :
-	pPxDispatcher(pPxDispatcher), pPxCooking(pPxCooking), pPxMaterial(pPxMaterial),
-	aiCamera(aiCamera), aiOptions(aiOptions), aiDriver(aiDriver), aiArrOutputs(aiOutputArray),
-	vecpPxMeshObjs(vecPhysxObjs), vecpAiMeshObjs(vecArnoldObjs),
-	imageCount(startCount), objsPerSim(objPerSim), CONFIG_FILE(CONFIG_FILE),
-	aiShaderDepthObj(aiShaderObjDepth), aiShaderDepthScene(aiShaderSceneDepth), aiShaderBlendImage(aiShaderBlend),
-	pPxScene(NULL), pAiMeshScene(NULL), pPxMeshScene(NULL), poseCount(0), intrCustom(), intrOriginal()
+	const vector<PxMeshConvex*> vecPhysxObjs, const vector<RenderMesh*> vecArnoldObjs, const Settings* settings) :
+	pPxDispatcher(pPxDispatcher),
+	pPxCooking(pPxCooking),
+	pPxMaterial(pPxMaterial),
+	vecpPxMeshObjs(vecPhysxObjs),
+	vecpAiMeshObjs(vecArnoldObjs),
+	pRenderSettings(settings),
+	pPxScene(NULL),
+	pRenderMeshScene(NULL),
+	pPxMeshScene(NULL),
+	intrCustom(),
+	intrOriginal()
 {
-	// Fetch path to output location and meshes
-	FILE_OBJ_PATH = (*CONFIG_FILE)["models"].GetString();
-	FILE_TEMP_PATH = (*CONFIG_FILE)["temp_files_path"].GetString();
-	FILE_FINAL_PATH = (*CONFIG_FILE)["final_imgs_path"].GetString();
-
 	// Load intrinsics
-	intrCustom.fx = (*CONFIG_FILE)["fx"].GetFloat();
-	intrCustom.fy = (*CONFIG_FILE)["fy"].GetFloat();
-	intrCustom.ox = (*CONFIG_FILE)["ox"].GetFloat();
-	intrCustom.oy = (*CONFIG_FILE)["oy"].GetFloat();
-	intrCustom.w = (*CONFIG_FILE)["render_width"].GetInt();
-	intrCustom.h = (*CONFIG_FILE)["render_height"].GetInt();
+	intrCustom.fx = pRenderSettings->GetJSONConfig()["fx"].GetFloat();
+	intrCustom.fy = pRenderSettings->GetJSONConfig()["fy"].GetFloat();
+	intrCustom.ox = pRenderSettings->GetJSONConfig()["ox"].GetFloat();
+	intrCustom.oy = pRenderSettings->GetJSONConfig()["oy"].GetFloat();
+	intrCustom.w = pRenderSettings->GetResolution().x();
+	intrCustom.h = pRenderSettings->GetResolution().y();
 
 	// Determine if intrinsics are used
-	useCustomIntr = (*CONFIG_FILE)["use_custom_intrinsics"].GetBool();
+	useCustomIntr = pRenderSettings->GetJSONConfig()["custom_intrinsics"].GetBool();
 
 	// Load clipping planes
-	nearClip = (*CONFIG_FILE)["clip_near"].GetFloat();
-	farClip = (*CONFIG_FILE)["clip_far"].GetFloat();
+	renderCam = Camera();
+	renderCam.SetClipping(pRenderSettings->GetJSONConfig()["near_z"].GetFloat(),
+		pRenderSettings->GetJSONConfig()["far_z"].GetFloat());
 
-	// Create renderer
-	pRenderer = new Renderer::Render((*CONFIG_FILE)["shaders_gl"].GetString(),
-		intrCustom.w, intrCustom.h, nearClip, farClip);
+	// Create OpenGL renderer
+	pRenderer = new Renderer::Render(pRenderSettings->GetJSONConfig()["shaders_gl"].GetString(),
+		intrCustom.w, intrCustom.h, renderCam.GetClipping().x(), renderCam.GetClipping().y());
+
+	// TODO: Create Blender renderer
 }
 
 //---------------------------------------
@@ -911,7 +867,6 @@ SceneManager::SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxC
 //---------------------------------------
 SceneManager::~SceneManager()
 {
-	X_AiDestroy();
-	X_PxDestroy();
+	X_CleanupScene();
 	delete pRenderer;
 }

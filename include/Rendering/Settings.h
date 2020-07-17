@@ -19,26 +19,43 @@ private:
 
 	string logLevel;
 	bool storeBlend;
-	Eigen::Vector2i resolution;
+	Vector2i resolution;
 	string outputDir;
 	string pluginDir;
 	vector<string> shaderDirs;
+
+	int iterCount;
+	int objPerSim;
+	int maxImages;
+	const Document& jsonConfig;
+
+	string meshesPath, tempPath, finalPath, scenePath;
 
 public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
 
-	inline void SetLogLevel(const string& level) { logLevel = level; }
-	inline const string& GetLogLevel() { return logLevel; }
 	inline void SetOutputDir(const string& dir) { outputDir = dir; }
-	inline const string& GetOutputDir() { return outputDir; }
-	inline void SetPluginDir(const string& dir) { pluginDir = dir; }
-	inline const string& GetPluginDir() { return pluginDir; }
-	inline void SetShaderDirs(const vector<string>& dirs) { shaderDirs = dirs; }
-	inline const vector<string>& GetShaderDirs() { return shaderDirs; }
-	inline void SetStoreBlend(bool saveScene) { storeBlend = saveScene; }
-	inline bool GetStoreBlend() { return storeBlend; }
+	inline const string& GetOutputDir() const { return outputDir; }
+	inline void SetScenePath(const string& path) { scenePath = path; }
+	inline const string& GetScenePath() const { return scenePath; }
+	
+	inline Vector2i GetResolution() const { return resolution; }
+	inline bool GetStoreBlend() const { return storeBlend; }
+	inline const string& GetLogLevel() const { return logLevel; }
+	inline const string& GetPluginDir() const { return pluginDir; }
+	inline const vector<string>& GetShaderDirs() const { return shaderDirs; }
+
+	inline int GetIterationCount() const { return iterCount; }
+	inline int GetObjectsPerSimulation() const { return objPerSim; }
+	inline int GetMaxImageCount() const { return maxImages; }
+
+	inline const string& GetMeshesPath() const { return meshesPath; }
+	inline const string& GetTemporaryPath() const { return tempPath; }
+	inline const string& GetFinalPath() const { return finalPath; }
+
+	inline const Document& GetJSONConfig() const { return jsonConfig; }
 
 	//---------------------------------------
 	// Methods
@@ -76,13 +93,27 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	Settings() :
-		logLevel("error"),
-		storeBlend(false),
-		resolution(Vector2i(1920, 1080)),
-		outputDir(""),
-		pluginDir(""),
-		shaderDirs(NULL)
+	Settings():
+		jsonConfig(NULL)
 	{
+	}
+
+	Settings(const Document& jsonConfig) :
+		jsonConfig(jsonConfig)
+	{
+		// Init paths
+		meshesPath = jsonConfig["meshes_path"].GetString();
+		finalPath = jsonConfig["final_path"].GetString();
+		tempPath = jsonConfig["temp_path"].GetString();
+		// Init simulation stuff
+		iterCount = jsonConfig["scene_iterations"].GetInt();
+		objPerSim = jsonConfig["simulation_objects"].GetInt();
+		maxImages = jsonConfig["max_images"].GetInt();
+		// Init render stuff
+		logLevel = jsonConfig["log_level"].GetString();
+		storeBlend = jsonConfig["store_blend"].GetBool();
+		pluginDir = jsonConfig["plugin_bl"].GetString();
+		shaderDirs.push_back(jsonConfig["shaders_bl"].GetString());
+		resolution = Vector2i(jsonConfig["render_width"].GetInt(), jsonConfig["render_height"].GetInt());
 	}
 };
