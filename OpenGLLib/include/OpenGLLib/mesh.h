@@ -5,13 +5,12 @@
 
 #pragma warning(push, 0)
 #include <GL/glew.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <shader.h>
 #pragma warning(pop)
-
-using namespace std;
 
 namespace Renderer
 {
@@ -31,8 +30,8 @@ namespace Renderer
 	struct Texture
 	{
 		GLuint id;
-		string type;
-		string path;
+		std::string type;
+		std::string path;
 	};
 
 	//---------------------------------------
@@ -44,9 +43,9 @@ namespace Renderer
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		vector<Vertex> vertices;
-		vector<GLuint> indices;
-		vector<Texture> textures;
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+		std::vector<Texture> textures;
 		GLuint glVertexArray, glVertexBuf, glIndexBuf;
 
 		//---------------------------------------
@@ -63,6 +62,6 @@ namespace Renderer
 		//---------------------------------------
 		// Constructors
 		//---------------------------------------
-		Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures);
+		Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, std::vector<Texture> textures);
 	};
 }

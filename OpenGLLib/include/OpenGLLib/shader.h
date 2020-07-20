@@ -3,6 +3,9 @@
 #include <string>
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+
 #include <GL/glew.h>
 #pragma warning(pop)
 
@@ -22,7 +25,8 @@ namespace Renderer
 		//---------------------------------------
 		// Methods
 		//---------------------------------------
-		bool X_LoadFile(const std::string& vertPath, std::string& vertCode, const std::string& fragPath, std::string& fragCode);
+		bool X_LoadFile(const boost::filesystem::path& vertPath, std::string& vertCode,
+			const boost::filesystem::path& fragPath, std::string& fragCode);
 
 	public:
 		//---------------------------------------
@@ -38,6 +42,6 @@ namespace Renderer
 		//---------------------------------------
 		// Constructors
 		//---------------------------------------
-		Shader(const std::string& vertPath, const std::string& fragPath);
+		Shader(const boost::filesystem::path& vertPath, const boost::filesystem::path& fragPath);
 	};
 }

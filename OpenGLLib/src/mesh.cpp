@@ -17,8 +17,8 @@ namespace Renderer
 			// Activate texture slot
 			glActiveTexture(GL_TEXTURE0 + i);
 
-			stringstream ss;
-			string name = textures[i].type;
+			std::stringstream ss;
+			std::string name = textures[i].type;
 			// Increase texture count
 			if (name == "texture_diffuse")
 			{
@@ -87,7 +87,7 @@ namespace Renderer
 	//---------------------------------------
 	// Create mesh from vertices and textures
 	//---------------------------------------
-	Mesh::Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures) :
+	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, std::vector<Texture> textures) :
 		vertices(vertices),
 		indices(indices),
 		textures(textures)

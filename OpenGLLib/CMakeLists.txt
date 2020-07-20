@@ -58,6 +58,11 @@ set_target_properties(OpenGLLib PROPERTIES
 # External packages
 ###########################################################################################
 
+# Find & add boost
+set(Boost_ADDITIONAL_VERSIONS "1.73.0")
+find_package(Boost REQUIRED filesystem)
+target_link_libraries(OpenGLLib PRIVATE Boost::filesystem)
+
 # Include cmake files
 include(AddEigen)
 include(AddGLM)
@@ -77,7 +82,7 @@ AddOpenCV(OpenGLLib ${PROJECT_EXTERNAL_DIR}/opencv
 
 # Finally add linker flags on Linux and dll copy on Windows
 if(UNIX)
-    target_link_options(OpenGLLib PRIVATE pthread dl)
+    target_link_options(OpenGLLib PRIVATE -lboost_filesystem)
 else()
     include(ContentHelpers)
     # Add copy target

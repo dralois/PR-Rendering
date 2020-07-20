@@ -6,8 +6,6 @@
 
 #include <Eigen/Dense>
 
-#include <opencv2/opencv.hpp>
-
 #include <camera.h>
 #include <model.h>
 #include <shader.h>
@@ -27,8 +25,8 @@ namespace Renderer
 		int width, height;
 		float nearClip, farClip;
 		GLFWwindow* window;
-		std::string shaderPath;
 		Eigen::Matrix4f projection;
+		boost::filesystem::path shaderPath;
 
 		//---------------------------------------
 		// Setup render window
@@ -123,15 +121,19 @@ namespace Renderer
 		//---------------------------------------
 		// Render all scenes with given intrinsics
 		//---------------------------------------
-		vector<tuple<cv::Mat, cv::Mat>> Render_impl::RenderScenes(const std::string& scenePath, vector<string>camPoses,
-			float fx, float fy, float ox, float oy)
+		std::vector<std::tuple<cv::Mat, cv::Mat>> Render_impl::RenderScenes(
+			const boost::filesystem::path& scenePath,
+			const std::vector<boost::filesystem::path>& camPoses,
+			float fx, float fy, float ox, float oy
+		)
 		{
-			vector<tuple<cv::Mat, cv::Mat> > renderings;
+			std::vector<std::tuple<cv::Mat, cv::Mat> > renderings;
 
 			// Setup shader & load model
-			Shader shader(shaderPath + "/textured3D.vs", shaderPath + "/textured3D.frag");
-			Model model(scenePath, "mesh.refined.obj", "mesh.refined_0.png");
-
+			Shader shader(boost::filesystem::path(shaderPath).append("/textured3D.vs"),
+				boost::filesystem::path(shaderPath.append("/textured3D.frag")));
+			Model model(boost::filesystem::path(scenePath).append("mesh.refined.obj"),
+				boost::filesystem::path(scenePath).append("mesh.refined_0.png"));
 			// Calculate intrinsics
 			Intrinsics camRender;
 			camRender.fx = 2.0f * fx;
@@ -147,7 +149,7 @@ namespace Renderer
 			glfwSetWindowOpacity(window, 1.0f);
 
 			// For each pose
-			for (string& currPose : camPoses)
+			for (auto currPose : camPoses)
 			{
 				cv::Mat col, dep;
 
@@ -168,7 +170,7 @@ namespace Renderer
 				dep = X_GetDepth();
 
 				// Save in vector
-				renderings.push_back(make_tuple(col, dep));
+				renderings.push_back(std::make_tuple(col, dep));
 			}
 
 			// Make window invisible
@@ -181,7 +183,8 @@ namespace Renderer
 		//---------------------------------------
 		// Create new OpenGL renderer
 		//---------------------------------------
-		Render_impl::Render_impl(const std::string& shaderPath, int width, int height, float near, float far) :
+		Render_impl::Render_impl(const boost::filesystem::path& shaderPath,
+			int width, int height, float near, float far) :
 			shaderPath(shaderPath),
 			width(width),
 			height(height),
@@ -229,8 +232,11 @@ namespace Renderer
 	//---------------------------------------
 	// Forward render command
 	//---------------------------------------
-	vector<tuple<cv::Mat, cv::Mat>> Render::RenderScenes(const string& scenePath, vector<string>camPoses,
-		float fx, float fy, float ox, float oy)
+	std::vector<std::tuple<cv::Mat, cv::Mat>> Render::RenderScenes(
+		const boost::filesystem::path& scenePath,
+		const std::vector<boost::filesystem::path>& camPoses,
+		float fx, float fy, float ox, float oy
+	)
 	{
 		return renderImpl->RenderScenes(scenePath, camPoses, fx, fy, ox, oy);
 	}
@@ -238,7 +244,8 @@ namespace Renderer
 	//---------------------------------------
 	// Forward render creation
 	//---------------------------------------
-	Render::Render(const std::string& shaderPath, int width, int height, float near, float far) :
+	Render::Render(const boost::filesystem::path& shaderPath,
+		int width, int height, float near, float far) :
 		renderImpl(new Render_impl(shaderPath, width, height, near, far))
 	{
 	}

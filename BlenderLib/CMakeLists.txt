@@ -78,8 +78,8 @@ endif()
 target_link_libraries(BlenderLib PRIVATE Python::Python)
 
 # Find & add boost
-find_package(Boost REQUIRED thread python37)
-target_link_libraries(BlenderLib PRIVATE Boost::thread Boost::python37)
+find_package(Boost REQUIRED python37)
+target_link_libraries(BlenderLib PRIVATE Boost::python37)
 
 # Include cmake modules
 include(AddBlender)
@@ -92,7 +92,7 @@ include(AddAppleseed)
 
 # Finally add linker flags on Linux and dll copy on Windows
 if(UNIX)
-    target_link_options(BlenderLib PRIVATE pthread dl -lboost_system -lboost_thread -lboost_python37)
+    target_link_options(BlenderLib PRIVATE -lboost_python37)
 else()
     include(ContentHelpers)
     # Add copy target

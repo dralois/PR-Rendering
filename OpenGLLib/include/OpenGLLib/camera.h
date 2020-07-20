@@ -1,8 +1,9 @@
 #pragma once
 
-#include <fstream>
-
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+
 #include <Eigen/Dense>
 #pragma warning(pop)
 
@@ -30,9 +31,9 @@ namespace Renderer
 		//---------------------------------------
 		// Loads pose from file into matrix
 		//---------------------------------------
-		static void X_LoadPose(const std::string& pose_file, Eigen::Matrix4f& pose)
+		static void X_LoadPose(const boost::filesystem::path& pose_file, Eigen::Matrix4f& pose)
 		{
-			std::ifstream file(pose_file);
+			boost::filesystem::ifstream file(pose_file);
 			if (file.is_open())
 			{
 				for (int i = 0; i < 4; i++)
@@ -93,7 +94,7 @@ namespace Renderer
 		//---------------------------------------
 		// Create camera matrix from pose file
 		//---------------------------------------
-		static Eigen::Matrix4f LoadViewMatrix(const std::string& cam_pose)
+		static Eigen::Matrix4f LoadViewMatrix(const boost::filesystem::path& cam_pose)
 		{
 			Eigen::Matrix4f camera_pose;
 			Eigen::Vector3f camera_direction;

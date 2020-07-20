@@ -1,27 +1,26 @@
 #include <shader.h>
 
-#include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 namespace Renderer
 {
 	//---------------------------------------
 	// Try to load a shader from disk
 	//---------------------------------------
-	bool Shader::X_LoadFile(const std::string& vertPath, std::string& vertCode, const std::string& fragPath, std::string& fragCode)
+	bool Shader::X_LoadFile(const boost::filesystem::path& vertPath, std::string& vertCode,
+		const boost::filesystem::path& fragPath, std::string& fragCode)
 	{
-		std::ifstream vShaderFile;
-		std::ifstream fShaderFile;
-		vShaderFile.exceptions(std::ifstream::badbit);
-		fShaderFile.exceptions(std::ifstream::badbit);
+		boost::filesystem::fstream vShaderFile, fShaderFile;
+		vShaderFile.exceptions(std::ios_base::badbit);
+		fShaderFile.exceptions(std::ios_base::badbit);
 		// Try to load file
 		try
 		{
 			// Open file
 			vShaderFile.open(vertPath);
 			fShaderFile.open(fragPath);
-			std::stringstream vShaderStream, fShaderStream;
+			std::ostringstream vShaderStream, fShaderStream;
 			// Read contents into streams
 			vShaderStream << vShaderFile.rdbuf();
 			fShaderStream << fShaderFile.rdbuf();
@@ -52,7 +51,8 @@ namespace Renderer
 	//---------------------------------------
 	// Create shader from provided files
 	//---------------------------------------
-	Shader::Shader(const std::string& vertPath, const std::string& fragPath)
+	Shader::Shader(const boost::filesystem::path& vertPath,
+		const boost::filesystem::path& fragPath)
 	{
 		GLint success;
 		GLuint vertex, fragment;

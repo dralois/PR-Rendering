@@ -1,10 +1,11 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+
 #include <opencv2/opencv.hpp>
 #pragma warning(pop)
 
@@ -33,13 +34,14 @@ namespace Renderer
 		// Methods
 		//---------------------------------------
 		EXPORT_THIS std::vector<std::tuple<cv::Mat, cv::Mat>>
-			RenderScenes(const std::string& scenePath, std::vector<std::string>camPoses,
+			RenderScenes(const boost::filesystem::path& scenePath,
+				const std::vector<boost::filesystem::path>& camPoses,
 				float fx, float fy, float ox, float oy);
 
 		//---------------------------------------
 		// Constructors
 		//---------------------------------------
-		EXPORT_THIS Render(const std::string& shaderPath,
+		EXPORT_THIS Render(const boost::filesystem::path& shaderPath,
 			int width, int height, float near, float far);
 		EXPORT_THIS Render& operator=(Render rhs);
 		EXPORT_THIS Render(const Render& other);

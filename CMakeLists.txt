@@ -82,7 +82,7 @@ AddRapidJSON(PRRendering ${PROJECT_EXTERNAL_DIR}/rapidjson)
 
 # Finally add linker flags on Linux
 if(UNIX)
-    target_link_options(PRRendering PRIVATE pthread dl -lboost_system -lboost_thread -lboost_filesystem)
+    target_link_options(PRRendering PRIVATE -pthread -ldl -lboost_system -lboost_thread -lboost_filesystem)
 endif()
 
 ###########################################################################################

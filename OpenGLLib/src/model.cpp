@@ -1,8 +1,7 @@
 #include <model.h>
 
-#include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 #pragma warning(push, 0)
 #include <glm/gtc/matrix_transform.hpp>
@@ -30,16 +29,15 @@ namespace Renderer
 	//---------------------------------------
 	// Creates a texture and returns slot
 	//---------------------------------------
-	GLint Model::X_TextureFromFile(const char* file)
+	GLint Model::X_TextureFromFile(const boost::filesystem::path& texPath)
 	{
 		GLuint textureId;
 		int width, height;
-		string filePath = path + "/" + file;
 
-		std::cout << "Bind texture:" << filePath << std::endl;
+		std::cout << "Bind texture:" << texPath.filename() << std::endl;
 
 		// Load texture from file
-		cv::Mat image = cv::imread(filePath.c_str());
+		cv::Mat image = cv::imread(texPath.string());
 
 		// Create and bind texture slot
 		glDeleteTextures(1, &textureId);
@@ -71,8 +69,7 @@ namespace Renderer
 	{
 		// Read file
 		Assimp::Importer importer;
-		string modelPath = path + "/" + model;
-		const aiScene* scene = importer.ReadFile(modelPath, aiProcess_Triangulate | aiProcess_FlipUVs);
+		const aiScene* scene = importer.ReadFile(model.string(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
 		// Error handling
 		if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -82,7 +79,7 @@ namespace Renderer
 		}
 		else if (!scene->HasMeshes())
 		{
-			std::cout << "Mesh load error:" << modelPath << " has no mesh" << endl;
+			std::cout << "Mesh load error:" << model.filename() << " has no mesh" << std::endl;
 			return;
 		}
 
@@ -113,9 +110,9 @@ namespace Renderer
 	//---------------------------------------
 	Mesh Model::X_ProcessMesh(aiMesh* mesh, const aiScene* scene)
 	{
-		vector<Vertex> vertices;
-		vector<GLuint> indices;
-		vector<Texture> textures;
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+		std::vector<Texture> textures;
 
 		// Create & save vertices
 		for (GLuint i = 0; i < mesh->mNumVertices; i++)
@@ -163,20 +160,20 @@ namespace Renderer
 		{
 			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 			// It is assumed, that the names are by convention
-			vector<Texture> diffuseMaps = X_LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+			std::vector<Texture> diffuseMaps = X_LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
 			textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-			vector<Texture> specularMaps = X_LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+			std::vector<Texture> specularMaps = X_LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
 			textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 		}
 
 		// If no materials / textures
-		if(textures.empty())
+		if (textures.empty())
 		{
 			Texture tex;
 			// Create and bind external texture
-			tex.id = X_TextureFromFile(texture.c_str());
+			tex.id = X_TextureFromFile(texture);
 			tex.type = "texture_external";
-			tex.path = texture;
+			tex.path = texture.string();
 			textures.push_back(tex);
 		}
 
@@ -187,9 +184,9 @@ namespace Renderer
 	//---------------------------------------
 	// Load all textures from a given material
 	//---------------------------------------
-	vector<Texture> Model::X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName)
+	std::vector<Texture> Model::X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
 	{
-		vector<Texture> textures;
+		std::vector<Texture> textures;
 
 		// For each texture
 		for (GLuint i = 0; i < mat->GetTextureCount(type); i++)
@@ -232,8 +229,8 @@ namespace Renderer
 	//---------------------------------------
 	// New model from given path
 	//---------------------------------------
-	Model::Model(const std::string& path, const std::string& model, const std::string& texture) :
-		path(path),
+	Model::Model(const boost::filesystem::path& modelPath,
+		const boost::filesystem::path& texturePath) :
 		model(model),
 		texture(texture)
 	{

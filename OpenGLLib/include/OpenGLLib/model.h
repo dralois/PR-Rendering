@@ -5,13 +5,13 @@
 
 #pragma warning(push, 0)
 #include <GL/glew.h>
+
 #include <glm/glm.hpp>
+
 #include <assimp/scene.h>
 
 #include <mesh.h>
 #pragma warning(pop)
-
-using namespace std;
 
 namespace Renderer
 {
@@ -24,11 +24,10 @@ namespace Renderer
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		string path;
-		string model;
-		string texture;
-		vector<Mesh> meshes;
-		vector<Texture> loadedTextures;
+		boost::filesystem::path model;
+		boost::filesystem::path texture;
+		std::vector<Mesh> meshes;
+		std::vector<Texture> loadedTextures;
 
 		//---------------------------------------
 		// Methods
@@ -36,8 +35,8 @@ namespace Renderer
 		void X_LoadModel();
 		void X_ProcessNode(aiNode* node, const aiScene* scene);
 		Mesh X_ProcessMesh(aiMesh* mesh, const aiScene* scene);
-		vector<Texture> X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName);
-		GLint X_TextureFromFile(const char* file);
+		std::vector<Texture> X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
+		GLint X_TextureFromFile(const boost::filesystem::path& file);
 
 	public:
 		//---------------------------------------
@@ -48,6 +47,7 @@ namespace Renderer
 		//---------------------------------------
 		// Constructors
 		//---------------------------------------
-		Model(const std::string& path, const std::string& model, const std::string& texture);
+		Model(const boost::filesystem::path& modelPath,
+			const boost::filesystem::path& texturePath);
 	};
 }
