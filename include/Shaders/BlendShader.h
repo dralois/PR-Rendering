@@ -13,39 +13,43 @@ protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	string maskImage;
-	string blendImage;
-	string objectsImage;
+	boost::filesystem::path maskImage;
+	boost::filesystem::path blendImage;
+	boost::filesystem::path objectsImage;
 	bool forceScene;
 	Eigen::Vector3f backColor;
 
 	//---------------------------------------
 	// Add shader params
 	//---------------------------------------
-	void BlendShader::X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	void BlendShader::X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("maskImage");
-		AddString(writer, maskImage);
+		AddString(writer, maskImage.string());
 
 		writer.Key("blendImage");
-		AddString(writer, blendImage);
+		AddString(writer, blendImage.string());
 
 		writer.Key("objectsImage");
-		AddString(writer, objectsImage);
+		AddString(writer, objectsImage.string());
 
 		writer.Key("forceScene");
 		writer.Bool(forceScene);
 
 		writer.Key("backColor");
-		RenderfileData::AddEigenVector<Vector3f>(writer, backColor);
+		AddEigenVector<Eigen::Vector3f>(writer, backColor);
 	}
 
 public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	BlendShader(const string& name, const vector<OSLTexture>& textures,
-		const string& maskImage, const string& blendImage, const string& objectsImage, bool forceScene, Eigen::Vector3f backColor) :
+	BlendShader(const std::string& name,
+		const std::vector<OSLTexture>& textures,
+		const boost::filesystem::path& maskImage,
+		const boost::filesystem::path& blendImage,
+		const boost::filesystem::path& objectsImage,
+		bool forceScene, Eigen::Vector3f backColor) :
 		OSLShader(name, textures),
 		maskImage(maskImage),
 		blendImage(blendImage),

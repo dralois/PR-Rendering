@@ -7,28 +7,27 @@
 #include <Eigen/Dense>
 
 #include <rapidjson/prettywriter.h>
+#include <rapidjson/stream.h>
 
 #include <Transformable.h>
 #pragma warning(pop)
-
-using namespace rapidjson;
 
 //---------------------------------------
 // Static Methods
 //---------------------------------------
 
-static void AddString(PrettyWriter<std::stringstream>& writer, const std::string& toAdd)
+static void AddString(rapidjson::PrettyWriter<rapidjson::StringStream>& writer, const std::string& toAdd)
 {
-	writer.String(toAdd.c_str(), static_cast<SizeType>(toAdd.length()));
+	writer.String(toAdd.c_str(), static_cast<rapidjson::SizeType>(toAdd.length()));
 }
 
-static void AddFloat(PrettyWriter<std::stringstream>& writer, float toAdd)
+static void AddFloat(rapidjson::PrettyWriter<rapidjson::StringStream>& writer, float toAdd)
 {
 	writer.Double(static_cast<double>(toAdd));
 }
 
 template<typename VectorType>
-static void AddEigenVector(PrettyWriter<std::stringstream>& writer, VectorType toAdd)
+static void AddEigenVector(rapidjson::PrettyWriter<rapidjson::StringStream>& writer, VectorType toAdd)
 {
 	writer.StartArray();
 	for (int i = 0; i < toAdd.rows(); i++)
@@ -48,7 +47,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(PrettyWriter<std::stringstream>& writer) = 0;
+	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
 };
 
 //---------------------------------------
@@ -95,7 +94,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer) = 0;
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
 
 public:
 	//---------------------------------------
@@ -140,7 +139,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(PrettyWriter<std::stringstream>& writer) override
+	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.StartObject();
 

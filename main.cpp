@@ -25,33 +25,33 @@ int main(int argc, char** argv)
 	}
 
 	// Config file path in args
-	string config_path = argv[1];
+	boost::filesystem::path configPath(argv[1]);
 
 	// Create simulation manager
-	SimManager man(config_path);
+	SimManager man(configPath);
 
 	// Save the paths
-	boost::filesystem::path final_dir(man.GetSettings()->GetFinalPath());
-	boost::filesystem::path temp_dir(man.GetSettings()->GetTemporaryPath());
+	boost::filesystem::path finalDir(man.GetSettings()->GetFinalPath());
+	boost::filesystem::path tempDir(man.GetSettings()->GetTemporaryPath());
 
 	// Create final output directories
-	if (!boost::filesystem::exists(final_dir))
+	if (!boost::filesystem::exists(finalDir))
 	{
-		boost::filesystem::create_directories(final_dir);
-		boost::filesystem::create_directories(final_dir / "rgb");
-		boost::filesystem::create_directories(final_dir / "depth");
-		boost::filesystem::create_directories(final_dir / "segs");
+		boost::filesystem::create_directories(finalDir);
+		boost::filesystem::create_directories(finalDir / "rgb");
+		boost::filesystem::create_directories(finalDir / "depth");
+		boost::filesystem::create_directories(finalDir / "segs");
 	}
 
 	std::cout << "Creating Temp Directories" << std::endl;
 
 	// Create temporary output directories
-	if (!boost::filesystem::exists(temp_dir))
+	if (!boost::filesystem::exists(tempDir))
 	{
-		boost::filesystem::create_directories(temp_dir / "body_depth");
-		boost::filesystem::create_directories(temp_dir / "body_label");
-		boost::filesystem::create_directories(temp_dir / "scene_depth");
-		boost::filesystem::create_directories(temp_dir / "rgb");
+		boost::filesystem::create_directories(tempDir / "body_depth");
+		boost::filesystem::create_directories(tempDir / "body_label");
+		boost::filesystem::create_directories(tempDir / "scene_depth");
+		boost::filesystem::create_directories(tempDir / "rgb");
 	}
 
 	// Run the simulation
@@ -60,9 +60,9 @@ int main(int argc, char** argv)
 	std::cout << "Deleting Temp Directories" << std::endl;
 
 	// Delete temporary output
-	if (boost::filesystem::exists(temp_dir))
+	if (boost::filesystem::exists(tempDir))
 	{
-		boost::filesystem::remove_all(temp_dir);
+		boost::filesystem::remove_all(tempDir);
 	}
 
 	return exit;

@@ -11,26 +11,24 @@
 
 #define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
 
-using namespace physx;
-
 //---------------------------------------
 // Base class for physx meshes
 //---------------------------------------
-class PxMesh : public MeshBase, Transformable<PxTransform, PxVec3, PxQuat>
+class PxMesh : public MeshBase, Transformable<physx::PxTransform, physx::PxVec3, physx::PxQuat>
 {
 protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
 
-	PxShape* pPxShape;
-	PxRigidActor* pPxActor;
-	const PxCooking* pPxCooking;
-	const PxMaterial* pPxMaterial;
+	physx::PxShape* pPxShape;
+	physx::PxRigidActor* pPxActor;
+	const physx::PxCooking* pPxCooking;
+	const physx::PxMaterial* pPxMaterial;
 
 	bool firstInstance = false;
-	PxVec3 maximum = PxVec3(1e8);
-	PxVec3 minimum = PxVec3(-1e8);
+	physx::PxVec3 maximum = physx::PxVec3(1e8);
+	physx::PxVec3 minimum = physx::PxVec3(-1e8);
 
 	//---------------------------------------
 	// Methods
@@ -46,8 +44,8 @@ protected:
 	// Properties
 	//---------------------------------------
 
-	inline PxVec3* X_GetVertices() { return (PxVec3*) &vecVertices[0]; };
-	inline PxU32* X_GetIndices() { return (PxU32*) &vecIndices[0]; };
+	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) &vecVertices[0]; };
+	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) &vecIndices[0]; };
 
 public:
 	//---------------------------------------
@@ -55,29 +53,30 @@ public:
 	//---------------------------------------
 
 	virtual void CreateMesh() override;
-	void AddRigidActor(PxScene* scene);
-	void RemoveRigidActor(PxScene* scene);
+	void AddRigidActor(physx::PxScene* scene);
+	void RemoveRigidActor(physx::PxScene* scene);
 
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
 
-	inline const PxVec3 GetMinimum() { return minimum.multiply(meshScale); };
-	inline const PxVec3 GetMaximum() { return maximum.multiply(meshScale); };
-	virtual const PxTransform GetTransform() override;
-	virtual void SetTransform(PxTransform trans) override;
-	virtual const PxVec3 GetPosition() override;
-	virtual void SetPosition(PxVec3 pos) override;
-	virtual const PxQuat GetRotation() override;
-	virtual void SetRotation(PxQuat rot) override;
-	virtual const PxVec3 GetScale() override;
-	virtual void SetScale(PxVec3 scale) override;
+	inline const physx::PxVec3 GetMinimum() { return minimum.multiply(meshScale); };
+	inline const physx::PxVec3 GetMaximum() { return maximum.multiply(meshScale); };
+	virtual const physx::PxTransform GetTransform() override;
+	virtual void SetTransform(physx::PxTransform trans) override;
+	virtual const physx::PxVec3 GetPosition() override;
+	virtual void SetPosition(physx::PxVec3 pos) override;
+	virtual const physx::PxQuat GetRotation() override;
+	virtual void SetRotation(physx::PxQuat rot) override;
+	virtual const physx::PxVec3 GetScale() override;
+	virtual void SetScale(physx::PxVec3 scale) override;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
-	PxMesh(const string& meshPath, int meshId, const PxCooking* cooking, const PxMaterial* material);
+	PxMesh(const boost::filesystem::path& meshPath, int meshId,
+		const physx::PxCooking* cooking, const physx::PxMaterial* material);
 	PxMesh(const PxMesh& copy);
 	~PxMesh();
 

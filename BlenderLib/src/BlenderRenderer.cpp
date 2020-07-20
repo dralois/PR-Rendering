@@ -1,4 +1,4 @@
-#include <BlenderBridge.h>
+#include <BlenderRenderer.h>
 
 #pragma warning(push, 0)
 #define BOOST_PYTHON_STATIC_LIB
@@ -6,39 +6,40 @@
 #include <boost/python.hpp>
 #pragma warning(pop)
 
-using namespace std;
-using namespace boost::python;
-
-namespace Blenderseed
+namespace Blender
 {
 	//---------------------------------------
 	// Implementation class
 	//---------------------------------------
-	class Blenderbridge::Bridge_impl
+	class BlenderRenderer::Renderer_impl
 	{
 	private:
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		object entryMainModule;
-		object entryNamespace;
+		boost::python::object entryMainModule;
+		boost::python::object entryNamespace;
 
 	public:
 
 		//---------------------------------------
 		// Default constructor
 		//---------------------------------------
-		Bridge_impl::Bridge_impl()
+		Renderer_impl::Renderer_impl()
 		{
 			try
 			{
 				//Py_set
 				Py_Initialize();
 				// Store main and globals
-				entryMainModule = import("BlenderTest");
+				entryMainModule = boost::python::import("BlenderModule");
 				entryNamespace = entryMainModule.attr("__dict__");
+				boost::python::object utilsModule = boost::python::import("BlenderModule.Utils");
+				boost::python::object testModule = boost::python::import("BlenderModule.Test.ModuleTest");
+				utilsModule.attr("SetupMultiprocessing")("C://Program Files//Python37//python.exe");
+				testModule.attr("TestSubprocess")();
 			}
-			catch(const error_already_set&)
+			catch(const boost::python::error_already_set&)
 			{
 				PyErr_Print();
 			}
@@ -48,30 +49,30 @@ namespace Blenderseed
 	//---------------------------------------
 	// Forward API creation
 	//---------------------------------------
-	Blenderbridge::Blenderbridge() :
-		bridgeImpl(new Bridge_impl())
+	BlenderRenderer::BlenderRenderer() :
+		rendererImpl(new Renderer_impl())
 	{
 	}
 
 	//---------------------------------------
 	// Copy constructor
 	//---------------------------------------
-	Blenderbridge::Blenderbridge(const Blenderbridge& other) :
-		bridgeImpl(new Bridge_impl(*other.bridgeImpl))
+	BlenderRenderer::BlenderRenderer(const BlenderRenderer& other) :
+		rendererImpl(new Renderer_impl(*other.rendererImpl))
 	{
 	}
 
 	//---------------------------------------
 	// Assignment operator
 	//---------------------------------------
-	Blenderbridge& Blenderbridge::operator=(Blenderbridge rhs)
+	BlenderRenderer& BlenderRenderer::operator=(BlenderRenderer rhs)
 	{
-		swap(bridgeImpl, rhs.bridgeImpl);
+		swap(rendererImpl, rhs.rendererImpl);
 		return *this;
 	}
 
 	//---------------------------------------
 	// Destructor
 	//---------------------------------------
-	Blenderbridge::~Blenderbridge() = default;
+	BlenderRenderer::~BlenderRenderer() = default;
 }

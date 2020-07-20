@@ -4,9 +4,6 @@
 #include <Renderfile.h>
 #pragma warning(pop)
 
-using namespace std;
-using namespace Eigen;
-
 //---------------------------------------
 // Generic light params wrapper
 //---------------------------------------
@@ -17,20 +14,20 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	string type;
+	std::string type;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer) = 0;
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(PrettyWriter<std::stringstream>& writer) override
+	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("type");
 		AddString(writer, type);
@@ -46,7 +43,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	LightParamsBase(const string& type) :
+	LightParamsBase(const std::string& type) :
 		type(type)
 	{
 	}
@@ -62,7 +59,7 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	Vector3f color;
+	Eigen::Vector3f color;
 	float intensity;
 	float exposure;
 	bool castsIndirect;
@@ -72,10 +69,10 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("color");
-		AddEigenVector<Vector3f>(writer, color);
+		AddEigenVector<Eigen::Vector3f>(writer, color);
 
 		writer.Key("intensity");
 		AddFloat(writer, intensity);
@@ -95,13 +92,19 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	Light(LightParamsBase* params, Vector3f color, float intensity, float exposure, bool castsIndirect = true) :
+	Light(LightParamsBase* params, Eigen::Vector3f color, float intensity, float exposure, bool castsIndirect = true) :
 		params(params),
 		color(color),
 		intensity(intensity),
 		exposure(exposure),
 		castsIndirect(castsIndirect)
 	{
+	}
+
+	~Light()
+	{
+		// Light cleans up internals
+		delete params;
 	}
 };
 
@@ -115,7 +118,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
 	{
 	}
 
@@ -146,7 +149,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
 	{
 		writer.Key("spotAngle");
 		AddFloat(writer, spotAngle);
@@ -174,7 +177,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
 	{
 	}
 
@@ -199,20 +202,20 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	string shape;
-	Vector2f size;
+	std::string shape;
+	Eigen::Vector2f size;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<std::stringstream>& writer)
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
 	{
 		writer.Key("shape");
 		AddString(writer, shape);
 
 		writer.Key("size");
-		AddEigenVector<Vector2f>(writer, size);
+		AddEigenVector<Eigen::Vector2f>(writer, size);
 	}
 
 public:
@@ -220,7 +223,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	AreaLightParams(const string& shape, Vector2f size) :
+	AreaLightParams(const std::string& shape, Eigen::Vector2f size) :
 		LightParamsBase("AREA"),
 		shape(shape),
 		size(size)

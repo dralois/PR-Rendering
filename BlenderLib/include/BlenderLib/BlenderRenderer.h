@@ -11,19 +11,19 @@
 #define EXPORT_THIS __attribute__((visibility("default")))
 #endif
 
-namespace Blenderseed
+namespace Blender
 {
 	//---------------------------------------
 	// Blender Python API bridge
 	//---------------------------------------
-	class Blenderbridge
+	class BlenderRenderer
 	{
 		private:
 			//---------------------------------------
 			// Fields
 			//---------------------------------------
-			class Bridge_impl;
-			std::unique_ptr<Bridge_impl> bridgeImpl;
+			class Renderer_impl;
+			std::unique_ptr<Renderer_impl> rendererImpl;
 
 		public:
 			//---------------------------------------
@@ -33,9 +33,9 @@ namespace Blenderseed
 			//---------------------------------------
 			// Constructors
 			//---------------------------------------
-			EXPORT_THIS Blenderbridge();
-			EXPORT_THIS Blenderbridge& operator=(Blenderbridge rhs);
-			EXPORT_THIS Blenderbridge(const Blenderbridge& other);
-			EXPORT_THIS ~Blenderbridge();
+			EXPORT_THIS BlenderRenderer();
+			EXPORT_THIS BlenderRenderer& operator=(BlenderRenderer rhs);
+			EXPORT_THIS BlenderRenderer(const BlenderRenderer& other);
+			EXPORT_THIS ~BlenderRenderer();
 	};
 }

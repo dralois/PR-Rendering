@@ -8,9 +8,6 @@
 #include <Renderfile.h>
 #pragma warning(pop)
 
-using namespace std;
-using namespace Eigen;
-
 //---------------------------------------
 // Mesh object wrapper for rendering
 //---------------------------------------
@@ -27,10 +24,10 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("file");
-		AddString(writer, GetMeshPath());
+		AddString(writer, GetMeshPath().string());
 		// Mesh should always have a shader
 		if (oslShader)
 		{
@@ -39,7 +36,7 @@ protected:
 		}
 		else
 		{
-			cout << "Mesh " << GetMeshPath() << " has no shader!" << endl;
+			std::cout << "Mesh " << GetMeshPath() << " has no shader!" << std::endl;
 		}
 	}
 
@@ -67,13 +64,13 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	RenderMesh(const string& meshFile, const string& textureFile, int meshId) :
+	RenderMesh(const boost::filesystem::path& meshFile, const boost::filesystem::path& textureFile, int meshId) :
 		MeshBase(meshFile, textureFile, meshId),
 		oslShader(NULL)
 	{
 	}
 
-	RenderMesh(const string& meshFile, int meshId) :
+	RenderMesh(const boost::filesystem::path& meshFile, int meshId) :
 		MeshBase(meshFile, meshId),
 		oslShader(NULL)
 	{

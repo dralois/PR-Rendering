@@ -1,5 +1,7 @@
 #include <Meshes/PxMesh.h>
 
+using namespace physx;
+
 //---------------------------------------
 // Create & add actor to scene
 //---------------------------------------
@@ -193,7 +195,8 @@ const PxTransform PxMesh::GetTransform()
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-PxMesh::PxMesh(const string& meshPath, int meshId, const PxCooking* cooking, const PxMaterial* material) :
+PxMesh::PxMesh(const boost::filesystem::path& meshPath, int meshId,
+	const PxCooking* cooking, const PxMaterial* material) :
 	pPxCooking(cooking),
 	pPxMaterial(material),
 	pPxShape(NULL),

@@ -1,20 +1,19 @@
 #pragma once
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+
 #include <Renderfile.h>
 #pragma warning(pop)
-
-using namespace std;
-using namespace Eigen;
 
 //---------------------------------------
 // Texture data wrapper for rendering
 //---------------------------------------
 struct OSLTexture
 {
-	string filePath;
-	string colorSpace;
-	string colorDepth;
+	boost::filesystem::path filePath;
+	std::string colorSpace;
+	std::string colorDepth;
 };
 
 //---------------------------------------
@@ -27,14 +26,14 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	string name;
-	vector<OSLTexture> textures;
+	std::string name;
+	std::vector<OSLTexture> textures;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(PrettyWriter<stringstream>& writer) = 0;
+	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
 
 public:
 
@@ -42,7 +41,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(PrettyWriter<stringstream>& writer) override
+	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.StartObject();
 		writer.Key("name");
@@ -55,7 +54,7 @@ public:
 			writer.StartObject();
 
 			writer.Key("filePath");
-			AddString(writer, currTex.filePath);
+			AddString(writer, currTex.filePath.string());
 
 			writer.Key("colorSpace");
 			AddString(writer, currTex.colorSpace);
@@ -80,7 +79,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	OSLShader(const string& name, const vector<OSLTexture>& textures) :
+	OSLShader(const std::string& name, const std::vector<OSLTexture>& textures) :
 		name(name),
 		textures(textures)
 	{

@@ -18,7 +18,7 @@ protected:
 	//---------------------------------------
 	// Add shader params
 	//---------------------------------------
-	void LabelShader::X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	void LabelShader::X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("maskId");
 		writer.Int(maskId);
@@ -28,7 +28,7 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	LabelShader(const string& name, const vector<OSLTexture>& textures, int maskId):
+	LabelShader(const std::string& name, const std::vector<OSLTexture>& textures, int maskId):
 		OSLShader(name, textures),
 		maskId(maskId)
 	{

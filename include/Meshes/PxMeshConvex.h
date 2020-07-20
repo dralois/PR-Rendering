@@ -14,7 +14,7 @@ private:
 	// Fields
 	//---------------------------------------
 
-	PxConvexMesh* pPxMesh = NULL;
+	physx::PxConvexMesh* pPxMesh = NULL;
 
 	//---------------------------------------
 	// Methods

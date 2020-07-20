@@ -19,7 +19,7 @@ protected:
 	//---------------------------------------
 	// Add shader params
 	//---------------------------------------
-	void DepthShader::X_AddToJSON(PrettyWriter<stringstream>& writer) override
+	void DepthShader::X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
 	{
 		writer.Key("backgroundDepth");
 		AddFloat(writer, backgroundDepth);
@@ -32,7 +32,7 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	DepthShader(const string& name, const vector<OSLTexture>& textures, float backgroundDepth, bool isBody) :
+	DepthShader(const std::string& name, const std::vector<OSLTexture>& textures, float backgroundDepth, bool isBody) :
 		OSLShader(name, textures),
 		backgroundDepth(backgroundDepth),
 		isBody(isBody)

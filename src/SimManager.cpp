@@ -1,8 +1,6 @@
 #include <SimManager.h>
 
-#pragma warning(push, 0)
-#include <dirent.h>
-#pragma warning(pop)
+using namespace physx;
 
 //---------------------------------------
 // Initialize physx runtime
@@ -51,19 +49,17 @@ void SimManager::X_InitPhysx()
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
-void SimManager::X_LoadConfig(const string& configPath)
+void SimManager::X_LoadConfig(const boost::filesystem::path& configPath)
 {
-	cout << "Reading config file:\t" << configPath << endl;
+	std::cout << "Reading config file:\t" << configPath << std::endl;
 	// Open file in binary mode
-	FILE* pFile = fopen(configPath.c_str(), "rb");
+	FILE* pFile = fopen(configPath.string().c_str(), "rb");
 	// Determine size
-	fseek(pFile, 0, SEEK_END);
-	size_t fileSize = ftell(pFile);
-	rewind(pFile);
+	size_t fileSize = boost::filesystem::file_size(configPath);
 	// Open und parse config file
 	char* buffer = new char[fileSize];
-	FileReadStream inFile(pFile, buffer, fileSize);
-	jsonConfig.ParseStream<0, UTF8<>, FileReadStream>(inFile);
+	rapidjson::FileReadStream inFile(pFile, buffer, fileSize);
+	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
 	// Create settings
 	pRenderSettings = new Settings(jsonConfig);
 }
@@ -73,78 +69,77 @@ void SimManager::X_LoadConfig(const string& configPath)
 //---------------------------------------
 void SimManager::X_LoadMeshes()
 {
-	DIR* dir;
 	auto objects = jsonConfig["render_objs"].GetArray();
-	string meshesPath = pRenderSettings->GetMeshesPath();
 
 	// Initialize vectors
 	vecpPxMesh.reserve(objects.Size());
 	vecpRenderMesh.reserve(objects.Size());
 
-	// If path exists
-	if ((dir = opendir(meshesPath.c_str())) != NULL)
+	// If path exists & directory
+	if (boost::filesystem::exists(pRenderSettings->GetMeshesPath()))
 	{
-		// For each object
-		for (int i = 0; i < objects.Size(); i++)
+		if (boost::filesystem::is_directory(pRenderSettings->GetMeshesPath()))
 		{
-			// Load path
-			string meshPath = meshesPath + "/" + objects[i].GetString() + ".obj";
-			ifstream f(meshPath.c_str());
-
-			// Does mesh exist?
-			if (!f.good())
+			// For each object
+			for (int i = 0; i < objects.Size(); i++)
 			{
-				cout << "Did not find obj " << objects[i].GetString() << "... Skipping." << endl;
-				continue;
-			}
-			else
-			{
-				cout << "Loading obj " << objects[i].GetString() << endl;
-			}
+				// Build paths
+				boost::filesystem::path meshPath(pRenderSettings->GetMeshesPath());
+				meshPath += objects[i].GetString();
+				meshPath += ".obj";
+				boost::filesystem::path texturePath(pRenderSettings->GetMeshesPath());
+				texturePath += objects[i].GetString();
+				texturePath += "_color.png";
 
-			// Create and save physx mesh
-			PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, pPxCooking, pPxMaterial);
-			pxCurr->SetScale(PxVec3(jsonConfig["obj_scale"].GetFloat()));
-			pxCurr->CreateMesh();
-			vecpPxMesh.push_back(pxCurr);
+				// File must exist
+				boost::filesystem::ifstream meshFile(meshPath);
+				if (!meshFile.good())
+				{
+					std::cout << "Did not find obj " << meshPath << "... Skipping." << std::endl;
+					continue;
+				}
+				else
+				{
+					std::cout << "Loading obj " << meshPath.filename() << std::endl;
+				}
 
-			string texturePath(meshPath);
-			texturePath.replace(meshPath.length() - 4, 4, "_color.png");
-			// Create and save arnold mesh
-			RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
-			vecpRenderMesh.push_back(renderCurr);
+				// Create and save physx mesh
+				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, pPxCooking, pPxMaterial);
+				pxCurr->SetScale(PxVec3(jsonConfig["obj_scale"].GetFloat()));
+				pxCurr->CreateMesh();
+				vecpPxMesh.push_back(pxCurr);
+
+				// Create and save arnold mesh
+				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
+				vecpRenderMesh.push_back(renderCurr);
+			}
 		}
-		// Finally close
-		closedir(dir);
 	}
 }
 
 //---------------------------------------
 // Determine scenes to process
 //---------------------------------------
-void SimManager::X_SaveSceneFolders(const string& path)
+void SimManager::X_SaveSceneFolders(const boost::filesystem::path& path)
 {
-	DIR* dir;
-	struct dirent* ent;
-	vecSceneFolders = std::vector<std::string>();
+	vecSceneFolders = std::vector<boost::filesystem::path>();
 
-	// Search provided path
-	if ((dir = opendir(path.c_str())) != NULL)
+	// Search provided directory
+	if (boost::filesystem::exists(path))
 	{
-		// While folders available
-		while ((ent = readdir(dir)) != NULL)
+		if (boost::filesystem::is_directory(path))
 		{
-			// Not a folder
-			if (ent->d_name[0] == '.')
-				continue;
-			// Save folder in vector
-			std::string eName = ent->d_name;
-			string buf = path + "/" + eName;
-			vecSceneFolders.push_back(buf);
+			for (auto entry : boost::filesystem::directory_iterator(path))
+			{
+				// Save folder in vector
+				if (boost::filesystem::is_directory(entry.path()))
+				{
+					vecSceneFolders.push_back(entry);
+				}
+			}
+			// Finally sort vector and close dir
+			std::sort(vecSceneFolders.begin(), vecSceneFolders.end());
 		}
-		// Finally sort vector and close dir
-		std::sort(vecSceneFolders.begin(), vecSceneFolders.end());
-		closedir(dir);
 	}
 }
 
@@ -158,31 +153,23 @@ int SimManager::RunSimulation()
 		vecpPxMesh, vecpRenderMesh, pRenderSettings);
 
 	// Setup lights
-	AiNodeSetVec(light, "position", -1000.f, 100.f, -1000.f);
-	AiNodeSetFlt(light, "intensity", 2.f);
-	AiNodeSetFlt(light, "radius", 10.f);
-	AiNodeSetVec(light1, "position", -100.f, 100.f, 100.f);
-	AiNodeSetFlt(light1, "intensity", 2.1f);
-	AiNodeSetFlt(light1, "radius", 10.f);
-	AiNodeSetVec(light2, "position", 1000.f, 100.f, -1000.f);
-	AiNodeSetFlt(light2, "intensity", 1.9f);
-	AiNodeSetFlt(light2, "radius", 10.f);
-	AiNodeSetVec(light3, "position", 1000.f, 100.f, 1000.f);
-	AiNodeSetFlt(light3, "intensity", 2.f);
-	AiNodeSetFlt(light3, "radius", 10.f);
-	AiNodeSetVec(light4, "position", 1000.f, 1000.f, 1000.f);
-	AiNodeSetFlt(light4, "intensity", 2.f);
-	AiNodeSetFlt(light4, "radius", 10.f);
-	AiNodeSetVec(light5, "position", 1000.f, 1000.f, -1000.f);
-	AiNodeSetFlt(light5, "intensity", 2.f);
-	AiNodeSetFlt(light5, "radius", 10.f);
-	AiNodeSetVec(light6, "position", -1000.f, 1000.f, 1000.f);
-	AiNodeSetFlt(light6, "intensity", 2.f);
-	AiNodeSetFlt(light6, "radius", 10.f);
+	std::vector<Light> lights;
+	for(int i = 0; i < 8; i++)
+	{
+		LightParamsBase* params = (LightParamsBase*)(new PointLightParams());
+		Light addLight(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
+		// Add 8 lights in a box pattern
+		addLight.SetPosition(Eigen::Vector3f(
+			i % 2 == 0 ? 1000.0f : -1000.0f,
+			(i >> 2) % 2 == 0 ? 100.0f : 1000.0f,
+			(i >> 1) % 2 == 0 ? 1000.0f : -1000.0f)
+		);
+		lights.push_back(addLight);
+	}
 
 	// Render all scenes
 	int currImageCount = 0;
-	for (string folder : vecSceneFolders)
+	for (auto folder : vecSceneFolders)
 	{
 		// Set path
 		pRenderSettings->SetScenePath(folder);
@@ -198,12 +185,14 @@ int SimManager::RunSimulation()
 //---------------------------------------
 // Creates new simulation
 //---------------------------------------
-SimManager::SimManager(const string& configPath)
+SimManager::SimManager(const boost::filesystem::path& configPath)
 {
+	boost::filesystem::path scenesPath(jsonConfig["scenes_path"].GetString());
+	// Init
 	X_LoadConfig(configPath);
 	X_InitPhysx();
 	X_LoadMeshes();
-	X_SaveSceneFolders(jsonConfig["scenes_path"].GetString());
+	X_SaveSceneFolders(scenesPath);
 }
 
 //---------------------------------------

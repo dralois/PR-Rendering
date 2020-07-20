@@ -14,7 +14,7 @@ private:
 	// Fields
 	//---------------------------------------
 
-	PxTriangleMesh* pPxMesh = NULL;
+	physx::PxTriangleMesh* pPxMesh = NULL;
 
 	//---------------------------------------
 	// Methods

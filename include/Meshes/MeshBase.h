@@ -2,12 +2,14 @@
 
 #include <vector>
 #include <string>
-#include <fstream>
 #include <iostream>
 
-//#define EXPORT_TO_FILE
+#pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#pragma warning(pop)
 
-using namespace std;
+//#define EXPORT_TO_FILE
 
 //---------------------------------------
 // Base class for all meshes
@@ -20,19 +22,19 @@ protected:
 	//---------------------------------------
 	int objId;
 	unsigned int meshId;
-	string meshPath;
-	string texturePath;
+	boost::filesystem::path meshPath;
+	boost::filesystem::path texturePath;
 
-	vector<float> vecVertices;
-	vector<int> vecIndices;
-	vector<float> vecNormals;
-	vector<float> vecUVs;
+	std::vector<float> vecVertices;
+	std::vector<int> vecIndices;
+	std::vector<float> vecNormals;
+	std::vector<float> vecUVs;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 	bool X_LoadFile();
-	void X_StoreFile(const string& ext) const;
+	void X_StoreFile(const std::string& ext) const;
 	virtual void X_ExportMesh() = 0;
 
 public:
@@ -47,15 +49,15 @@ public:
 	inline int GetMeshId() { return meshId; };
 	inline int GetObjId() { return objId; };
 	inline void SetObjId(int id) { objId = id; };
-	inline const string& GetMeshPath() { return meshPath; }
-	inline const string& GetTexturePath() { return texturePath; }
-	inline const string GetName() { return "mesh_" + to_string(meshId) + "_" + to_string(objId); };
+	inline const boost::filesystem::path& GetMeshPath() { return meshPath; }
+	inline const boost::filesystem::path& GetTexturePath() { return texturePath; }
+	inline const std::string GetName() { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); };
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	MeshBase(const string& meshPath, const string& texturePath, int meshId);
-	MeshBase(const string& meshPath, int meshId);
+	MeshBase(const boost::filesystem::path& meshPath, const boost::filesystem::path& texturePath, int meshId);
+	MeshBase(const boost::filesystem::path& meshPath, int meshId);
 	MeshBase(const MeshBase& copy);
 	~MeshBase();
 };

@@ -1,5 +1,7 @@
 #include <Meshes/PxMeshConvex.h>
 
+using namespace physx;
+
 //---------------------------------------
 // Convex meshes may be dynamic
 //---------------------------------------
@@ -18,7 +20,8 @@ void PxMeshConvex::X_CookMesh()
 		return;
 
 	// Path to cooked mesh
-	std::ifstream cookedMesh(meshPath + "px");
+	boost::filesystem::path cookPath(meshPath); cookPath += "px";
+	boost::filesystem::ifstream cookedMesh(cookPath);
 	// If cooked mesh not on disk
 	if (!cookedMesh.good())
 	{
@@ -34,19 +37,19 @@ void PxMeshConvex::X_CookMesh()
 
 		// Cook the mesh
 		PxConvexMeshCookingResult::Enum result;
-		PxDefaultFileOutputStream writeOutBuffer((meshPath + "px").c_str());
+		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!pPxCooking->cookConvexMesh(convDesc, writeOutBuffer, &result))
 		{
 			std::cout << GetName() << " cooking error:" << result << std::endl;
 		}
 		else
 		{
-			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << meshPath + "px" << std::endl;
+			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << cookPath << std::endl;
 		}
 	}
 
 	// Create buffer
-	PxDefaultFileInputData readInBuffer((meshPath + "px").c_str());
+	PxDefaultFileInputData readInBuffer(cookPath.string().c_str());
 	// Create the mesh from buffer
 	pPxMesh = PxGetPhysics().createConvexMesh(readInBuffer);
 	// This mesh has to release the mesh

@@ -14,13 +14,13 @@ bool MeshBase::X_LoadFile()
 {
 	Assimp::Importer importer;
 
-	// If reading possible
-	std::ifstream f(meshPath.c_str());
-	if (!f.good())
+	// File must be readable
+	boost::filesystem::fstream meshFile(meshPath);
+	if (!meshFile.good())
 		return false;
 
 	// Read and load with assimp
-	const aiScene* scene = importer.ReadFile(meshPath, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+	const aiScene* scene = importer.ReadFile(meshPath.string(), aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
 
 	// Error handling
 	if (!scene)
@@ -30,7 +30,7 @@ bool MeshBase::X_LoadFile()
 	}
 	else if (!scene->HasMeshes())
 	{
-		std::cout << "Mesh load error:" << meshPath << " has no mesh" << std::endl;
+		std::cout << "Mesh load error:" << meshPath.filename() << " has no mesh" << std::endl;
 		return false;
 	}
 
@@ -90,7 +90,7 @@ bool MeshBase::X_LoadFile()
 //---------------------------------------
 // Store internal mesh to disk
 //---------------------------------------
-void MeshBase::X_StoreFile(const string& ext) const
+void MeshBase::X_StoreFile(const std::string& ext) const
 {
 	Assimp::Exporter exporter;
 
@@ -165,19 +165,20 @@ void MeshBase::X_StoreFile(const string& ext) const
 		face.mIndices[2] = vecIndices[(i * 3) + 2];
 	}
 
-	// Append prefix to path
-	string savePath(meshPath);
-	savePath.replace(meshPath.length() - 4, 4, ext + ".obj");
+	// Build path
+	boost::filesystem::path savePath(meshPath.parent_path());
+	savePath += meshPath.filename();
+	savePath += ".obj";
 
 	// Export created mesh to path
-	exporter.Export(&scene, "obj", savePath);
+	exporter.Export(&scene, "obj", savePath.string());
 	std::cout << "Exported mesh:" << savePath << std::endl;
 }
 
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId) :
+MeshBase::MeshBase(const boost::filesystem::path& meshPath, const boost::filesystem::path& texturePath, int meshId) :
 	meshId(meshId),
 	objId(-1),
 	meshPath(meshPath),
@@ -188,7 +189,7 @@ MeshBase::MeshBase(const string& meshPath, const string& texturePath, int meshId
 //---------------------------------------
 // Constructor without texture
 //---------------------------------------
-MeshBase::MeshBase(const string& meshPath, int meshId) :
+MeshBase::MeshBase(const boost::filesystem::path& meshPath, int meshId) :
 	MeshBase(meshPath, "", meshId)
 {
 }
