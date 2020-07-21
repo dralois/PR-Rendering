@@ -167,8 +167,8 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 
 	// Build path
 	boost::filesystem::path savePath(meshPath.parent_path());
-	savePath += meshPath.filename();
-	savePath += ".obj";
+	savePath.append(meshPath.filename());
+	savePath.concat(".obj");
 
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath.string());

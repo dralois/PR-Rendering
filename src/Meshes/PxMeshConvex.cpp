@@ -20,7 +20,7 @@ void PxMeshConvex::X_CookMesh()
 		return;
 
 	// Path to cooked mesh
-	boost::filesystem::path cookPath(meshPath); cookPath += "px";
+	boost::filesystem::path cookPath(meshPath); cookPath.concat("px");
 	boost::filesystem::ifstream cookedMesh(cookPath);
 	// If cooked mesh not on disk
 	if (!cookedMesh.good())

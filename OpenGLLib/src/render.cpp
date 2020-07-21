@@ -130,8 +130,8 @@ namespace Renderer
 			std::vector<std::tuple<cv::Mat, cv::Mat> > renderings;
 
 			// Setup shader & load model
-			Shader shader(boost::filesystem::path(shaderPath).append("/textured3D.vs"),
-				boost::filesystem::path(shaderPath.append("/textured3D.frag")));
+			Shader shader(boost::filesystem::path(shaderPath).append("textured3D.vs"),
+				boost::filesystem::path(shaderPath.append("textured3D.frag")));
 			Model model(boost::filesystem::path(scenePath).append("mesh.refined.obj"),
 				boost::filesystem::path(scenePath).append("mesh.refined_0.png"));
 			// Calculate intrinsics

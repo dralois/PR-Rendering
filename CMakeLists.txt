@@ -27,15 +27,9 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Main executable
 ###########################################################################################
 
-# Remove dirent on Linux
-if(NOT WIN32)
-    file(REMOVE ${CMAKE_SOURCE_DIR}/include/dirent.h)
-endif()
-
 # Generate code file lists
 file(GLOB_RECURSE HEADER_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/*.h")
 file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
-list(FILTER HEADER_LIST EXCLUDE REGEX "dirent.h")
 
 # Set IDE folder structure
 source_group(TREE "${CMAKE_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${HEADER_LIST})

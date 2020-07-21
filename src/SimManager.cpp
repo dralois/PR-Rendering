@@ -25,7 +25,6 @@ void SimManager::X_InitPhysx()
 	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, NULL);
 #endif // DEBUG || _DEBUG
 
-
 	// Create mesh cooking
 	PxCookingParams params(pPxPhysics->getTolerancesScale());
 	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
@@ -85,11 +84,11 @@ void SimManager::X_LoadMeshes()
 			{
 				// Build paths
 				boost::filesystem::path meshPath(pRenderSettings->GetMeshesPath());
-				meshPath += objects[i].GetString();
-				meshPath += ".obj";
+				meshPath.append(objects[i].GetString());
+				meshPath.concat(".obj");
 				boost::filesystem::path texturePath(pRenderSettings->GetMeshesPath());
-				texturePath += objects[i].GetString();
-				texturePath += "_color.png";
+				texturePath.append(objects[i].GetString());
+				texturePath.concat("_color.png");
 
 				// File must exist
 				boost::filesystem::ifstream meshFile(meshPath);
