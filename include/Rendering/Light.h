@@ -7,7 +7,7 @@
 //---------------------------------------
 // Generic light params wrapper
 //---------------------------------------
-class LightParamsBase : RenderfileData
+class LightParamsBase : public RenderfileData
 {
 protected:
 	//---------------------------------------
@@ -111,7 +111,7 @@ public:
 //---------------------------------------
 // Point light params wrapper
 //---------------------------------------
-class PointLightParams : LightParamsBase
+class PointLightParams : public LightParamsBase
 {
 protected:
 	//---------------------------------------
@@ -136,7 +136,7 @@ public:
 //---------------------------------------
 // Point light params wrapper
 //---------------------------------------
-class SpotLightParams : LightParamsBase
+class SpotLightParams : public LightParamsBase
 {
 protected:
 	//---------------------------------------
@@ -170,7 +170,7 @@ public:
 //---------------------------------------
 // Sun light params wrapper
 //---------------------------------------
-class SunLightParams : LightParamsBase
+class SunLightParams : public LightParamsBase
 {
 protected:
 	//---------------------------------------
@@ -195,7 +195,7 @@ public:
 //---------------------------------------
 // Area light params wrapper
 //---------------------------------------
-class AreaLightParams : LightParamsBase
+class AreaLightParams : public LightParamsBase
 {
 protected:
 	//---------------------------------------

@@ -1,50 +1,5 @@
 #include <SimManager.h>
 
-using namespace physx;
-
-//---------------------------------------
-// Initialize physx runtime
-//---------------------------------------
-void SimManager::X_InitPhysx()
-{
-	// Create foundation
-	pPxFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
-	pPxFoundation->setErrorLevel(PxErrorCode::eMASK_ALL);
-
-#ifdef _DEBUG || DEBUG
-	// Setup Physx Visual Debugger
-	pPxPvd = PxCreatePvd(*pPxFoundation);
-	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
-	pPxPvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
-#endif // DEBUG || _DEBUG
-
-	// Create API
-#ifdef _DEBUG || DEBUG
-	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, pPxPvd);
-#else
-	pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, NULL);
-#endif // DEBUG || _DEBUG
-
-	// Create mesh cooking
-	PxCookingParams params(pPxPhysics->getTolerancesScale());
-	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES;
-	params.meshWeldTolerance = 0.01f;
-	params.midphaseDesc = PxMeshMidPhase::eBVH34;
-	pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, *pPxFoundation, params);
-
-	// Enable extensions & create dispatcher
-#ifdef _DEBUG || DEBUG
-	PxInitExtensions(*pPxPhysics, pPxPvd);
-#else
-	PxInitExtensions(*pPxPhysics, NULL);
-#endif // DEBUG || _DEBUG
-	pPxDispatcher = PxDefaultCpuDispatcherCreate(4);
-
-	// Create default material
-	pPxMaterial = pPxPhysics->createMaterial(0.6f, 0.6f, 0.0f);
-}
-
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
@@ -61,6 +16,8 @@ void SimManager::X_LoadConfig(const boost::filesystem::path& configPath)
 	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
 	// Create settings
 	pRenderSettings = new Settings(jsonConfig);
+	// CHECK: Cleanup?
+	delete[] buffer;
 }
 
 //---------------------------------------
@@ -68,7 +25,14 @@ void SimManager::X_LoadConfig(const boost::filesystem::path& configPath)
 //---------------------------------------
 void SimManager::X_LoadMeshes()
 {
-	auto objects = jsonConfig["render_objs"].GetArray();
+	// Sanity check
+	if (!jsonConfig.HasMember("render_objs"))
+		return;
+	else
+		if (!jsonConfig["render_objs"].IsArray())
+			return;
+
+	JSONArray objects = jsonConfig["render_objs"].GetArray();
 
 	// Initialize vectors
 	vecpPxMesh.reserve(objects.Size());
@@ -84,10 +48,10 @@ void SimManager::X_LoadMeshes()
 			{
 				// Build paths
 				boost::filesystem::path meshPath(pRenderSettings->GetMeshesPath());
-				meshPath.append(objects[i].GetString());
+				meshPath.append(SafeGet<const char*>(objects[i]));
 				meshPath.concat(".obj");
 				boost::filesystem::path texturePath(pRenderSettings->GetMeshesPath());
-				texturePath.append(objects[i].GetString());
+				texturePath.append(SafeGet<const char*>(objects[i]));
 				texturePath.concat("_color.png");
 
 				// File must exist
@@ -103,8 +67,8 @@ void SimManager::X_LoadMeshes()
 				}
 
 				// Create and save physx mesh
-				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i, pPxCooking, pPxMaterial);
-				pxCurr->SetScale(PxVec3(jsonConfig["obj_scale"].GetFloat()));
+				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i);
+				pxCurr->SetScale(physx::PxVec3(SafeGet<float>(jsonConfig, "obj_scale")));
 				pxCurr->CreateMesh();
 				vecpPxMesh.push_back(pxCurr);
 
@@ -147,13 +111,9 @@ void SimManager::X_SaveSceneFolders(const boost::filesystem::path& path)
 //---------------------------------------
 int SimManager::RunSimulation()
 {
-	// Create mananger
-	SceneManager curr(pPxDispatcher, pPxCooking, pPxMaterial,
-		vecpPxMesh, vecpRenderMesh, pRenderSettings);
-
 	// Setup lights
 	std::vector<Light> lights;
-	for(int i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		LightParamsBase* params = (LightParamsBase*)(new PointLightParams());
 		Light addLight(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
@@ -165,6 +125,9 @@ int SimManager::RunSimulation()
 		);
 		lights.push_back(addLight);
 	}
+
+	// Create mananger
+	SceneManager curr(pRenderSettings, lights, vecpPxMesh, vecpRenderMesh);
 
 	// Render all scenes
 	int currImageCount = 0;
@@ -186,10 +149,9 @@ int SimManager::RunSimulation()
 //---------------------------------------
 SimManager::SimManager(const boost::filesystem::path& configPath)
 {
-	boost::filesystem::path scenesPath(jsonConfig["scenes_path"].GetString());
+	boost::filesystem::path scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
 	// Init
 	X_LoadConfig(configPath);
-	X_InitPhysx();
 	X_LoadMeshes();
 	X_SaveSceneFolders(scenesPath);
 }
@@ -206,22 +168,6 @@ SimManager::~SimManager()
 	}
 	vecpPxMesh.clear();
 
-	// Free physics
-	PX_RELEASE(pPxMaterial);
-	PX_RELEASE(pPxDispatcher);
-	PxCloseExtensions();
-	PX_RELEASE(pPxPhysics);
-	PX_RELEASE(pPxCooking);
-#ifdef _DEBUG || DEBUG
-	if (pPxPvd)
-	{
-		PxPvdTransport* transp = pPxPvd->getTransport();
-		PX_RELEASE(pPxPvd);
-		PX_RELEASE(transp);
-	}
-#endif // DEBUG || _DEBUG
-	PX_RELEASE(pPxFoundation);
-
 	// Cleanup render meshes
 	for (auto curr : vecpRenderMesh)
 	{
@@ -230,5 +176,6 @@ SimManager::~SimManager()
 	vecpRenderMesh.clear();
 
 	// Other
+	PxManager::GetInstance().DeletePhysx();
 	delete pRenderSettings;
 }

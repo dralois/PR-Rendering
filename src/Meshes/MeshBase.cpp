@@ -127,7 +127,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 	}
 
 	// Save UVs if there are any
-	if(vecUVs.size() > 0)
+	if (vecUVs.size() > 0)
 	{
 		int numUVs = vecUVs.size() / 2;
 		pMesh->mTextureCoords[0] = new aiVector3D[numUVs];
@@ -167,7 +167,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 
 	// Build path
 	boost::filesystem::path savePath(meshPath.parent_path());
-	savePath.append(meshPath.filename());
+	savePath.append(meshPath.filename().string());
 	savePath.concat(".obj");
 
 	// Export created mesh to path

@@ -40,7 +40,7 @@ void PxMeshTriangle::X_CookMesh()
 		// Cook the mesh
 		PxTriangleMeshCookingResult::Enum result;
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
-		if (!pPxCooking->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
+		if (!PxManager::GetInstance().GetCooker()->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
 		{
 			std::cout << GetName() << " cooking error:" << result << std::endl;
 		}
@@ -129,7 +129,7 @@ void PxMeshTriangle::X_CreateShape()
 	meshGeom.scale = PxMeshScale(GetScale());
 
 	// Create shape from the descriptor
-	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *pPxMaterial);
+	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, PxManager::GetInstance().GetMaterial());
 	pPxShape->setName(GetName().c_str());
 }
 

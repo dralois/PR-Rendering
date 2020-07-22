@@ -49,6 +49,7 @@ public:
 	inline int GetMeshId() { return meshId; };
 	inline int GetObjId() { return objId; };
 	inline void SetObjId(int id) { objId = id; };
+	inline int GetLabelId() { return (objId + 1) * 10; }
 	inline const boost::filesystem::path& GetMeshPath() { return meshPath; }
 	inline const boost::filesystem::path& GetTexturePath() { return texturePath; }
 	inline const std::string GetName() { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); };

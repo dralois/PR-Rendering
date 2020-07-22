@@ -1,9 +1,14 @@
 #pragma once
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+
 #include <Shaders/Shading.h>
 #include <Renderfile.h>
 #pragma warning(pop)
+
+#define PI (3.1415926535897931f)
 
 //---------------------------------------
 // Camera object wrapper for rendering
@@ -15,6 +20,7 @@ private:
 	// Fields
 	//---------------------------------------
 
+	Intrinsics cameraIntrinsics;
 	Eigen::Vector2f fieldOfView;
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
@@ -56,24 +62,66 @@ public:
 	// Properties
 	//---------------------------------------
 
+	inline const Intrinsics& GetIntrinsics() const { return cameraIntrinsics; }
+	inline void SetIntrinsics(Intrinsics intr) { cameraIntrinsics = intr; }
 	inline void SetFOV(Eigen::Vector2f fov) { fieldOfView = fov; }
-	inline Eigen::Vector2f GetFOV() { return fieldOfView; }
+	inline Eigen::Vector2f GetFOV() const { return fieldOfView; }
 	inline void SetShift(Eigen::Vector2f shift) { lensShift = shift; }
-	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) { return shift; }
+	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return shift; }
 	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(near, far); }
-	inline Eigen::Vector2f GetClipping() { return clipPlanes; }
+	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
 	inline void SetResultFile(const std::string& result) { resultName = result; }
-	inline const boost::filesystem::path& GetResultFile() { return resultName; }
+	inline const boost::filesystem::path& GetResultFile() const { return resultName; }
 	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
-	inline bool GetDepthOnly() { return depthOnly; }
-	inline void SetEffect(OSLShader* effect) { cameraEffect = effect; }
-	inline const OSLShader* GetEffect() { return cameraEffect; }
+	inline bool GetDepthOnly() const { return depthOnly; }
+
+	inline const OSLShader* GetEffect() const { return cameraEffect; }
+	inline void SetEffect(OSLShader* effect)
+	{
+		delete cameraEffect;
+		cameraEffect = effect;
+	}
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	inline void LoadExtrinsics(const boost::filesystem::path& extrFile)
+	{
+		Eigen::Matrix4f matTrans;
+
+		// File must exist
+		boost::filesystem::ifstream extrFileStream;
+		extrFileStream.open(extrFile);
+		if (!extrFileStream.is_open())
+			return;
+
+		// Load camera matrix
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				extrFileStream >> matTrans(i, j);
+		extrFileStream.close();
+
+		// Calculate fov
+		float fovx = 2.0f * atan(cameraIntrinsics.GetWidth() / (4.0f * cameraIntrinsics.GetFocalLenght().x())) * (180.0f / PI);
+		float fovy = 2.0f * atan(cameraIntrinsics.GetHeight() / (4.0f * cameraIntrinsics.GetFocalLenght().y())) * (180.0f / PI);
+
+		// Calculate lens shift
+		float shiftx = ((4.0f * cameraIntrinsics.GetPrincipalPoint().x()) - cameraIntrinsics.GetWidth()) / cameraIntrinsics.GetWidth();
+		float shifty = ((4.0f * cameraIntrinsics.GetPrincipalPoint().y()) - cameraIntrinsics.GetHeight()) / cameraIntrinsics.GetHeight();
+
+		// Store in Camera
+		SetFOV(Eigen::Vector2f(fovx, fovy));
+		SetShift(Eigen::Vector2f(shiftx, shifty));
+		SetTransform(matTrans);
+	}
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
 	Camera() :
+		cameraIntrinsics(),
 		fieldOfView(Eigen::Vector2f(0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
@@ -81,5 +129,11 @@ public:
 		depthOnly(false),
 		cameraEffect(NULL)
 	{
+	}
+
+	~Camera()
+	{
+		// Camera is responsible for shader
+		delete cameraEffect;
 	}
 };

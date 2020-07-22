@@ -11,7 +11,7 @@
 //---------------------------------------
 // Mesh object wrapper for rendering
 //---------------------------------------
-class RenderMesh : public RenderfileObject, MeshBase
+class RenderMesh : public RenderfileObject, public MeshBase
 {
 protected:
 	//---------------------------------------
@@ -78,7 +78,7 @@ public:
 
 	~RenderMesh()
 	{
-		// Shader is unique to mesh
+		// Mesh is responsible for shader
 		delete oslShader;
 	}
 };

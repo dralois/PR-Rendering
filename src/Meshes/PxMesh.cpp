@@ -195,10 +195,7 @@ const PxTransform PxMesh::GetTransform()
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-PxMesh::PxMesh(const boost::filesystem::path& meshPath, int meshId,
-	const PxCooking* cooking, const PxMaterial* material) :
-	pPxCooking(cooking),
-	pPxMaterial(material),
+PxMesh::PxMesh(const boost::filesystem::path& meshPath, int meshId) :
 	pPxShape(NULL),
 	pPxActor(NULL),
 	MeshBase(meshPath, meshId)
@@ -211,8 +208,6 @@ PxMesh::PxMesh(const boost::filesystem::path& meshPath, int meshId,
 PxMesh::PxMesh(const PxMesh& copy) :
 	pPxShape(copy.pPxShape),
 	pPxActor(copy.pPxActor),
-	pPxCooking(copy.pPxCooking),
-	pPxMaterial(copy.pPxMaterial),
 	firstInstance(false),
 	minimum(copy.minimum),
 	maximum(copy.maximum),

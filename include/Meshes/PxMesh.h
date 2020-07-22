@@ -1,7 +1,7 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <PxPhysicsAPI.h>
+#include <Helpers/PhysxManager.h>
 
 #include <Meshes/MeshBase.h>
 #include <Transformable.h>
@@ -9,12 +9,10 @@
 
 //#define PX_EXTRACT_INTERNAL
 
-#define PX_RELEASE(x) if(x != NULL) { x->release(); x = NULL; }
-
 //---------------------------------------
 // Base class for physx meshes
 //---------------------------------------
-class PxMesh : public MeshBase, Transformable<physx::PxTransform, physx::PxVec3, physx::PxQuat>
+class PxMesh : public MeshBase, public Transformable<physx::PxTransform, physx::PxVec3, physx::PxQuat>
 {
 protected:
 	//---------------------------------------
@@ -23,8 +21,6 @@ protected:
 
 	physx::PxShape* pPxShape;
 	physx::PxRigidActor* pPxActor;
-	const physx::PxCooking* pPxCooking;
-	const physx::PxMaterial* pPxMaterial;
 
 	bool firstInstance = false;
 	physx::PxVec3 maximum = physx::PxVec3(1e8);
@@ -75,9 +71,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	PxMesh(const boost::filesystem::path& meshPath, int meshId,
-		const physx::PxCooking* cooking, const physx::PxMaterial* material);
+	PxMesh(const boost::filesystem::path& meshPath, int meshId);
 	PxMesh(const PxMesh& copy);
 	~PxMesh();
-
 };

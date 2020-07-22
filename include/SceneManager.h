@@ -1,6 +1,10 @@
 #pragma once
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -9,9 +13,14 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
-#include <PxPhysicsAPI.h>
+#include <Helpers/Annotations.h>
+#include <Helpers/ImageProcessing.h>
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PhysxManager.h>
 
 #include <OpenGLLib/render.h>
+
+#include <BlenderLib/BlenderRenderer.h>
 
 #include <Meshes/RenderMesh.h>
 #include <Meshes/PxMeshConvex.h>
@@ -22,47 +31,7 @@
 #include <Rendering/Settings.h>
 #pragma warning(pop)
 
-using namespace Eigen;
-using namespace physx;
-using namespace std;
-
-//---------------------------------------
-// Focal lenght & principal point
-//---------------------------------------
-struct Intrinsics
-{
-	float fx{ 0 };
-	float fy{ 0 };
-	float ox{ 0 };
-	float oy{ 0 };
-	int w{ 0 };
-	int h{ 0 };
-};
-
-//---------------------------------------
-// Annotation info
-//---------------------------------------
-struct BodyAnnotation
-{
-	int meshId{ 0 };
-	int labelId{ 0 };
-	std::vector<float> vecBBox{ };
-	std::vector<float> vecPos{ };
-	std::vector<float> vecRot{ };
-};
-
-//---------------------------------------
-// Spawned object info
-//---------------------------------------
-struct ObjectInfo
-{
-	int meshId{ 0 };
-	int objId{ 0 };
-	string objName{ "" };
-	Vector3f pos{ };
-	Quaternionf rot{ };
-	Eigen::Matrix4f mat{ };
-};
+typedef std::vector<std::tuple<cv::Mat, cv::Mat>> RenderResult;
 
 //---------------------------------------
 // Simulates and renderes a scene
@@ -75,69 +44,53 @@ private:
 	//---------------------------------------
 
 	// PhysX
-	PxScene* pPxScene;
-	PxCpuDispatcher* pPxDispatcher;
-	const PxCooking* pPxCooking;
-	const PxMaterial* pPxMaterial;
+	physx::PxScene* pPxScene;
+
+	// Renderers
+	Renderer::Render* pRenderer;
+	Blender::BlenderRenderer* pBlender;
 
 	// Rendering
-	Renderer::Render* pRenderer;
 	Settings renderSettings;
-	vector<Light> vecLights;
 	Camera renderCam;
-	Intrinsics intrOriginal, intrCustom;
-	bool useCustomIntr = false;
-	vector<string> vecCameraPoses;
-	vector<string> vecCameraImages;
+	std::vector<Light> vecLights;
+
+	// Inputs
+	std::vector<boost::filesystem::path> vecCameraPoses;
+	std::vector<boost::filesystem::path> vecCameraImages;
 
 	// Meshes (Blueprint)
-	const vector<PxMeshConvex*> vecpPxMeshObjs;
-	const vector<RenderMesh*> vecpAiMeshObjs;
+	const std::vector<PxMeshConvex*> vecpPxMeshObjs;
+	const std::vector<RenderMesh*> vecpRenderMeshObjs;
 
 	// Meshes (Instances)
-	vector<PxMeshConvex*> vecpPxMeshCurrObjs;
-	vector<RenderMesh*> vecpRenderMeshCurrObjs;
+	std::vector<PxMeshConvex*> vecpPxMeshCurrObjs;
+	std::vector<RenderMesh*> vecpRenderMeshCurrObjs;
 	PxMeshTriangle* pPxMeshScene;
 	RenderMesh* pRenderMeshScene;
 
-	// OpenCV
-	cv::Mat cvMask, cvScene, cvRend, cvSceneD, cvBodiesS, cvBodiesD;
-
 	// Other
-	ofstream osAnnotationsFile;
 	const Settings* pRenderSettings;
+	AnnotationsManager* pAnnotations;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	// PhysX
+	// Simulation
 	void X_PxCreateScene();
 	void X_PxCreateObjs();
 	void X_PxRunSim(float timestep, int stepCount) const;
 	void X_PxSaveSimResults();
-	
+
 	// Rendering
-	vector<tuple<cv::Mat, cv::Mat>> X_RenderSceneDepth() const;
-	bool X_RenderObjsDepth();
+	RenderResult X_RenderSceneDepth() const;
+	void X_RenderObjsDepth();
 	void X_RenderObjsLabel();
 	void X_RenderImageBlend();
 
-	// Image processing
-	float X_CvComputeImageVariance(const cv::Mat& image) const;
-	bool X_CvComputeObjsMask(int currPose);
-	void X_CvBlendDepth(int currImage, int currPose);
-	void X_CvBlendLabel(int currImage, int currPose);
-
-	// Annotation
-	void X_SaveAnnotationPose(BodyAnnotation& ann, const Vector3f& pos, const Quaternionf& rot) const;
-	void X_SaveAnnotations(const cv::Mat& seg, const cv::Mat& segMasked, int currImage);
-
 	// Other
-	void X_GetImagesToProcess(const string& dir, float varThreshold);
-	bool X_CheckIfImageCenter(const ObjectInfo& info) const;
-	void X_LoadCameraExtrinsics(const Intrinsics& intr, int currPose);
-	void X_LoadCameraIntrinsics();
+	void X_GetImagesToProcess(const boost::filesystem::path& dir, float varThreshold);
 	void X_CleanupScene();
 
 public:
@@ -151,7 +104,9 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	SceneManager(PxCpuDispatcher* pPxDispatcher, const PxCooking* pPxCooking, const PxMaterial* pPxMaterial,
-		const vector<PxMeshConvex*> vecPhysxObjs, const vector<RenderMesh*> vecArnoldObjs, const Settings* settings);
+	SceneManager(const Settings* settings,
+		const std::vector<Light>& vecLights,
+		const std::vector<PxMeshConvex*>& vecPhysxObjs,
+		const std::vector<RenderMesh*>& vecArnoldObjs);
 	~SceneManager();
 };

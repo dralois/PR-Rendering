@@ -6,6 +6,9 @@
 
 #include <Eigen/Dense>
 
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PhysxManager.h>
+
 #include <SceneManager.h>
 #pragma warning(pop)
 
@@ -19,23 +22,11 @@ private:
 	// Fields
 	//---------------------------------------
 
-	// PhysX
-#ifdef _DEBUG || DEBUG
-	physx::PxPvd* pPxPvd;
-#endif
-	physx::PxPhysics* pPxPhysics;
-	physx::PxCooking* pPxCooking;
-	physx::PxMaterial* pPxMaterial;
-	physx::PxFoundation* pPxFoundation;
-	physx::PxDefaultCpuDispatcher* pPxDispatcher;
-	physx::PxDefaultAllocator pxAllocator;
-	physx::PxDefaultErrorCallback pxErrorCallback;
-
 	// Meshes
 	std::vector<PxMeshConvex*> vecpPxMesh;
 	std::vector<RenderMesh*> vecpRenderMesh;
 
-	// Other
+	// Config
 	rapidjson::Document jsonConfig;
 	Settings* pRenderSettings;
 	std::vector<boost::filesystem::path> vecSceneFolders;
@@ -45,7 +36,6 @@ private:
 	//---------------------------------------
 
 	void X_SaveSceneFolders(const boost::filesystem::path& path);
-	void X_InitPhysx();
 	void X_LoadConfig(const boost::filesystem::path& configPath);
 	void X_LoadMeshes();
 
