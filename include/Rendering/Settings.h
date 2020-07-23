@@ -1,11 +1,8 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-
-#include <rapidjson/document.h>
-
 #include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 
 #include <Rendering/Intrinsics.h>
 #include <Renderfile.h>
@@ -25,9 +22,9 @@ private:
 	bool storeBlend;
 	std::string logLevel;
 	Eigen::Vector2i renderResolution;
-	boost::filesystem::path outputDir;
-	boost::filesystem::path pluginDir;
-	std::vector<boost::filesystem::path> shaderDirs;
+	ModifiablePath outputDir;
+	ModifiablePath pluginDir;
+	std::vector<ModifiablePath> shaderDirs;
 	Intrinsics customIntrinsics;
 
 	// Simulation
@@ -36,7 +33,7 @@ private:
 	int maxImages;
 
 	// Paths
-	boost::filesystem::path meshesPath, tempPath, finalPath, scenePath;
+	ModifiablePath meshesPath, tempPath, finalPath, scenePath;
 
 	// Config file
 	const rapidjson::Document& jsonConfig;
@@ -49,9 +46,9 @@ public:
 	// Blender rendering
 	inline bool GetStoreBlend() const { return storeBlend; }
 	inline Eigen::Vector2i GetRenderResolution() const { return renderResolution; }
-	inline const boost::filesystem::path& GetLogLevel() const { return logLevel; }
-	inline const boost::filesystem::path& GetPluginDir() const { return pluginDir; }
-	inline const std::vector<boost::filesystem::path>& GetShaderDirs() const { return shaderDirs; }
+	inline ReferencePath GetLogLevel() const { return logLevel; }
+	inline ReferencePath GetPluginDir() const { return pluginDir; }
+	inline const std::vector<ModifiablePath>& GetShaderDirs() const { return shaderDirs; }
 	inline const Intrinsics& GetIntrinsics() const { return customIntrinsics; }
 
 	// Simulation
@@ -60,13 +57,30 @@ public:
 	inline int GetMaxImageCount() const { return maxImages; }
 
 	// Paths
-	inline void SetOutputDir(const boost::filesystem::path& dir) { outputDir = dir; }
-	inline const boost::filesystem::path& GetOutputDir() const { return outputDir; }
-	inline void SetScenePath(const boost::filesystem::path& path) { scenePath = path; }
-	inline const boost::filesystem::path& GetScenePath() const { return scenePath; }
-	inline const boost::filesystem::path& GetMeshesPath() const { return meshesPath; }
-	inline const boost::filesystem::path& GetTemporaryPath() const { return tempPath; }
-	inline const boost::filesystem::path& GetFinalPath() const { return finalPath; }
+	inline void SetOutputDir(ReferencePath dir) { outputDir = dir; }
+	inline ReferencePath GetOutputDir() const { return outputDir; }
+	inline void SetScenePath(ReferencePath path) { scenePath = path; }
+	inline ReferencePath GetScenePath() const { return scenePath; }
+	inline ReferencePath GetMeshesPath() const { return meshesPath; }
+	inline ReferencePath GetTemporaryPath() const { return tempPath; }
+	inline ReferencePath GetFinalPath() const { return finalPath; }
+
+	inline ModifiablePath GetImagePath(
+		const std::string& category,
+		int imgNum,
+		bool isTemp
+	) const
+	{
+		ModifiablePath bodyPath(isTemp ? GetTemporaryPath() : GetFinalPath());
+		bodyPath.append(category);
+		bodyPath.append("img_" + FormatInt(imgNum) + ".png");
+	}
+
+	inline ModifiablePath GetSceneRGBPath() const
+	{
+		ModifiablePath scenePath(GetScenePath());
+		return scenePath.append("rgbd");
+	}
 
 	// Config file
 	inline const rapidjson::Document& GetJSONConfig() const { return jsonConfig; }
@@ -75,7 +89,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void AddToJSON(JSONWriter writer) override
 	{
 		writer.StartObject();
 
@@ -113,14 +127,16 @@ public:
 	{
 	}
 
-	Settings(const rapidjson::Document& jsonConfig) :
+	Settings(
+		const rapidjson::Document& jsonConfig
+	) :
 		jsonConfig(jsonConfig),
 		customIntrinsics()
 	{
 		// Init paths
-		meshesPath = boost::filesystem::path(SafeGet<const char*>(jsonConfig, "meshes_path"));
-		finalPath = boost::filesystem::path(SafeGet<const char*>(jsonConfig, "final_path"));
-		tempPath = boost::filesystem::path(SafeGet<const char*>(jsonConfig, "temp_path"));
+		meshesPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path"));
+		finalPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path"));
+		tempPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path"));
 		// Init simulation settings
 		iterCount = SafeGet<int>(jsonConfig, "scene_iterations");
 		objPerSim = SafeGet<int>(jsonConfig, "simulation_objects");
@@ -128,8 +144,8 @@ public:
 		// Init render settings
 		logLevel = SafeGet<const char*>(jsonConfig, "log_level");
 		storeBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		pluginDir = boost::filesystem::path(SafeGet<const char*>(jsonConfig, "plugin_bl"));
-		shaderDirs.push_back(boost::filesystem::path(SafeGet<const char*>(jsonConfig, "shaders_bl")));
+		pluginDir = ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl"));
+		shaderDirs.push_back(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_bl")));
 		renderResolution = Eigen::Vector2i(SafeGet<int>(jsonConfig, "render_width"), SafeGet<int>(jsonConfig, "render_height"));
 		// Init custom intrinsics
 		customIntrinsics.SetFocalLenght(Eigen::Vector2f(SafeGet<float>(jsonConfig, "fx"), SafeGet<float>(jsonConfig, "fy")));

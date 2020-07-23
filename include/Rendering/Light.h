@@ -20,14 +20,14 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
+	virtual void X_AddToJSON(JSONWriter writer) = 0;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("type");
 		AddString(writer, type);
@@ -43,7 +43,9 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	LightParamsBase(const std::string& type) :
+	LightParamsBase(
+		const std::string& type
+	) :
 		type(type)
 	{
 	}
@@ -69,7 +71,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void X_AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("color");
 		AddEigenVector<Eigen::Vector3f>(writer, color);
@@ -92,7 +94,13 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	Light(LightParamsBase* params, Eigen::Vector3f color, float intensity, float exposure, bool castsIndirect = true) :
+	Light(
+		LightParamsBase* params,
+		Eigen::Vector3f color,
+		float intensity,
+		float exposure,
+		bool castsIndirect = true
+	) :
 		params(params),
 		color(color),
 		intensity(intensity),
@@ -118,7 +126,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
+	virtual void X_AddToJSON(JSONWriter writer)
 	{
 	}
 
@@ -149,7 +157,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
+	virtual void X_AddToJSON(JSONWriter writer)
 	{
 		writer.Key("spotAngle");
 		AddFloat(writer, spotAngle);
@@ -160,7 +168,9 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	SpotLightParams(float spotAngle) :
+	SpotLightParams(
+		float spotAngle
+	) :
 		LightParamsBase("SPOT"),
 		spotAngle(spotAngle)
 	{
@@ -177,7 +187,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
+	virtual void X_AddToJSON(JSONWriter writer)
 	{
 	}
 
@@ -209,7 +219,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer)
+	virtual void X_AddToJSON(JSONWriter writer)
 	{
 		writer.Key("shape");
 		AddString(writer, shape);
@@ -223,7 +233,10 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	AreaLightParams(const std::string& shape, Eigen::Vector2f size) :
+	AreaLightParams(
+		const std::string& shape, 
+		Eigen::Vector2f size
+	) :
 		LightParamsBase("AREA"),
 		shape(shape),
 		size(size)

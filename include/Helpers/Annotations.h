@@ -1,19 +1,12 @@
 #pragma once
 
-#include <string>
 #include <vector>
-#include <sstream>
-#include <iostream>
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
 #include <Eigen/Dense>
 
-#include <opencv2/opencv.hpp>
-
 #include <Helpers/ImageProcessing.h>
+#include <Helpers/PathUtils.h>
 
 #include <Rendering/Settings.h>
 #include <Rendering/Camera.h>
@@ -21,7 +14,7 @@
 #pragma warning(pop)
 
 //---------------------------------------
-// Handles annotations & formatting
+// Handles annotations
 //---------------------------------------
 class AnnotationsManager
 {
@@ -30,19 +23,11 @@ private:
 	// Fields
 	//---------------------------------------
 
-	const Settings* settings;
 	boost::filesystem::ofstream osAnnotations;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
-
-	inline std::string X_FormatInt(int num) const
-	{
-		std::ostringstream numStr;
-		numStr << std::internal << std::setfill('0') << std::setw(6) << num;
-		return numStr.str();
-	}
 
 	inline void X_TransformPose(
 		const Camera& renderCam,
@@ -67,31 +52,12 @@ public:
 	// Methods
 	//---------------------------------------
 
-	// Formatting
-
-	inline boost::filesystem::path GetImagePath(
-		const std::string& category,
-		int id,
-		bool temp
-	) const
-	{
-		boost::filesystem::path bodyPath(temp ? settings->GetTemporaryPath() : settings->GetFinalPath());
-		bodyPath.append(category);
-		bodyPath.append("img_" + X_FormatInt(id) + ".png");
-	}
-
-	inline boost::filesystem::path GetSceneRGBPath() const
-	{
-		boost::filesystem::path scenePath(settings->GetScenePath());
-		return scenePath.append("rgbd");
-	}
-
-	// Annotations
-
-	inline void Begin()
+	inline void Begin(
+		const Settings* settings
+	)
 	{
 		// Build path
-		boost::filesystem::path path(settings->GetFinalPath());
+		ModifiablePath path(settings->GetFinalPath());
 		path.append("labels.csv");
 		// Make sure stream is ready
 		if (osAnnotations.is_open())
@@ -124,7 +90,7 @@ public:
 
 		// Add formatted info to annotation file
 		osAnnotations << currImage << ", " << bbox.x << ", " << bbox.y << ", " << bbox.width << ", " << bbox.height << ", "
-			<< "obj_" << X_FormatInt(currMesh->GetMeshId()) << ", "
+			<< "obj_" << FormatInt(currMesh->GetMeshId()) << ", "
 			<< rot.coeffs()[0] << ", " << rot.coeffs()[1] << ", " << rot.coeffs()[2] << ", " << rot.coeffs()[3] << ", "
 			<< "0" << ", " << "0" << ", "
 			<< pos[0] << ", " << pos[1] << ", " << pos[2] << ", "
@@ -143,8 +109,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	AnnotationsManager(const Settings* settings) :
-		settings(settings)
+	AnnotationsManager()
 	{
 	}
 };

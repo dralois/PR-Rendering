@@ -25,14 +25,14 @@ int main(int argc, char** argv)
 	}
 
 	// Config file path in args
-	boost::filesystem::path configPath(argv[1]);
+	ModifiablePath configPath(argv[1]);
 
 	// Create simulation manager
 	SimManager man(configPath);
 
 	// Save the paths
-	boost::filesystem::path finalDir(man.GetSettings()->GetFinalPath());
-	boost::filesystem::path tempDir(man.GetSettings()->GetTemporaryPath());
+	ModifiablePath finalDir(man.GetSettings()->GetFinalPath());
+	ModifiablePath tempDir(man.GetSettings()->GetTemporaryPath());
 
 	// Create final output directories
 	if (!boost::filesystem::exists(finalDir))

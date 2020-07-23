@@ -1,7 +1,10 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <Shaders/Shading.h>
+#include <Helpers/PathUtils.h>
+
+#include <Rendering/Shader.h>
+#include <Rendering/Texture.h>
 #pragma warning(pop)
 
 //---------------------------------------
@@ -13,16 +16,18 @@ protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	boost::filesystem::path maskImage;
-	boost::filesystem::path blendImage;
-	boost::filesystem::path objectsImage;
+
+	ModifiablePath maskImage;
+	ModifiablePath blendImage;
+	ModifiablePath objectsImage;
 	bool forceScene;
 	Eigen::Vector3f backColor;
 
 	//---------------------------------------
-	// Add shader params
+	// Methods
 	//---------------------------------------
-	void BlendShader::X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+
+	void BlendShader::X_AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("maskImage");
 		AddString(writer, maskImage.string());
@@ -44,12 +49,16 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	BlendShader(const std::string& name,
-		const std::vector<OSLTexture>& textures,
-		const boost::filesystem::path& maskImage,
-		const boost::filesystem::path& blendImage,
-		const boost::filesystem::path& objectsImage,
-		bool forceScene, Eigen::Vector3f backColor) :
+
+	BlendShader(
+		const std::string& name,
+		const std::vector<Texture>& textures,
+		ReferencePath maskImage,
+		ReferencePath blendImage,
+		ReferencePath objectsImage,
+		bool forceScene,
+		Eigen::Vector3f backColor
+	) :
 		OSLShader(name, textures),
 		maskImage(maskImage),
 		blendImage(blendImage),

@@ -1,25 +1,17 @@
 #pragma once
 
+#include <vector>
+
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/algorithm/string.hpp>
-
-#include <opencv2/opencv.hpp>
-#include <opencv2/highgui.hpp>
-
-#include <Eigen/Dense>
-
-#include <rapidjson/document.h>
-#include <rapidjson/filereadstream.h>
 
 #include <Helpers/Annotations.h>
 #include <Helpers/ImageProcessing.h>
 #include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 #include <Helpers/PhysxManager.h>
 
 #include <OpenGLLib/render.h>
-
 #include <BlenderLib/BlenderRenderer.h>
 
 #include <Meshes/RenderMesh.h>
@@ -27,8 +19,11 @@
 #include <Meshes/PxMeshTriangle.h>
 
 #include <Rendering/Camera.h>
+#include <Rendering/Intrinsics.h>
 #include <Rendering/Light.h>
 #include <Rendering/Settings.h>
+#include <Rendering/Shader.h>
+#include <Rendering/Texture.h>
 #pragma warning(pop)
 
 typedef std::vector<std::tuple<cv::Mat, cv::Mat>> RenderResult;
@@ -56,8 +51,8 @@ private:
 	std::vector<Light> vecLights;
 
 	// Inputs
-	std::vector<boost::filesystem::path> vecCameraPoses;
-	std::vector<boost::filesystem::path> vecCameraImages;
+	std::vector<ModifiablePath> vecCameraPoses;
+	std::vector<ModifiablePath> vecCameraImages;
 
 	// Meshes (Blueprint)
 	const std::vector<PxMeshConvex*> vecpPxMeshObjs;
@@ -90,7 +85,7 @@ private:
 	void X_RenderImageBlend();
 
 	// Other
-	void X_GetImagesToProcess(const boost::filesystem::path& dir, float varThreshold);
+	void X_GetImagesToProcess(ReferencePath dir, float varThreshold);
 	void X_CleanupScene();
 
 public:

@@ -11,7 +11,7 @@ using namespace physx;
 void SceneManager::X_PxCreateScene()
 {
 	// Create physx mesh of scan scene
-	boost::filesystem::path meshPath(pRenderSettings->GetScenePath());
+	ModifiablePath meshPath(pRenderSettings->GetScenePath());
 	meshPath.append("mesh.refined.obj");
 	pPxMeshScene = new PxMeshTriangle(meshPath, 0);
 	pPxMeshScene->SetScale(PxVec3(SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_scale")));
@@ -185,8 +185,8 @@ RenderResult SceneManager::X_RenderSceneDepth() const
 	for (int render_count = 0; render_count < renderings.size(); render_count++)
 	{
 		// Get output paths
-		boost::filesystem::path depthPath = pAnnotations->GetImagePath("scene_depth", render_count, true);
-		boost::filesystem::path rgbPath = pAnnotations->GetImagePath("rgb", render_count, true);
+		ModifiablePath depthPath = pRenderSettings->GetImagePath("scene_depth", render_count, true);
+		ModifiablePath rgbPath = pRenderSettings->GetImagePath("rgb", render_count, true);
 
 		// Write rgb and depth out
 		cv::imwrite(rgbPath.string(), std::get<0>(renderings[render_count]));
@@ -404,12 +404,12 @@ void SceneManager::X_RenderImageBlend()
 // Determine images to process
 //---------------------------------------
 void SceneManager::X_GetImagesToProcess(
-	const boost::filesystem::path& path,
+	ReferencePath path,
 	float varThreshold
 )
 {
-	vecCameraImages = std::vector<boost::filesystem::path>();
-	vecCameraPoses = std::vector<boost::filesystem::path>();
+	vecCameraImages = std::vector<ModifiablePath>();
+	vecCameraPoses = std::vector<ModifiablePath>();
 
 	// If path exists & directory
 	if (boost::filesystem::exists(path))
@@ -425,8 +425,8 @@ void SceneManager::X_GetImagesToProcess(
 					// Only use non-blurry images (= great variance)
 					if (ComputeVariance(entry.path()) > varThreshold)
 					{
-						boost::filesystem::path img(entry.path());
-						boost::filesystem::path pose(entry.path());
+						ModifiablePath img(entry.path());
+						ModifiablePath pose(entry.path());
 						std::cout << "Using image " << img.filename() << std::endl;
 						// Save image in vector
 						vecCameraImages.push_back(img);
@@ -451,10 +451,10 @@ int SceneManager::Run(int imageCount)
 	int newImages = 0;
 
 	// Create/open annotation file
-	pAnnotations->Begin();
+	pAnnotations->Begin(pRenderSettings);
 
 	// Get non blurry images
-	X_GetImagesToProcess(pAnnotations->GetSceneRGBPath(), 400.f);
+	X_GetImagesToProcess(pRenderSettings->GetSceneRGBPath(), 400.f);
 	if (vecCameraImages.empty())
 		return 0;
 
@@ -482,33 +482,37 @@ int SceneManager::Run(int imageCount)
 			// Render object depths
 			X_RenderObjsDepth();
 			// Load rendered images
-			boost::filesystem::path sceneDepthPath = pAnnotations->GetImagePath("scene_depth", currPose, true);
-			boost::filesystem::path bodiesDepthPath = pAnnotations->GetImagePath("body_depth", currPose, true);
-			cv::Mat sceneDepth = LoadImage(sceneDepthPath, true);
-			cv::Mat bodiesDepth = LoadImage(bodiesDepthPath, true);
+			Texture sceneDepth(pRenderSettings->GetImagePath("scene_depth", currPose, true), true);
+			Texture bodiesDepth(pRenderSettings->GetImagePath("body_depth", currPose, true), true);
 
-			// Determine if any objects visible
-			cv::Mat bodiesMasked;
-			if (ComputeObjectsMask(bodiesDepth, sceneDepth, bodiesMasked))
+			// Create occlusion mask
+			bool objectsOccluded;
+			Texture bodiesMasked(false);
+			bodiesMasked.SetTexture(ComputeOcclusionMask(bodiesDepth.GetTexture(), sceneDepth.GetTexture(), objectsOccluded));
+
+			// If any objects visible
+			if (!objectsOccluded)
 			{
 				int currImg = imageCount + newImages;
 				// Render object labels (IDs as color)
 				X_RenderObjsLabel();
 				// Load rendered image
-				boost::filesystem::path bodiesLabeledPath = pAnnotations->GetImagePath("body_label", currImg, true);
-				cv::Mat bodiesLabeled = LoadImage(bodiesLabeledPath, false);
+				Texture bodiesLabeled(pRenderSettings->GetImagePath("body_label", currImg, true), false);
 
 				// Blend depth images
-				boost::filesystem::path blendDepthPath = pAnnotations->GetImagePath("depth", currImg, false);
-				cv::Mat blendDepth = BlendDepth(bodiesDepth, sceneDepth, blendDepthPath);
+				Texture blendedDepth(true);
+				blendedDepth.SetPath(pRenderSettings->GetImagePath("depth", currImg, false));
+				blendedDepth.SetTexture(BlendDepth(bodiesDepth.GetTexture(), sceneDepth.GetTexture(), blendedDepth.GetPath()));
 
 				// Blend label and mask images
-				boost::filesystem::path bodiesSegmentedPath = pAnnotations->GetImagePath("segs", currPose, false);
-				cv::Mat bodiesSegmented = BlendLabel(bodiesLabeled, bodiesMasked, bodiesSegmentedPath);
+				Texture bodiesSegmented(false);
+				bodiesSegmented.SetPath(pRenderSettings->GetImagePath("segs", currPose, false));
+				bodiesSegmented.SetTexture(BlendLabel(bodiesLabeled.GetTexture(), bodiesMasked.GetTexture(), bodiesSegmented.GetPath()));
 
 				// Save annotations
 				for (auto currMesh : vecpRenderMeshCurrObjs)
-					pAnnotations->Write(currMesh, bodiesLabeled, bodiesSegmented, renderCam, currImg);
+					pAnnotations->Write(currMesh, bodiesLabeled.GetTexture(),
+						bodiesSegmented.GetTexture(), renderCam, currImg);
 
 				// Render final image blend
 				X_RenderImageBlend();
@@ -532,7 +536,6 @@ int SceneManager::Run(int imageCount)
 
 //---------------------------------------
 // Create new scene manager
-// TODO: Load blender render
 //---------------------------------------
 SceneManager::SceneManager(
 	const Settings* settings,
@@ -549,7 +552,7 @@ SceneManager::SceneManager(
 	pPxMeshScene(NULL)
 {
 	// Create annotations manager
-	pAnnotations = new AnnotationsManager(pRenderSettings);
+	pAnnotations = new AnnotationsManager();
 
 	// Create camera & load clipping planes
 	renderCam = Camera();
@@ -568,7 +571,7 @@ SceneManager::SceneManager(
 		Intrinsics fromFile;
 		// Load from file
 		fromFile.LoadIntrinsics(
-			pAnnotations->GetSceneRGBPath().append("_info.txt"),
+			pRenderSettings->GetSceneRGBPath().append("_info.txt"),
 			pRenderSettings->GetRenderResolution()
 		);
 		// Store in camera
@@ -577,20 +580,22 @@ SceneManager::SceneManager(
 
 	// Create OpenGL renderer
 	pRenderer = new Renderer::Render(
-		boost::filesystem::path(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl")),
+		ModifiablePath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl")),
 		renderCam.GetIntrinsics().GetWidth(), renderCam.GetIntrinsics().GetHeight(),
 		renderCam.GetClipping().x(), renderCam.GetClipping().y()
 	);
 
+	// Create Blender render interface
+	pBlender = new Blender::BlenderRenderer();
 }
 
 //---------------------------------------
 // Cleanup scene
-// TODO: Remove blender render
 //---------------------------------------
 SceneManager::~SceneManager()
 {
 	X_CleanupScene();
+	delete pBlender;
 	delete pRenderer;
 	delete pAnnotations;
 }

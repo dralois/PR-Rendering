@@ -20,7 +20,7 @@ void PxMeshTriangle::X_CookMesh()
 		return;
 
 	// Path to cooked mesh
-	boost::filesystem::path cookPath(meshPath); cookPath.concat("px");
+	ModifiablePath cookPath(meshPath); cookPath.concat("px");
 	boost::filesystem::ifstream cookedMesh(cookPath);
 	// If cooked mesh not on disk
 	if (!cookedMesh.good())

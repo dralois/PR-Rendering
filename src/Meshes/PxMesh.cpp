@@ -195,7 +195,7 @@ const PxTransform PxMesh::GetTransform()
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-PxMesh::PxMesh(const boost::filesystem::path& meshPath, int meshId) :
+PxMesh::PxMesh(ReferencePath meshPath, int meshId) :
 	pPxShape(NULL),
 	pPxActor(NULL),
 	MeshBase(meshPath, meshId)

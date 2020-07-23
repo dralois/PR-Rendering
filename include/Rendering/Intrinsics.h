@@ -46,7 +46,7 @@ public:
 
 	// CHECK: Load width / height from file?
 	inline void LoadIntrinsics(
-		const boost::filesystem::path& intrFile,
+		ReferencePath intrFile,
 		Eigen::Vector2i res
 	)
 	{

@@ -3,7 +3,7 @@
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
-void SimManager::X_LoadConfig(const boost::filesystem::path& configPath)
+void SimManager::X_LoadConfig(ReferencePath configPath)
 {
 	std::cout << "Reading config file:\t" << configPath << std::endl;
 	// Open file in binary mode
@@ -47,10 +47,10 @@ void SimManager::X_LoadMeshes()
 			for (int i = 0; i < objects.Size(); i++)
 			{
 				// Build paths
-				boost::filesystem::path meshPath(pRenderSettings->GetMeshesPath());
+				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
 				meshPath.append(SafeGet<const char*>(objects[i]));
 				meshPath.concat(".obj");
-				boost::filesystem::path texturePath(pRenderSettings->GetMeshesPath());
+				ModifiablePath texturePath(pRenderSettings->GetMeshesPath());
 				texturePath.append(SafeGet<const char*>(objects[i]));
 				texturePath.concat("_color.png");
 
@@ -83,9 +83,9 @@ void SimManager::X_LoadMeshes()
 //---------------------------------------
 // Determine scenes to process
 //---------------------------------------
-void SimManager::X_SaveSceneFolders(const boost::filesystem::path& path)
+void SimManager::X_SaveSceneFolders(ReferencePath path)
 {
-	vecSceneFolders = std::vector<boost::filesystem::path>();
+	vecSceneFolders = std::vector<ModifiablePath>();
 
 	// Search provided directory
 	if (boost::filesystem::exists(path))
@@ -147,9 +147,9 @@ int SimManager::RunSimulation()
 //---------------------------------------
 // Creates new simulation
 //---------------------------------------
-SimManager::SimManager(const boost::filesystem::path& configPath)
+SimManager::SimManager(ReferencePath configPath)
 {
-	boost::filesystem::path scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
+	ModifiablePath scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
 	// Init
 	X_LoadConfig(configPath);
 	X_LoadMeshes();

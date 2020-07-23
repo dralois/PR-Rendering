@@ -71,7 +71,7 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	PxMesh(const boost::filesystem::path& meshPath, int meshId);
+	PxMesh(ReferencePath meshPath, int meshId);
 	PxMesh(const PxMesh& copy);
 	~PxMesh();
 };

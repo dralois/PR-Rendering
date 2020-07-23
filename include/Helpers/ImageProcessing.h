@@ -1,33 +1,23 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
+
+#include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
 //---------------------------------------
-// Loads an image from path as rgb / depth
+// Computes how blurry an image in memory is
 //---------------------------------------
-static cv::Mat LoadImage(
-	const boost::filesystem::path& path,
-	bool grayscale
+static float ComputeVariance(
+	const cv::Mat& image
 )
-{
-	return cv::imread(path.string(), grayscale ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
-}
-
-//---------------------------------------
-// Computes blurriness of an image
-//---------------------------------------
-static float ComputeVariance(const boost::filesystem::path& path)
 {
 	cv::Mat gray;
 	cv::Mat laplacianImage;
 	cv::Scalar mean, deviation;
 	// Convert to grayscale
-	cv::Mat image = LoadImage(path, false);
 	cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
 	// Create laplacian and calculate deviation
 	cv::Laplacian(gray, laplacianImage, CV_64F);
@@ -37,19 +27,32 @@ static float ComputeVariance(const boost::filesystem::path& path)
 }
 
 //---------------------------------------
+// Computes how blurry an image on disk is
+//---------------------------------------
+static float ComputeVariance(
+	ReferencePath path
+)
+{
+	// Load image from path & compute variance
+	cv::Mat image = cv::imread(path.string());
+	return ComputeVariance(image);
+}
+
+//---------------------------------------
 // Computes objects mask & visibility
 //---------------------------------------
-static bool ComputeObjectsMask(
+static cv::Mat ComputeOcclusionMask(
 	const cv::Mat& bodiesDepth,
 	const cv::Mat& sceneDepth,
-	cv::Mat& maskOut
+	bool& occluded
 )
 {
 	// Create mask (value == 0 | 255) & compute mean
-	maskOut = bodiesDepth < sceneDepth;
+	cv::Mat maskOut = bodiesDepth < sceneDepth;
 	float maskMean = cv::mean(maskOut)[0];
-	// Return whether mask is not mostly empty
-	return maskMean > 1.0f;
+	// Return mask & whether it is not mostly empty
+	occluded = maskMean < 1.0f;
+	return maskOut;
 }
 
 //---------------------------------------
@@ -79,7 +82,7 @@ static bool ComputeObjectVisible(
 static cv::Mat BlendDepth(
 	const cv::Mat& bodiesDepth,
 	const cv::Mat& sceneDepth,
-	const boost::filesystem::path& output
+	ReferencePath output
 )
 {
 	// Blend depth from scene and objects
@@ -95,7 +98,7 @@ static cv::Mat BlendDepth(
 static cv::Mat BlendLabel(
 	const cv::Mat& labeled,
 	const cv::Mat& masked,
-	const boost::filesystem::path& output
+	ReferencePath output
 )
 {
 	// Mask the labeled image -> segmented
@@ -109,7 +112,9 @@ static cv::Mat BlendLabel(
 //---------------------------------------
 // Computes bounding box of mask
 //---------------------------------------
-static cv::Rect ComputeBoundingBox(const cv::Mat& mask)
+static cv::Rect ComputeBoundingBox(
+	const cv::Mat& mask
+)
 {
 	// Calculate bounding box of mask
 	cv::Rect minRect = cv::boundingRect(mask);

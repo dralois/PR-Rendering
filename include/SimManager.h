@@ -1,12 +1,12 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
 #include <Eigen/Dense>
 
 #include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 #include <Helpers/PhysxManager.h>
 
 #include <SceneManager.h>
@@ -29,14 +29,14 @@ private:
 	// Config
 	rapidjson::Document jsonConfig;
 	Settings* pRenderSettings;
-	std::vector<boost::filesystem::path> vecSceneFolders;
+	std::vector<ModifiablePath> vecSceneFolders;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	void X_SaveSceneFolders(const boost::filesystem::path& path);
-	void X_LoadConfig(const boost::filesystem::path& configPath);
+	void X_SaveSceneFolders(ReferencePath path);
+	void X_LoadConfig(ReferencePath configPath);
 	void X_LoadMeshes();
 
 public:
@@ -56,6 +56,6 @@ public:
 	// Construtors
 	//---------------------------------------
 
-	SimManager(const boost::filesystem::path& configPath);
+	SimManager(ReferencePath configPath);
 	~SimManager();
 };

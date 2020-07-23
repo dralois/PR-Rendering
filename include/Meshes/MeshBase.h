@@ -1,12 +1,10 @@
 #pragma once
 
 #include <vector>
-#include <string>
 #include <iostream>
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
 //#define EXPORT_TO_FILE
@@ -22,8 +20,8 @@ protected:
 	//---------------------------------------
 	int objId;
 	unsigned int meshId;
-	boost::filesystem::path meshPath;
-	boost::filesystem::path texturePath;
+	ModifiablePath meshPath;
+	ModifiablePath texturePath;
 
 	std::vector<float> vecVertices;
 	std::vector<int> vecIndices;
@@ -50,15 +48,15 @@ public:
 	inline int GetObjId() { return objId; };
 	inline void SetObjId(int id) { objId = id; };
 	inline int GetLabelId() { return (objId + 1) * 10; }
-	inline const boost::filesystem::path& GetMeshPath() { return meshPath; }
-	inline const boost::filesystem::path& GetTexturePath() { return texturePath; }
+	inline ReferencePath GetMeshPath() { return meshPath; }
+	inline ReferencePath GetTexturePath() { return texturePath; }
 	inline const std::string GetName() { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); };
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	MeshBase(const boost::filesystem::path& meshPath, const boost::filesystem::path& texturePath, int meshId);
-	MeshBase(const boost::filesystem::path& meshPath, int meshId);
+	MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId);
+	MeshBase(ReferencePath meshPath, int meshId);
 	MeshBase(const MeshBase& copy);
 	~MeshBase();
 };

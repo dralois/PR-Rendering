@@ -166,7 +166,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 	}
 
 	// Build path
-	boost::filesystem::path savePath(meshPath.parent_path());
+	ModifiablePath savePath(meshPath.parent_path());
 	savePath.append(meshPath.filename().string());
 	savePath.concat(".obj");
 
@@ -178,7 +178,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-MeshBase::MeshBase(const boost::filesystem::path& meshPath, const boost::filesystem::path& texturePath, int meshId) :
+MeshBase::MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId) :
 	meshId(meshId),
 	objId(-1),
 	meshPath(meshPath),
@@ -189,7 +189,7 @@ MeshBase::MeshBase(const boost::filesystem::path& meshPath, const boost::filesys
 //---------------------------------------
 // Constructor without texture
 //---------------------------------------
-MeshBase::MeshBase(const boost::filesystem::path& meshPath, int meshId) :
+MeshBase::MeshBase(ReferencePath meshPath, int meshId) :
 	MeshBase(meshPath, "", meshId)
 {
 }

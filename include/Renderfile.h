@@ -23,7 +23,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
+	virtual void AddToJSON(JSONWriter writer) = 0;
 };
 
 //---------------------------------------
@@ -78,7 +78,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
+	virtual void X_AddToJSON(JSONWriter writer) = 0;
 
 public:
 	//---------------------------------------
@@ -144,7 +144,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void AddToJSON(JSONWriter writer) override
 	{
 		writer.StartObject();
 

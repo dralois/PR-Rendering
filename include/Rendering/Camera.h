@@ -4,7 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <Shaders/Shading.h>
+#include <Rendering/Shader.h>
 #include <Renderfile.h>
 #pragma warning(pop)
 
@@ -24,7 +24,7 @@ private:
 	Eigen::Vector2f fieldOfView;
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
-	boost::filesystem::path resultName;
+	ModifiablePath resultName;
 	bool depthOnly;
 	OSLShader* cameraEffect;
 
@@ -32,7 +32,7 @@ private:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void X_AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("fov");
 		AddEigenVector<Eigen::Vector2f>(writer, fieldOfView);
@@ -71,7 +71,7 @@ public:
 	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(near, far); }
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
 	inline void SetResultFile(const std::string& result) { resultName = result; }
-	inline const boost::filesystem::path& GetResultFile() const { return resultName; }
+	inline ReferencePath GetResultFile() const { return resultName; }
 	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
 	inline bool GetDepthOnly() const { return depthOnly; }
 
@@ -86,7 +86,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	inline void LoadExtrinsics(const boost::filesystem::path& extrFile)
+	inline void LoadExtrinsics(ReferencePath extrFile)
 	{
 		Eigen::Matrix4f matTrans;
 

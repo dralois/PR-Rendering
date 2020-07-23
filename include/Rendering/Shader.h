@@ -3,18 +3,9 @@
 #pragma warning(push, 0)
 #include <boost/filesystem.hpp>
 
+#include <Rendering/Texture.h>
 #include <Renderfile.h>
 #pragma warning(pop)
-
-//---------------------------------------
-// Texture data wrapper for rendering
-//---------------------------------------
-struct OSLTexture
-{
-	boost::filesystem::path filePath;
-	std::string colorSpace;
-	std::string colorDepth;
-};
 
 //---------------------------------------
 // Base shader data wrapper for rendering
@@ -27,13 +18,13 @@ protected:
 	//---------------------------------------
 
 	std::string name;
-	std::vector<OSLTexture> textures;
+	std::vector<Texture> textures;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) = 0;
+	virtual void X_AddToJSON(JSONWriter writer) = 0;
 
 public:
 
@@ -41,7 +32,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void AddToJSON(JSONWriter writer) override
 	{
 		writer.StartObject();
 		writer.Key("name");
@@ -52,16 +43,7 @@ public:
 		for (auto currTex : textures)
 		{
 			writer.StartObject();
-
-			writer.Key("filePath");
-			AddString(writer, currTex.filePath.string());
-
-			writer.Key("colorSpace");
-			AddString(writer, currTex.colorSpace);
-
-			writer.Key("colorDepth");
-			AddString(writer, currTex.colorDepth);
-
+			currTex.AddToJSON(writer);
 			writer.EndObject();
 		}
 		writer.EndArray();
@@ -79,7 +61,10 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	OSLShader(const std::string& name, const std::vector<OSLTexture>& textures) :
+	OSLShader(
+		const std::string& name,
+		const std::vector<Texture>& textures
+	) :
 		name(name),
 		textures(textures)
 	{

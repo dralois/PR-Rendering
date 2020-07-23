@@ -4,7 +4,8 @@
 
 #pragma warning(push, 0)
 #include <Meshes/MeshBase.h>
-#include <Shaders/Shading.h>
+
+#include <Rendering/Shader.h>
 #include <Renderfile.h>
 #pragma warning(pop)
 
@@ -24,7 +25,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+	virtual void X_AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("file");
 		AddString(writer, GetMeshPath().string());
@@ -64,13 +65,20 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	RenderMesh(const boost::filesystem::path& meshFile, const boost::filesystem::path& textureFile, int meshId) :
+	RenderMesh(
+		ReferencePath meshFile,
+		ReferencePath textureFile,
+		int meshId
+	) :
 		MeshBase(meshFile, textureFile, meshId),
 		oslShader(NULL)
 	{
 	}
 
-	RenderMesh(const boost::filesystem::path& meshFile, int meshId) :
+	RenderMesh(
+		ReferencePath meshFile,
+		int meshId
+	) :
 		MeshBase(meshFile, meshId),
 		oslShader(NULL)
 	{

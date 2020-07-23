@@ -1,7 +1,8 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <Shaders/Shading.h>
+#include <Rendering/Shader.h>
+#include <Rendering/Texture.h>
 #pragma warning(pop)
 
 //---------------------------------------
@@ -13,13 +14,15 @@ protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
+
 	float backgroundDepth;
 	bool isBody;
 
 	//---------------------------------------
-	// Add shader params
+	// Methods
 	//---------------------------------------
-	void DepthShader::X_AddToJSON(rapidjson::PrettyWriter<rapidjson::StringStream>& writer) override
+
+	void DepthShader::X_AddToJSON(JSONWriter writer) override
 	{
 		writer.Key("backgroundDepth");
 		AddFloat(writer, backgroundDepth);
@@ -32,7 +35,13 @@ public:
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	DepthShader(const std::string& name, const std::vector<OSLTexture>& textures, float backgroundDepth, bool isBody) :
+
+	DepthShader(
+		const std::string& name,
+		const std::vector<Texture>& textures,
+		float backgroundDepth,
+		bool isBody
+	) :
 		OSLShader(name, textures),
 		backgroundDepth(backgroundDepth),
 		isBody(isBody)
