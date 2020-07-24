@@ -10,7 +10,6 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "logLevel" : string,
             "storeBlend" : bool,
             "resolution" : [ int, int ],
-            "outputDir" : string,
             "pluginDir" : string,
             "shaderDirs" : [ string, ... ]
         },
@@ -22,7 +21,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "fov" : [ float, float ],
             "shift" : [ float, float ],
             "nearZ" : float,
-            "result" : string,
+            "resultFile" : string,
             "depthOnly" : bool,
             "shader" :
             {

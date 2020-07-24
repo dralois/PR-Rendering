@@ -8,14 +8,13 @@ testScene = {
         "logLevel" : "info",
         "resolution" : [1280, 720],
         "pluginDir" : "blenderseed.zip",
-        "outputDir" : "Test",
         "shaderDirs" : ["Test"]
     },
     "camera" :
     {
         "position" : [6.0, -3.0, 5.0],
         "rotation" : [0.9, 0.0, 1.1],
-        "result" : "test_render",
+        "resultFile" : "Test\\test_render.png",
     },
     "meshes" : [
         {

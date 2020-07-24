@@ -17,32 +17,24 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	ModifiablePath maskImage;
-	ModifiablePath blendImage;
-	ModifiablePath objectsImage;
-	bool forceScene;
-	Eigen::Vector3f backColor;
+	Texture occlusion;
+	Texture original;
+	Texture rendered;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	void BlendShader::X_AddToJSON(JSONWriter writer) override
+	void BlendShader::X_AddToJSON(JSONWriterRef writer) override
 	{
-		writer.Key("maskImage");
-		AddString(writer, maskImage.string());
+		writer.Key("occlusionTexture");
+		AddString(writer, occlusion.GetPath().string());
 
-		writer.Key("blendImage");
-		AddString(writer, blendImage.string());
+		writer.Key("originalImage");
+		AddString(writer, original.GetPath().string());
 
-		writer.Key("objectsImage");
-		AddString(writer, objectsImage.string());
-
-		writer.Key("forceScene");
-		writer.Bool(forceScene);
-
-		writer.Key("backColor");
-		AddEigenVector<Eigen::Vector3f>(writer, backColor);
+		writer.Key("renderedImage");
+		AddString(writer, rendered.GetPath().string());
 	}
 
 public:
@@ -51,20 +43,14 @@ public:
 	//---------------------------------------
 
 	BlendShader(
-		const std::string& name,
-		const std::vector<Texture>& textures,
-		ReferencePath maskImage,
-		ReferencePath blendImage,
-		ReferencePath objectsImage,
-		bool forceScene,
-		Eigen::Vector3f backColor
+		const Texture& occlusion,
+		const Texture& original,
+		const Texture& rendered
 	) :
-		OSLShader(name, textures),
-		maskImage(maskImage),
-		blendImage(blendImage),
-		objectsImage(objectsImage),
-		forceScene(forceScene),
-		backColor(backColor)
+		OSLShader("blend_final", std::vector<Texture>{occlusion, original, rendered}),
+		occlusion(occlusion),
+		original(original),
+		rendered(rendered)
 	{
 	}
 };

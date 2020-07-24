@@ -153,7 +153,7 @@ class CameraInstance(ObjectWrapper):
     def CreateFromJSON(self, data : dict):
         assert data is not None
         super().CreateFromJSON(data)
-        self.CameraResultFile = data.get("result", "")
+        self.CameraResultFile = data.get("resultFile", "")
         self.CameraDepthOnly = data.get("depthOnly", False)
         self.ChangeFullscreenEffect(data.get("shader", None))
 

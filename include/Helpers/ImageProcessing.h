@@ -79,33 +79,26 @@ static bool ComputeObjectVisible(
 //---------------------------------------
 // Blends depth images and write to file
 //---------------------------------------
-static cv::Mat BlendDepth(
+static cv::Mat ComputeDepthBlend(
 	const cv::Mat& bodiesDepth,
-	const cv::Mat& sceneDepth,
-	ReferencePath output
+	const cv::Mat& sceneDepth
 )
 {
-	// Blend depth from scene and objects
-	cv::Mat blended = cv::min(sceneDepth, bodiesDepth);
-	// Store image on disk & return it
-	cv::imwrite(output.string(), blended);
-	return blended;
+	// Take minimal depth from scene and objects
+	return cv::min(sceneDepth, bodiesDepth);
 }
 
 //---------------------------------------
 // Creates label image from depth images
 //---------------------------------------
-static cv::Mat BlendLabel(
+static cv::Mat ComputeSegmentMask(
 	const cv::Mat& labeled,
-	const cv::Mat& masked,
-	ReferencePath output
+	const cv::Mat& masked
 )
 {
 	// Mask the labeled image -> segmented
 	cv::Mat segmented;
 	labeled.copyTo(segmented, masked);
-	// Store image on disk & return it
-	cv::imwrite(output.string(), segmented);
 	return segmented;
 }
 

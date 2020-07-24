@@ -1,0 +1,14 @@
+shader blend_final
+[[
+    string as_node_name = "asBlendFinal",
+    string as_category = "shader"
+]]
+(
+    output color out_color = 0
+    [[
+        string label = "Output"
+    ]]
+)
+{
+    return;
+}

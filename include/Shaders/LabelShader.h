@@ -21,7 +21,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	void LabelShader::X_AddToJSON(JSONWriter writer) override
+	void LabelShader::X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("maskId");
 		writer.Int(maskId);
@@ -33,11 +33,9 @@ public:
 	//---------------------------------------
 
 	LabelShader(
-		const std::string& name,
-		const std::vector<Texture>& textures,
 		int maskId
 	):
-		OSLShader(name, textures),
+		OSLShader("label_obj", (std::vector<Texture>)0),
 		maskId(maskId)
 	{
 	}

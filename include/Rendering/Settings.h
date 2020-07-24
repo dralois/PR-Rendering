@@ -68,12 +68,13 @@ public:
 	inline ModifiablePath GetImagePath(
 		const std::string& category,
 		int imgNum,
-		bool isTemp
+		bool isFinal = false
 	) const
 	{
-		ModifiablePath bodyPath(isTemp ? GetTemporaryPath() : GetFinalPath());
+		ModifiablePath bodyPath(isFinal ? GetFinalPath() :  GetTemporaryPath());
 		bodyPath.append(category);
 		bodyPath.append("img_" + FormatInt(imgNum) + ".png");
+		return bodyPath;
 	}
 
 	inline ModifiablePath GetSceneRGBPath() const
@@ -89,7 +90,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) override
+	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.StartObject();
 
@@ -101,9 +102,6 @@ public:
 
 		writer.Key("resolution");
 		AddEigenVector<Eigen::Vector2i>(writer, renderResolution);
-
-		writer.Key("outputDir");
-		AddString(writer, outputDir.string());
 
 		writer.Key("pluginDir");
 		AddString(writer, pluginDir.string());

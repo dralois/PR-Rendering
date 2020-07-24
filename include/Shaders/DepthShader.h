@@ -15,18 +15,14 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	float backgroundDepth;
 	bool isBody;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	void DepthShader::X_AddToJSON(JSONWriter writer) override
+	void DepthShader::X_AddToJSON(JSONWriterRef writer) override
 	{
-		writer.Key("backgroundDepth");
-		AddFloat(writer, backgroundDepth);
-
 		writer.Key("isBody");
 		writer.Bool(isBody);
 	}
@@ -37,13 +33,9 @@ public:
 	//---------------------------------------
 
 	DepthShader(
-		const std::string& name,
-		const std::vector<Texture>& textures,
-		float backgroundDepth,
 		bool isBody
 	) :
-		OSLShader(name, textures),
-		backgroundDepth(backgroundDepth),
+		OSLShader("depth_obj", (std::vector<Texture>)0),
 		isBody(isBody)
 	{
 	}

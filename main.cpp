@@ -28,11 +28,11 @@ int main(int argc, char** argv)
 	ModifiablePath configPath(argv[1]);
 
 	// Create simulation manager
-	SimManager man(configPath);
+	SimManager simulation(configPath);
 
 	// Save the paths
-	ModifiablePath finalDir(man.GetSettings()->GetFinalPath());
-	ModifiablePath tempDir(man.GetSettings()->GetTemporaryPath());
+	ModifiablePath finalDir(simulation.GetSettings()->GetFinalPath());
+	ModifiablePath tempDir(simulation.GetSettings()->GetTemporaryPath());
 
 	// Create final output directories
 	if (!boost::filesystem::exists(finalDir))
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 	}
 
 	// Run the simulation
-	int exit = man.RunSimulation();
+	int exit = simulation.RunSimulation();
 
 	std::cout << "Deleting Temp Directories" << std::endl;
 

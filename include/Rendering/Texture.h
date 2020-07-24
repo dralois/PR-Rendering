@@ -3,6 +3,7 @@
 #pragma warning(push, 0)
 #include <opencv2/opencv.hpp>
 
+#include <Helpers/JSONUtils.h>
 #include <Helpers/PathUtils.h>
 
 #include <Renderfile.h>
@@ -19,9 +20,8 @@ private:
 	//---------------------------------------
 
 	ModifiablePath filePath;
-	std::string colorSpace;
-	std::string colorDepth;
 	cv::Mat loadedImage;
+	bool depthImage;
 
 public:
 	//---------------------------------------
@@ -29,24 +29,49 @@ public:
 	//---------------------------------------
 
 	inline ReferencePath GetPath() const { return filePath; }
-	inline void SetPath(ReferencePath path ) { filePath = path; }
+	inline void SetPath(
+		ReferencePath path,
+		bool isDepth = false
+	)
+	{
+		depthImage = isDepth;
+		filePath = path;
+	}
+
 	inline const cv::Mat& GetTexture() const { return loadedImage; }
-	inline void SetTexture(const cv::Mat& img) { loadedImage = img; }
+	inline void SetTexture(
+		const cv::Mat& img,
+		bool isDepth = false
+	)
+	{
+		depthImage = isDepth;
+		loadedImage = img;
+	}
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) override
+	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("filePath");
 		AddString(writer, filePath.string());
 
 		writer.Key("colorSpace");
-		AddString(writer, colorSpace);
+		AddString(writer, depthImage ? "float" : "default");
 
 		writer.Key("colorDepth");
-		AddString(writer, colorDepth);
+		AddString(writer, depthImage ? "linear" : "sRGB");
+	}
+
+	void LoadTexture()
+	{
+		loadedImage = cv::imread(filePath.string(), depthImage ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
+	}
+
+	void StoreTexture()
+	{
+		cv::imwrite(filePath.string(), loadedImage);
 	}
 
 	//---------------------------------------
@@ -54,23 +79,11 @@ public:
 	//---------------------------------------
 
 	Texture(
-		ReferencePath path,
-		bool isDepth
+		bool isDepth = false
 	) :
-		filePath(path),
-		colorDepth(isDepth ? "linear" : "sRGB"),
-		colorSpace(isDepth ? "float" : "default")
-	{
-		loadedImage = cv::imread(filePath.string(), isDepth ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
-	}
-
-	Texture(
-		bool isDepth
-	) :
-		filePath(""),
+		filePath(),
 		loadedImage(),
-		colorDepth(isDepth ? "linear" : "sRGB"),
-		colorSpace(isDepth ? "float" : "default")
+		depthImage(isDepth)
 	{
 	}
 };

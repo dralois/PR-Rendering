@@ -111,23 +111,8 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 //---------------------------------------
 int SimManager::RunSimulation()
 {
-	// Setup lights
-	std::vector<Light> lights;
-	for (int i = 0; i < 8; i++)
-	{
-		LightParamsBase* params = (LightParamsBase*)(new PointLightParams());
-		Light addLight(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
-		// Add 8 lights in a box pattern
-		addLight.SetPosition(Eigen::Vector3f(
-			i % 2 == 0 ? 1000.0f : -1000.0f,
-			(i >> 2) % 2 == 0 ? 100.0f : 1000.0f,
-			(i >> 1) % 2 == 0 ? 1000.0f : -1000.0f)
-		);
-		lights.push_back(addLight);
-	}
-
 	// Create mananger
-	SceneManager curr(pRenderSettings, lights, vecpPxMesh, vecpRenderMesh);
+	SceneManager curr(pRenderSettings, vecpPxMesh, vecpRenderMesh);
 
 	// Render all scenes
 	int currImageCount = 0;
@@ -149,10 +134,12 @@ int SimManager::RunSimulation()
 //---------------------------------------
 SimManager::SimManager(ReferencePath configPath)
 {
-	ModifiablePath scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
 	// Init
+	PxManager::GetInstance().InitPhysx();
 	X_LoadConfig(configPath);
 	X_LoadMeshes();
+	// Setup scenes
+	ModifiablePath scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
 	X_SaveSceneFolders(scenesPath);
 }
 

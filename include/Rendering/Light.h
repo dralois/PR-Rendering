@@ -1,6 +1,13 @@
 #pragma once
 
+#include <string>
+
 #pragma warning(push, 0)
+#include <Eigen/Dense>
+
+#include <Helpers/PathUtils.h>
+#include <Helpers/JSONUtils.h>
+
 #include <Renderfile.h>
 #pragma warning(pop)
 
@@ -20,14 +27,14 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) override
+	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("type");
 		AddString(writer, type);
@@ -71,7 +78,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) override
+	virtual void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("color");
 		AddEigenVector<Eigen::Vector3f>(writer, color);
@@ -126,7 +133,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer)
+	virtual void X_AddToJSON(JSONWriterRef writer)
 	{
 	}
 
@@ -157,7 +164,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer)
+	virtual void X_AddToJSON(JSONWriterRef writer)
 	{
 		writer.Key("spotAngle");
 		AddFloat(writer, spotAngle);
@@ -187,7 +194,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer)
+	virtual void X_AddToJSON(JSONWriterRef writer)
 	{
 	}
 
@@ -219,7 +226,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer)
+	virtual void X_AddToJSON(JSONWriterRef writer)
 	{
 		writer.Key("shape");
 		AddString(writer, shape);
@@ -234,7 +241,7 @@ public:
 	//---------------------------------------
 
 	AreaLightParams(
-		const std::string& shape, 
+		const std::string& shape,
 		Eigen::Vector2f size
 	) :
 		LightParamsBase("AREA"),

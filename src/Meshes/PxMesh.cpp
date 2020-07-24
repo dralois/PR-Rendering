@@ -198,7 +198,13 @@ const PxTransform PxMesh::GetTransform()
 PxMesh::PxMesh(ReferencePath meshPath, int meshId) :
 	pPxShape(NULL),
 	pPxActor(NULL),
-	MeshBase(meshPath, meshId)
+	MeshBase(meshPath, meshId),
+	Transformable(
+		PxTransform(PxIdentity),
+		PxVec3(0.0f),
+		PxQuat(PxIdentity),
+		PxVec3(1.0f)
+	)
 {
 }
 
@@ -211,7 +217,13 @@ PxMesh::PxMesh(const PxMesh& copy) :
 	firstInstance(false),
 	minimum(copy.minimum),
 	maximum(copy.maximum),
-	MeshBase(copy)
+	MeshBase(copy),
+	Transformable(
+		copy.meshTrans,
+		copy.meshPos,
+		copy.meshRot,
+		copy.meshScale
+	)
 {
 }
 

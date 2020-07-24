@@ -3,11 +3,12 @@
 #include <string>
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <Eigen/Dense>
+
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
 #define PI (3.1415926535897931f)

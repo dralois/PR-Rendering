@@ -1,7 +1,8 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 
 #include <Rendering/Texture.h>
 #include <Renderfile.h>
@@ -24,7 +25,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
 
 public:
 
@@ -32,7 +33,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) override
+	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.StartObject();
 		writer.Key("name");

@@ -41,7 +41,7 @@ class Scene(object):
         ctx.camera = self.__camera.ObjectInstance
         # Adjust render settings
         outputDir = FullPath(self.__settings.get("outputDir", "output"))
-        ctx.render.filepath = f"{outputDir}\\{self.__camera.CameraResultFile}.png"
+        ctx.render.filepath = self.__camera.CameraResultFile
         ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDepthOnly]
         ctx.render.image_settings.color_depth = ("8", "32")[self.__camera.CameraDepthOnly]
         ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__camera.CameraDepthOnly]
@@ -50,7 +50,7 @@ class Scene(object):
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
         # Possibly store to blend file
         if self.__settings.get("storeBlend", False):
-            saveFile = f"{outputDir}\\{self.__camera.CameraResultFile}.blend"
+            saveFile = f"{FileDir(self.__camera.CameraResultFile)}\\{FileName(self.__camera.CameraResultFile)}.blend"
             bpy.ops.wm.save_mainfile(filepath = saveFile, check_existing = False)
         # Render scene to file
         bpy.ops.render.render(write_still = True)

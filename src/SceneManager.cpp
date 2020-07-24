@@ -172,7 +172,7 @@ void SceneManager::X_PxSaveSimResults()
 RenderResult SceneManager::X_RenderSceneDepth() const
 {
 	// Render depth with OpenGL
-	RenderResult renderings = pRenderer->RenderScenes(
+	auto renders = pRenderer->RenderScenes(
 		pRenderSettings->GetScenePath(),
 		vecCameraPoses,
 		renderCam.GetIntrinsics().GetFocalLenght().x(),
@@ -182,222 +182,145 @@ RenderResult SceneManager::X_RenderSceneDepth() const
 	);
 
 	// For each image
-	for (int render_count = 0; render_count < renderings.size(); render_count++)
+	RenderResult results;
+	for (int render_count = 0; render_count < renders.size(); render_count++)
 	{
-		// Get output paths
-		ModifiablePath depthPath = pRenderSettings->GetImagePath("scene_depth", render_count, true);
-		ModifiablePath rgbPath = pRenderSettings->GetImagePath("rgb", render_count, true);
-
-		// Write rgb and depth out
-		cv::imwrite(rgbPath.string(), std::get<0>(renderings[render_count]));
-		cv::imwrite(depthPath.string(), std::get<1>(renderings[render_count]));
+		// Create & store rgb texture
+		Texture rgbScene(false);
+		rgbScene.SetTexture(std::get<0>(renders[render_count]));
+		rgbScene.SetPath(pRenderSettings->GetImagePath("rgb", render_count));
+		rgbScene.StoreTexture();
+		// Create & store depth texture
+		Texture depthScene(true);
+		depthScene.SetTexture(std::get<1>(renders[render_count]));
+		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count));
+		depthScene.StoreTexture();
+		// Store in result vector
+		results.push_back(std::make_tuple(rgbScene, depthScene));
 	}
 
-	// Finally return rendered images
-	return renderings;
+	// Finally return textures
+	return results;
+}
+
+//---------------------------------------
+// Build & send renderfile for blender
+//---------------------------------------
+void SceneManager::X_ProcessRenderfile(Texture& result)
+{
+	// Create writer
+	rapidjson::StringBuffer renderstring;
+	JSONWriter writer(renderstring);
+
+	// Add settings
+	writer.Key("settings");
+	writer.StartObject();
+	pRenderSettings->AddToJSON(writer);
+	writer.EndObject();
+
+	// Add camera
+	writer.Key("camera");
+	writer.StartObject();
+	renderCam.SetResultFile(result.GetPath());
+	writer.EndObject();
+
+	// Add meshes
+	writer.Key("meshes");
+	writer.StartArray();
+	for (auto currMesh : vecpRenderMeshCurrObjs)
+	{
+		currMesh->AddToJSON(writer);
+	}
+	writer.EndArray();
+
+	// Add lights
+	writer.Key("lights");
+	writer.StartArray();
+	for(auto currLight : vecpLights)
+	{
+		currLight->AddToJSON(writer);
+	}
+	writer.EndArray();
+
+	// Send off to blender
+	std::string renderfile(renderstring.GetString());
+	pBlender->ProcessRenderfile(renderfile);
+
+	// Load result to texture after rendering
+	result.LoadTexture();
 }
 
 //---------------------------------------
 // Render objects depth
-// TODO: Switch to blender render
 //---------------------------------------
-void SceneManager::X_RenderObjsDepth()
+void SceneManager::X_RenderObjsDepth(Texture& result)
 {
-	bool valid = false;
-	// For each arnold mesh
-	for (auto body : vecCurrObjs)
+	// Set shaders
+	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		AtNode* curr = AiNodeLookUpByName(body.objName.c_str());
-		AiNodeSetPtr(curr, "shader", aiShaderDepthObj);
-		AiNodeSetDisabled(curr, true);
-		valid = true;
+		DepthShader* currShader = new DepthShader(true);
+		currMesh->SetShader((OSLShader*)currShader);
 	}
 
-	// Set shader parameters
-	AiNodeSetBool(aiShaderDepthObj, "is_body", true);
-	AiNodeSetFlt(aiShaderDepthScene, "force_val", 30000);
-	AiNodeSetPtr(aiOptions, "background", aiShaderDepthScene);
+	renderCam.SetDepthOnly(true);
 
-	// Destroy old filter
-	AtNode* nullFilter = AiNodeLookUpByName("null_filter");
-	AiNodeDestroy(nullFilter);
-	// Create new filter
-	nullFilter = AiNode("null_filter");
-	AiNodeSetFlt(nullFilter, "width", 1);
-	AiNodeSetStr(nullFilter, "name", "null_filter");
-
-	// Temp file name
-	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << poseCount;
-	string buf = FILE_TEMP_PATH + "/body_depth/img_" + out.str() + ".png";
-
-	// Render settings
-	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", useCustomIntr ? intrCustom.w : intrOriginal.w);
-	AiNodeSetInt(aiOptions, "yres", useCustomIntr ? intrCustom.h : intrOriginal.h);
-	AiNodeSetInt(aiOptions, "AA_samples", 1);
-	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
-	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
-
-	// Setup rendering
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
-	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
-
-	// Render
-	if (valid)
-		AiRender(AI_RENDER_MODE_CAMERA);
+	// Send render command
+	X_ProcessRenderfile(result);
 }
 
 //---------------------------------------
-// Render object label image (IDs as color)
-// TODO: Switch to blender render
+// Render label texture (object Ids as color)
 //---------------------------------------
-void SceneManager::X_RenderObjsLabel()
+void SceneManager::X_RenderObjsLabel(Texture& result)
 {
-	// For each arnold mesh
-	for (auto body : vecCurrObjs)
+	// Set shaders
+	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		AtNode* shader_obj_label;
-		string sbuffer = "label_" + std::to_string(body.objId);
-		// Try to find mesh node
-		shader_obj_label = AiNodeLookUpByName(sbuffer.c_str());
-		// If not found create
-		if (shader_obj_label == NULL)
-		{
-			shader_obj_label = AiNode("labelshader");
-			AiNodeSetStr(shader_obj_label, "name", sbuffer.c_str());
-			AiNodeSetInt(shader_obj_label, "id", (body.objId + 1) * 10);
-		}
-		// Save node
-		AtNode* curr = AiNodeLookUpByName(body.objName.c_str());
-		AiNodeSetPtr(curr, "shader", shader_obj_label);
+		LabelShader* currShader = new LabelShader(currMesh->GetLabelId());
+		currMesh->SetShader((OSLShader*)currShader);
 	}
 
-	// Try to find background node
-	AtNode* shader_bck_label = AiNodeLookUpByName("label_background");
-	// If not found create
-	if (shader_bck_label == NULL)
+	renderCam.SetDepthOnly(false);
+
+	// Send render command
+	X_ProcessRenderfile(result);
+}
+
+//---------------------------------------
+// Render objects physically based
+// TODO: Object color rendering
+//---------------------------------------
+void SceneManager::X_RenderObjsRGB(Texture& result)
+{
+	// Set shaders
+	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		shader_bck_label = AiNode("labelshader");
-		AiNodeSetStr(shader_bck_label, "name", "label_background");
-		AiNodeSetInt(shader_bck_label, "id", 0);
+		// TODO
 	}
-	// Save node
-	AiNodeSetPtr(aiOptions, "background", shader_bck_label);
 
-	// Destroy old null filter
-	AtNode* nullFilter = AiNodeLookUpByName("null_filter");
-	AiNodeDestroy(nullFilter);
-	// Create new null filter
-	nullFilter = AiNode("null_filter");
-	AiNodeSetFlt(nullFilter, "width", 1);
-	AiNodeSetStr(nullFilter, "name", "null_filter");
+	renderCam.SetDepthOnly(false);
 
-	// Temp file
-	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << poseCount;
-	string buf = FILE_TEMP_PATH + "/body_label/img_" + out.str() + ".png";
-
-	// Setup render settings
-	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", useCustomIntr ? intrCustom.w : intrOriginal.w);
-	AiNodeSetInt(aiOptions, "yres", useCustomIntr ? intrCustom.h : intrOriginal.h);
-	AiNodeSetInt(aiOptions, "AA_samples", 1);
-	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 1);
-	AiNodeSetInt(aiOptions, "GI_specular_samples", 1);
-
-	// Render image
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
-	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
-	AiRender(AI_RENDER_MODE_CAMERA);
+	// Send render command
+	X_ProcessRenderfile(result);
 }
 
 //---------------------------------------
 // Final image blend
-// TODO: Switch to blender render
 //---------------------------------------
-void SceneManager::X_RenderImageBlend()
+void SceneManager::X_RenderImageBlend(
+	Texture& result,
+	const Texture& occlusion,
+	const Texture& original,
+	const Texture& rendered
+)
 {
-	// For each object
-	for (auto body : vecCurrObjs)
-	{
-		string buffer = "blend_" + std::to_string(body.meshId);
-		float ks = vecpPxMeshObjs[body.meshId]->GetMetallic();
-		// Try to find mesh node
-		AtNode* curr = AiNodeLookUpByName(body.objName.c_str());
-		AtNode* blendTemp = AiNodeLookUpByName(buffer.c_str());
-		// If not found create
-		if (blendTemp != nullptr)
-		{
-			AiNodeSetPtr(curr, "shader", blendTemp);
-			AiNodeSetPtr(blendTemp, "mask", (void*)&cvMask);
-			AiNodeSetPtr(blendTemp, "blend_image", (void*)&cvScene);
-			AiNodeSetPtr(blendTemp, "rend_image", (void*)&cvRend);
-			continue;
-		}
+	// Setup camera shader
+	BlendShader* finalBlend = new BlendShader(occlusion, original, rendered);
+	renderCam.SetEffect((OSLShader*)finalBlend);
+	renderCam.SetDepthOnly(false);
 
-		// Texture and object shader nodes
-		AtNode* shaderMaterial = AiNode("standard");
-		AtNode* image = AiNode("image");
-
-		// Texture path
-		ostringstream out;
-		out << std::internal << std::setfill('0') << std::setw(2) << (body.meshId);
-		string imgbuffer = "obj_" + out.str() + "_color.png";
-		string imgPath = FILE_OBJ_PATH + "/" + imgbuffer;
-
-		// Setup texture node and link it
-		AiNodeSetStr(image, "filename", imgPath.c_str());
-		AiNodeLink(image, "Kd_color", shaderMaterial);
-
-		// Setup blending shader
-		AtNode* shader_blend = AiNode("blendshader");
-		AiNodeSetStr(shader_blend, "name", buffer.c_str());
-		AiNodeSetPtr(shader_blend, "mask", (void*)&cvMask);
-		AiNodeSetPtr(shader_blend, "blend_image", (void*)&cvScene);
-		AiNodeSetPtr(shader_blend, "rend_image", (void*)&cvRend);
-		AiNodeSetBool(shader_blend, "force_scene", false);
-		// Setup object shader node
-		AiNodeSetFlt(shaderMaterial, "diffuse_roughness", 0.5);
-		AiNodeSetFlt(shaderMaterial, "Ks", ks);
-		AiNodeLink(shaderMaterial, "Kd_bcolor", shader_blend);
-		AiNodeSetPtr(curr, "shader", shader_blend);
-	}
-
-	// Setup background image and mask
-	AiNodeSetPtr(aiShaderBlendImage, "mask", (void*)&cvMask);
-	AiNodeSetPtr(aiShaderBlendImage, "blend_image", (void*)&cvScene);
-	AiNodeSetPtr(aiShaderBlendImage, "rend_image", (void*)&cvRend);
-	AiNodeSetPtr(aiOptions, "background", aiShaderBlendImage);
-
-	// Destroy old null filter
-	AtNode* gaussFilter = AiNodeLookUpByName("null_filter");
-	AiNodeDestroy(gaussFilter);
-	// Create new gauss filter
-	gaussFilter = AiNode("gaussian_filter");
-	AiNodeSetFlt(gaussFilter, "width", 1);
-	AiNodeSetStr(gaussFilter, "name", "null_filter");
-
-	// Final image path
-	ostringstream out;
-	out << std::internal << std::setfill('0') << std::setw(6) << imageCount;
-	string buf = FILE_FINAL_PATH + "/rgb/img_" + out.str() + ".png";
-
-	// Setup render settings
-	AiNodeSetStr(aiDriver, "filename", buf.c_str());
-	AiNodeSetInt(aiDriver, "format", 1);
-	AiNodeSetInt(aiOptions, "xres", (useCustomIntr ? intrCustom.w : intrOriginal.w) / 2);
-	AiNodeSetInt(aiOptions, "yres", (useCustomIntr ? intrCustom.h : intrOriginal.h) / 2);
-	AiNodeSetInt(aiOptions, "AA_samples", 6);
-	AiNodeSetInt(aiOptions, "GI_diffuse_depth", 6);
-	AiNodeSetInt(aiOptions, "GI_specular_samples", 6);
-
-	// Render final image/object blend
-	AiArraySetStr(aiArrOutputs, 0, "RGBA RGBA null_filter outputDriver");
-	AiNodeSetArray(aiOptions, "outputs", aiArrOutputs);
-	AiRender(AI_RENDER_MODE_CAMERA);
+	// Send render command
+	X_ProcessRenderfile(result);
 }
 
 //---------------------------------------
@@ -426,13 +349,13 @@ void SceneManager::X_GetImagesToProcess(
 					if (ComputeVariance(entry.path()) > varThreshold)
 					{
 						ModifiablePath img(entry.path());
-						ModifiablePath pose(entry.path());
 						std::cout << "Using image " << img.filename() << std::endl;
 						// Save image in vector
 						vecCameraImages.push_back(img);
 						// Save pose file in vector
+						std::string pose(entry.path().string());
 						boost::algorithm::replace_last(pose, "color.jpg", "pose.txt");
-						vecCameraPoses.push_back(pose);
+						vecCameraPoses.push_back(ModifiablePath(pose));
 					}
 				}
 			}
@@ -445,6 +368,7 @@ void SceneManager::X_GetImagesToProcess(
 
 //---------------------------------------
 // Run simulation
+// TODO: Object color rendering
 //---------------------------------------
 int SceneManager::Run(int imageCount)
 {
@@ -459,7 +383,10 @@ int SceneManager::Run(int imageCount)
 		return 0;
 
 	// Render scene depth with OpenGL
-	RenderResult renderings = X_RenderSceneDepth();
+	RenderResult sceneRenders = X_RenderSceneDepth();
+
+	// Fetch camera intrinsics
+	renderCam.LoadIntrinsics(pRenderSettings);
 
 	// For each scene iteration
 	for (int iter = 0; iter < pRenderSettings->GetIterationCount(); iter++)
@@ -476,14 +403,16 @@ int SceneManager::Run(int imageCount)
 		// For each camera pose
 		for (int currPose = 0; currPose < vecCameraPoses.size(); currPose++)
 		{
-			// Load camera matrix for pose
+			// Load camera pose
 			renderCam.LoadExtrinsics(vecCameraPoses.at(currPose));
 
+			// Load scene depth
+			Texture sceneDepth = std::get<1>(sceneRenders[currPose]);
+
 			// Render object depths
-			X_RenderObjsDepth();
-			// Load rendered images
-			Texture sceneDepth(pRenderSettings->GetImagePath("scene_depth", currPose, true), true);
-			Texture bodiesDepth(pRenderSettings->GetImagePath("body_depth", currPose, true), true);
+			Texture bodiesDepth(true);
+			bodiesDepth.SetPath(pRenderSettings->GetImagePath("body_depth", currPose));
+			X_RenderObjsDepth(bodiesDepth);
 
 			// Create occlusion mask
 			bool objectsOccluded;
@@ -494,20 +423,23 @@ int SceneManager::Run(int imageCount)
 			if (!objectsOccluded)
 			{
 				int currImg = imageCount + newImages;
+
 				// Render object labels (IDs as color)
-				X_RenderObjsLabel();
-				// Load rendered image
-				Texture bodiesLabeled(pRenderSettings->GetImagePath("body_label", currImg, true), false);
+				Texture bodiesLabeled(false);
+				bodiesLabeled.SetPath(pRenderSettings->GetImagePath("body_label", currImg));
+				X_RenderObjsLabel(bodiesLabeled);
 
 				// Blend depth images
 				Texture blendedDepth(true);
-				blendedDepth.SetPath(pRenderSettings->GetImagePath("depth", currImg, false));
-				blendedDepth.SetTexture(BlendDepth(bodiesDepth.GetTexture(), sceneDepth.GetTexture(), blendedDepth.GetPath()));
+				blendedDepth.SetPath(pRenderSettings->GetImagePath("depth", currImg, true));
+				blendedDepth.SetTexture(ComputeDepthBlend(bodiesDepth.GetTexture(), sceneDepth.GetTexture()));
+				blendedDepth.StoreTexture();
 
 				// Blend label and mask images
 				Texture bodiesSegmented(false);
-				bodiesSegmented.SetPath(pRenderSettings->GetImagePath("segs", currPose, false));
-				bodiesSegmented.SetTexture(BlendLabel(bodiesLabeled.GetTexture(), bodiesMasked.GetTexture(), bodiesSegmented.GetPath()));
+				bodiesSegmented.SetPath(pRenderSettings->GetImagePath("segs", currPose, true));
+				bodiesSegmented.SetTexture(ComputeSegmentMask(bodiesLabeled.GetTexture(), bodiesMasked.GetTexture()));
+				bodiesSegmented.StoreTexture();
 
 				// Save annotations
 				for (auto currMesh : vecpRenderMeshCurrObjs)
@@ -515,7 +447,11 @@ int SceneManager::Run(int imageCount)
 						bodiesSegmented.GetTexture(), renderCam, currImg);
 
 				// Render final image blend
-				X_RenderImageBlend();
+				Texture finalBlend(false);
+				finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currPose, true));
+				// TODO: Replace with correct images
+				X_RenderImageBlend(finalBlend, bodiesSegmented, Texture(), Texture());
+
 				newImages++;
 			}
 
@@ -538,8 +474,7 @@ int SceneManager::Run(int imageCount)
 // Create new scene manager
 //---------------------------------------
 SceneManager::SceneManager(
-	const Settings* settings,
-	const std::vector<Light>& vecLights,
+	Settings* settings,
 	const std::vector<PxMeshConvex*>& vecPhysxObjs,
 	const std::vector<RenderMesh*>& vecArnoldObjs
 ) :
@@ -561,28 +496,27 @@ SceneManager::SceneManager(
 		SafeGet<float>(pRenderSettings->GetJSONConfig(), "far_z")
 	);
 
-	// Load intrinsics (custom or provided ones)
-	if (SafeGet<bool>(pRenderSettings->GetJSONConfig(), "custom_intrinsics"))
+	// Create lights
+	for (int i = 0; i < 8; i++)
 	{
-		renderCam.SetIntrinsics(pRenderSettings->GetIntrinsics());
-	}
-	else
-	{
-		Intrinsics fromFile;
-		// Load from file
-		fromFile.LoadIntrinsics(
-			pRenderSettings->GetSceneRGBPath().append("_info.txt"),
-			pRenderSettings->GetRenderResolution()
+		LightParamsBase* params = (LightParamsBase*)(new PointLightParams());
+		Light* addLight = new Light(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
+		// Add 8 lights in a box pattern
+		addLight->SetPosition(Eigen::Vector3f(
+			i % 2 == 0 ? 1000.0f : -1000.0f,
+			(i >> 2) % 2 == 0 ? 100.0f : 1000.0f,
+			(i >> 1) % 2 == 0 ? 1000.0f : -1000.0f)
 		);
-		// Store in camera
-		renderCam.SetIntrinsics(fromFile);
+		vecpLights.push_back(addLight);
 	}
 
 	// Create OpenGL renderer
 	pRenderer = new Renderer::Render(
 		ModifiablePath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl")),
-		renderCam.GetIntrinsics().GetWidth(), renderCam.GetIntrinsics().GetHeight(),
-		renderCam.GetClipping().x(), renderCam.GetClipping().y()
+		pRenderSettings->GetRenderResolution().x(),
+		pRenderSettings->GetRenderResolution().y(),
+		renderCam.GetClipping().x(),
+		renderCam.GetClipping().y()
 	);
 
 	// Create Blender render interface
@@ -598,4 +532,9 @@ SceneManager::~SceneManager()
 	delete pBlender;
 	delete pRenderer;
 	delete pAnnotations;
+	for(auto currLight : vecpLights)
+	{
+		delete currLight;
+	}
+	vecpLights.clear();
 }

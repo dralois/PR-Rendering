@@ -16,6 +16,19 @@ protected:
 	Quat meshRot;
 	Vec meshScale;
 
+	Transformable(
+		Trans initTrans,
+		Vec initPos,
+		Quat initRot,
+		Vec initScale
+	) :
+		meshTrans(initTrans),
+		meshPos(initPos),
+		meshRot(initRot),
+		meshScale(initScale)
+	{
+	}
+
 public:
 	//---------------------------------------
 	// Properties

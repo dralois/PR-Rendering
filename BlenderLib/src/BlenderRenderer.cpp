@@ -6,6 +6,8 @@
 #include <boost/python.hpp>
 #pragma warning(pop)
 
+using namespace boost::python;
+
 namespace Blender
 {
 	//---------------------------------------
@@ -17,34 +19,58 @@ namespace Blender
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		boost::python::object entryMainModule;
-		boost::python::object entryNamespace;
+
+		object entryMainModule;
+		object entryNamespace;
 
 	public:
+		//---------------------------------------
+		// Methods
+		//---------------------------------------
+
+		void ProcessRenderfile(const std::string& renderfile)
+		{
+			try
+			{
+				object utilsModule = import("BlenderModule.Utils");
+				object testModule = import("BlenderModule.Test.ModuleTest");
+				utilsModule.attr("SetupMultiprocessing")("C://Program Files//Python37//python.exe");
+				testModule.attr("TestSubprocess")();
+			}
+			catch (const error_already_set&)
+			{
+				PyErr_Print();
+			}
+		}
 
 		//---------------------------------------
-		// Default constructor
+		// Constructors
 		//---------------------------------------
-		Renderer_impl::Renderer_impl()
+
+		Renderer_impl()
 		{
 			try
 			{
 				//Py_set
 				Py_Initialize();
 				// Store main and globals
-				entryMainModule = boost::python::import("BlenderModule");
+				entryMainModule = import("BlenderModule");
 				entryNamespace = entryMainModule.attr("__dict__");
-				boost::python::object utilsModule = boost::python::import("BlenderModule.Utils");
-				boost::python::object testModule = boost::python::import("BlenderModule.Test.ModuleTest");
-				utilsModule.attr("SetupMultiprocessing")("C://Program Files//Python37//python.exe");
-				testModule.attr("TestSubprocess")();
 			}
-			catch(const boost::python::error_already_set&)
+			catch(const error_already_set&)
 			{
 				PyErr_Print();
 			}
 		}
 	};
+
+	//---------------------------------------
+	// Forward renderfile processing
+	//---------------------------------------
+	void BlenderRenderer::ProcessRenderfile(const std::string& renderfile)
+	{
+		rendererImpl->ProcessRenderfile(renderfile);
+	}
 
 	//---------------------------------------
 	// Forward API creation

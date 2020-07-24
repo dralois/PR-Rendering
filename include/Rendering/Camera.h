@@ -1,9 +1,11 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
 
+#include <Rendering/Settings.h>
+#include <Rendering/Intrinsics.h>
 #include <Rendering/Shader.h>
 #include <Renderfile.h>
 #pragma warning(pop)
@@ -24,7 +26,7 @@ private:
 	Eigen::Vector2f fieldOfView;
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
-	ModifiablePath resultName;
+	ModifiablePath resultFile;
 	bool depthOnly;
 	OSLShader* cameraEffect;
 
@@ -32,7 +34,7 @@ private:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) override
+	virtual void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("fov");
 		AddEigenVector<Eigen::Vector2f>(writer, fieldOfView);
@@ -43,8 +45,8 @@ private:
 		writer.Key("nearZ");
 		AddFloat(writer, clipPlanes.x());
 
-		writer.Key("result");
-		AddString(writer, resultName.string());
+		writer.Key("resultFile");
+		AddString(writer, resultFile.string());
 
 		writer.Key("depthOnly");
 		writer.Bool(depthOnly);
@@ -70,8 +72,8 @@ public:
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return shift; }
 	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(near, far); }
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
-	inline void SetResultFile(const std::string& result) { resultName = result; }
-	inline ReferencePath GetResultFile() const { return resultName; }
+	inline void SetResultFile(ReferencePath result) { resultFile = result; }
+	inline const ReferencePath GetResultFile() const { return resultFile; }
 	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
 	inline bool GetDepthOnly() const { return depthOnly; }
 
@@ -85,6 +87,26 @@ public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
+
+	inline void LoadIntrinsics(const Settings* settings)
+	{
+		// Load intrinsics (custom or provided ones)
+		if (SafeGet<bool>(settings->GetJSONConfig(), "custom_intrinsics"))
+		{
+			SetIntrinsics(settings->GetIntrinsics());
+		}
+		else
+		{
+			Intrinsics fromFile;
+			// Load from file
+			fromFile.LoadIntrinsics(
+				settings->GetSceneRGBPath().append("_info.txt"),
+				settings->GetRenderResolution()
+			);
+			// Store in camera
+			SetIntrinsics(fromFile);
+		}
+	}
 
 	inline void LoadExtrinsics(ReferencePath extrFile)
 	{
@@ -125,7 +147,7 @@ public:
 		fieldOfView(Eigen::Vector2f(0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
-		resultName(""),
+		resultFile(),
 		depthOnly(false),
 		cameraEffect(NULL)
 	{

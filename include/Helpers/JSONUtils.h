@@ -10,13 +10,14 @@
 
 typedef rapidjson::GenericArray<false, rapidjson::Value> JSONArray;
 typedef rapidjson::GenericArray<true, rapidjson::Value> JSONArrayConst;
-typedef rapidjson::PrettyWriter<rapidjson::StringStream>& JSONWriter;
+typedef rapidjson::PrettyWriter<rapidjson::StringBuffer> JSONWriter;
+typedef rapidjson::PrettyWriter<rapidjson::StringBuffer>& JSONWriterRef;
 
 //---------------------------------------
 // Add string to json
 //---------------------------------------
 static void AddString(
-	JSONWriter writer,
+	JSONWriterRef writer,
 	const std::string& toAdd
 )
 {
@@ -27,7 +28,7 @@ static void AddString(
 // Add float to json
 //---------------------------------------
 static void AddFloat(
-	JSONWriter writer,
+	JSONWriterRef writer,
 	float toAdd
 )
 {
@@ -39,7 +40,7 @@ static void AddFloat(
 //---------------------------------------
 template<typename VectorType>
 static void AddEigenVector(
-	JSONWriter writer,
+	JSONWriterRef writer,
 	VectorType toAdd
 )
 {

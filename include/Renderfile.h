@@ -23,7 +23,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) = 0;
+	virtual void AddToJSON(JSONWriterRef writer) = 0;
 };
 
 //---------------------------------------
@@ -55,6 +55,8 @@ private:
 		);
 		// Update transform
 		SetTransform(trans.matrix());
+		// Update actual values
+		X_GetPosRotScale(meshPos, meshRot, meshScale);
 	}
 
 	inline void X_GetPosRotScale(
@@ -78,7 +80,21 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
+
+	RenderfileObject():
+		Transformable(
+			Eigen::Matrix4f(),
+			Eigen::Vector3f(),
+			Eigen::Quaternionf(),
+			Eigen::Vector3f()
+		)
+	{
+		meshTrans.setIdentity();
+		meshPos.setZero();
+		meshRot.setIdentity();
+		meshScale.setOnes();
+	}
 
 public:
 	//---------------------------------------
@@ -144,7 +160,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriter writer) override
+	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.StartObject();
 

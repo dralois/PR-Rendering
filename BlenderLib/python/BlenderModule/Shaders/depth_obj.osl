@@ -1,0 +1,14 @@
+shader depth_obj
+[[
+    string as_node_name = "asDepthObj",
+    string as_category = "shader"
+]]
+(
+    output color out_color = 0
+    [[
+        string label = "Output"
+    ]]
+)
+{
+    return;
+}

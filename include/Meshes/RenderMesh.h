@@ -25,7 +25,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriter writer) override
+	virtual void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("file");
 		AddString(writer, GetMeshPath().string());

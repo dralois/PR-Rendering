@@ -18,6 +18,8 @@
 #include <Meshes/PxMeshConvex.h>
 #include <Meshes/PxMeshTriangle.h>
 
+#include <Shaders/All.h>
+
 #include <Rendering/Camera.h>
 #include <Rendering/Intrinsics.h>
 #include <Rendering/Light.h>
@@ -26,7 +28,7 @@
 #include <Rendering/Texture.h>
 #pragma warning(pop)
 
-typedef std::vector<std::tuple<cv::Mat, cv::Mat>> RenderResult;
+typedef std::vector<std::tuple<Texture, Texture>> RenderResult;
 
 //---------------------------------------
 // Simulates and renderes a scene
@@ -48,7 +50,7 @@ private:
 	// Rendering
 	Settings renderSettings;
 	Camera renderCam;
-	std::vector<Light> vecLights;
+	std::vector<Light*> vecpLights;
 
 	// Inputs
 	std::vector<ModifiablePath> vecCameraPoses;
@@ -65,7 +67,7 @@ private:
 	RenderMesh* pRenderMeshScene;
 
 	// Other
-	const Settings* pRenderSettings;
+	Settings* pRenderSettings;
 	AnnotationsManager* pAnnotations;
 
 	//---------------------------------------
@@ -75,17 +77,30 @@ private:
 	// Simulation
 	void X_PxCreateScene();
 	void X_PxCreateObjs();
-	void X_PxRunSim(float timestep, int stepCount) const;
+	void X_PxRunSim(
+		float timestep,
+		int stepCount
+	) const;
 	void X_PxSaveSimResults();
 
 	// Rendering
 	RenderResult X_RenderSceneDepth() const;
-	void X_RenderObjsDepth();
-	void X_RenderObjsLabel();
-	void X_RenderImageBlend();
+	void X_RenderObjsDepth(Texture& result);
+	void X_RenderObjsLabel(Texture& result);
+	void X_RenderObjsRGB(Texture& result);
+	void X_RenderImageBlend(
+		Texture& result,
+		const Texture& occlusion,
+		const Texture& original,
+		const Texture& rendered
+	);
+	void X_ProcessRenderfile(Texture& result);
 
 	// Other
-	void X_GetImagesToProcess(ReferencePath dir, float varThreshold);
+	void X_GetImagesToProcess(
+		ReferencePath dir,
+		float varThreshold
+	);
 	void X_CleanupScene();
 
 public:
@@ -99,9 +114,11 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	SceneManager(const Settings* settings,
-		const std::vector<Light>& vecLights,
+	SceneManager(
+		Settings* settings,
 		const std::vector<PxMeshConvex*>& vecPhysxObjs,
-		const std::vector<RenderMesh*>& vecArnoldObjs);
+		const std::vector<RenderMesh*>& vecArnoldObjs
+	);
+
 	~SceneManager();
 };

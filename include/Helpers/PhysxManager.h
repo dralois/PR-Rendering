@@ -26,14 +26,43 @@ private:
 	physx::PxCooking* pPxCooking;
 	physx::PxMaterial* pPxMaterial;
 	physx::PxFoundation* pPxFoundation;
-	static physx::PxDefaultAllocator pxAllocator;
-	static physx::PxDefaultErrorCallback pxErrorCallback;
+	physx::PxDefaultAllocator pxAllocator;
+	physx::PxDefaultErrorCallback pxErrorCallback;
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
-	PxManager()
+	PxManager():
+		pPxPhysics(NULL),
+		pPxCooking(NULL),
+		pPxMaterial(NULL),
+		pPxFoundation(NULL),
+		pxAllocator(),
+		pxErrorCallback()
+	{
+	}
+
+public:
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+
+	// Singleton instance
+	inline static PxManager& GetInstance()
+	{
+		static PxManager* instance = new PxManager();
+		return *instance;
+	}
+
+	inline const physx::PxCooking* GetCooker() { return pPxCooking; }
+	inline const physx::PxMaterial& GetMaterial() { return *pPxMaterial; }
+
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	inline void InitPhysx()
 	{
 		using namespace physx;
 
@@ -73,25 +102,6 @@ private:
 		// Create default material
 		pPxMaterial = pPxPhysics->createMaterial(0.6f, 0.6f, 0.0f);
 	}
-
-public:
-	//---------------------------------------
-	// Properties
-	//---------------------------------------
-
-	// Singleton instance
-	inline static PxManager& GetInstance()
-	{
-		static PxManager* instance = new PxManager();
-		return *instance;
-	}
-
-	inline const physx::PxCooking* GetCooker() { return pPxCooking; }
-	inline const physx::PxMaterial& GetMaterial() { return *pPxMaterial; }
-
-	//---------------------------------------
-	// Methods
-	//---------------------------------------
 
 	inline void DeletePhysx()
 	{

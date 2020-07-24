@@ -29,6 +29,7 @@ namespace Blender
 			//---------------------------------------
 			// Methods
 			//---------------------------------------
+			EXPORT_THIS void ProcessRenderfile(const std::string& renderfile);
 
 			//---------------------------------------
 			// Constructors
