@@ -82,7 +82,7 @@ protected:
 
 	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
 
-	RenderfileObject():
+	RenderfileObject() :
 		Transformable(
 			Eigen::Matrix4f(),
 			Eigen::Vector3f(),
@@ -103,7 +103,12 @@ public:
 
 	inline const Eigen::Matrix4f GetTransform() const { return meshTrans; }
 	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
-	virtual void SetTransform(Eigen::Matrix4f trans) override { meshTrans = trans; }
+	virtual void SetTransform(Eigen::Matrix4f trans) override
+	{
+		meshTrans = trans;
+		// Update actual values
+		X_GetPosRotScale(meshPos, meshRot, meshScale);
+	}
 
 	inline const Eigen::Vector3f RenderfileObject::GetPosition() const
 	{

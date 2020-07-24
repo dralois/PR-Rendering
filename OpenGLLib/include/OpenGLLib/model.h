@@ -4,6 +4,8 @@
 #include <vector>
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+
 #include <GL/glew.h>
 
 #include <glm/glm.hpp>
@@ -24,8 +26,8 @@ namespace Renderer
 		//---------------------------------------
 		// Fields
 		//---------------------------------------
-		boost::filesystem::path model;
-		boost::filesystem::path texture;
+		boost::filesystem::path modelPath;
+		boost::filesystem::path texturePath;
 		std::vector<Mesh> meshes;
 		std::vector<Texture> loadedTextures;
 
@@ -35,7 +37,7 @@ namespace Renderer
 		void X_LoadModel();
 		void X_ProcessNode(aiNode* node, const aiScene* scene);
 		Mesh X_ProcessMesh(aiMesh* mesh, const aiScene* scene);
-		std::vector<Texture> X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
+		std::vector<Texture> X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName);
 		GLint X_TextureFromFile(const boost::filesystem::path& file);
 
 	public:

@@ -61,11 +61,11 @@ namespace Renderer
 		{
 			// Setup buffers
 			cv::Mat image(height, width, CV_8UC3);
-			GLuint* data = new GLuint[height * width * 3];
+			GLubyte* data = new GLubyte[height * width * 3];
 
 			// Read result
 			glReadBuffer(GL_FRONT);
-			glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_INT, &data[0]);
+			glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
 
 			// For each pixel
 			const int channels = 3;
@@ -76,7 +76,7 @@ namespace Renderer
 					// Save as OpenCV pixel
 					for (int c = 0; c < channels; c++)
 						image.at<cv::Vec3b>(height - i - 1, j)[2 - c] =
-						(int)data[int(channels * i * width + channels * j + c)];
+						(uchar)data[(channels * i * width) + (channels * j) + c];
 				}
 			}
 
@@ -131,7 +131,7 @@ namespace Renderer
 
 			// Setup shader & load model
 			Shader shader(boost::filesystem::path(shaderPath).append("textured3D.vs"),
-				boost::filesystem::path(shaderPath.append("textured3D.frag")));
+				boost::filesystem::path(shaderPath).append("textured3D.frag"));
 			Model model(boost::filesystem::path(scenePath).append("mesh.refined.obj"),
 				boost::filesystem::path(scenePath).append("mesh.refined_0.png"));
 			// Calculate intrinsics

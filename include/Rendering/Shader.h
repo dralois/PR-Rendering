@@ -40,12 +40,11 @@ public:
 		AddString(writer, name);
 
 		// Texture array
+		writer.Key("textures");
 		writer.StartArray();
 		for (auto currTex : textures)
 		{
-			writer.StartObject();
 			currTex.AddToJSON(writer);
-			writer.EndObject();
 		}
 		writer.EndArray();
 

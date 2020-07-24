@@ -113,6 +113,8 @@ public:
 			AddString(writer, curr.string());
 		}
 		writer.EndArray();
+
+		writer.EndObject();
 	}
 
 	//---------------------------------------

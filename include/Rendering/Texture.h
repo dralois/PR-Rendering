@@ -54,6 +54,8 @@ public:
 
 	virtual void AddToJSON(JSONWriterRef writer) override
 	{
+		writer.StartObject();
+
 		writer.Key("filePath");
 		AddString(writer, filePath.string());
 
@@ -62,6 +64,8 @@ public:
 
 		writer.Key("colorDepth");
 		AddString(writer, depthImage ? "linear" : "sRGB");
+
+		writer.EndObject();
 	}
 
 	void LoadTexture()

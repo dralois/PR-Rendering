@@ -38,6 +38,9 @@ int main(int argc, char** argv)
 	if (!boost::filesystem::exists(finalDir))
 	{
 		boost::filesystem::create_directories(finalDir);
+	}
+	if(boost::filesystem::is_empty(finalDir))
+	{
 		boost::filesystem::create_directories(finalDir / "rgb");
 		boost::filesystem::create_directories(finalDir / "depth");
 		boost::filesystem::create_directories(finalDir / "segs");

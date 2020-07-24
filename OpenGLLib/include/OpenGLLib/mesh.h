@@ -4,6 +4,8 @@
 #include <string>
 
 #pragma warning(push, 0)
+#include <boost/filesystem.hpp>
+
 #include <GL/glew.h>
 
 #include <glm/glm.hpp>
@@ -31,7 +33,7 @@ namespace Renderer
 	{
 		GLuint id;
 		std::string type;
-		std::string path;
+		boost::filesystem::path file;
 	};
 
 	//---------------------------------------

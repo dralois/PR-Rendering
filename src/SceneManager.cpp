@@ -211,18 +211,16 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 	// Create writer
 	rapidjson::StringBuffer renderstring;
 	JSONWriter writer(renderstring);
+	writer.StartObject();
 
 	// Add settings
 	writer.Key("settings");
-	writer.StartObject();
 	pRenderSettings->AddToJSON(writer);
-	writer.EndObject();
 
 	// Add camera
 	writer.Key("camera");
-	writer.StartObject();
 	renderCam.SetResultFile(result.GetPath());
-	writer.EndObject();
+	renderCam.AddToJSON(writer);
 
 	// Add meshes
 	writer.Key("meshes");
@@ -243,6 +241,7 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 	writer.EndArray();
 
 	// Send off to blender
+	writer.EndObject();
 	std::string renderfile(renderstring.GetString());
 	pBlender->ProcessRenderfile(renderfile);
 
@@ -382,11 +381,11 @@ int SceneManager::Run(int imageCount)
 	if (vecCameraImages.empty())
 		return 0;
 
-	// Render scene depth with OpenGL
-	RenderResult sceneRenders = X_RenderSceneDepth();
-
 	// Fetch camera intrinsics
 	renderCam.LoadIntrinsics(pRenderSettings);
+
+	// Render scene depth with OpenGL
+	RenderResult sceneRenders = X_RenderSceneDepth();
 
 	// For each scene iteration
 	for (int iter = 0; iter < pRenderSettings->GetIterationCount(); iter++)

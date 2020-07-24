@@ -69,7 +69,7 @@ namespace Renderer
 	{
 		// Read file
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(model.string(), aiProcess_Triangulate | aiProcess_FlipUVs);
+		const aiScene* scene = importer.ReadFile(modelPath.string(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
 		// Error handling
 		if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -79,7 +79,7 @@ namespace Renderer
 		}
 		else if (!scene->HasMeshes())
 		{
-			std::cout << "Mesh load error:" << model.filename() << " has no mesh" << std::endl;
+			std::cout << "Mesh load error:" << modelPath.filename() << " has no mesh" << std::endl;
 			return;
 		}
 
@@ -171,9 +171,9 @@ namespace Renderer
 		{
 			Texture tex;
 			// Create and bind external texture
-			tex.id = X_TextureFromFile(texture);
+			tex.id = X_TextureFromFile(texturePath);
 			tex.type = "texture_external";
-			tex.path = texture.string();
+			tex.file = texturePath;
 			textures.push_back(tex);
 		}
 
@@ -184,7 +184,11 @@ namespace Renderer
 	//---------------------------------------
 	// Load all textures from a given material
 	//---------------------------------------
-	std::vector<Texture> Model::X_LoadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+	std::vector<Texture> Model::X_LoadMaterialTextures(
+		aiMaterial* mat,
+		aiTextureType type,
+		const std::string& typeName
+	)
 	{
 		std::vector<Texture> textures;
 
@@ -192,15 +196,15 @@ namespace Renderer
 		for (GLuint i = 0; i < mat->GetTextureCount(type); i++)
 		{
 			// Save info
-			aiString str;
-			mat->GetTexture(type, i, &str);
+			aiString fileName;
+			mat->GetTexture(type, i, &fileName);
 
 			// Check if texture has been loaded already
 			GLboolean skip = false;
 			for (GLuint j = 0; j < loadedTextures.size(); j++)
 			{
 				// If so, skip
-				if (loadedTextures[j].path == str.C_Str())
+				if (loadedTextures[j].file.filename() == fileName.C_Str())
 				{
 					textures.push_back(loadedTextures[j]);
 					skip = true;
@@ -212,10 +216,13 @@ namespace Renderer
 			if (!skip)
 			{
 				Texture texture;
+				// Build path
+				boost::filesystem::path texFile(texturePath.parent_path());
+				texFile.append(fileName.C_Str());
 				// Create and bind it
-				texture.id = X_TextureFromFile(str.C_Str());
+				texture.id = X_TextureFromFile(texFile);
 				texture.type = typeName;
-				texture.path = str.C_Str();
+				texture.file = texFile;
 				textures.push_back(texture);
 				// Save in vector
 				loadedTextures.push_back(texture);
@@ -231,8 +238,8 @@ namespace Renderer
 	//---------------------------------------
 	Model::Model(const boost::filesystem::path& modelPath,
 		const boost::filesystem::path& texturePath) :
-		model(model),
-		texture(texture)
+		modelPath(modelPath),
+		texturePath(texturePath)
 	{
 		X_LoadModel();
 	}
