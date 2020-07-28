@@ -20,22 +20,24 @@ namespace Blender
 		// Fields
 		//---------------------------------------
 
-		object entryMainModule;
-		object entryNamespace;
+		object blenderModule;
+		object blenderNamespace;
 
 	public:
 		//---------------------------------------
 		// Methods
 		//---------------------------------------
 
-		void ProcessRenderfile(const std::string& renderfile)
+		void ProcessRenderfile(
+			const std::string& renderfile
+		)
 		{
 			try
 			{
-				object utilsModule = import("BlenderModule.Utils");
-				object testModule = import("BlenderModule.Test.ModuleTest");
-				utilsModule.attr("SetupMultiprocessing")("C://Program Files//Python37//python.exe");
-				testModule.attr("TestSubprocess")();
+				object utils = import("BlenderModule.Utils");
+				utils.attr("SetupMultiprocessing")();
+				object renderManager = import("BlenderModule.Managers.RenderManager");
+				renderManager.attr("RenderScenes")(renderfile);
 			}
 			catch (const error_already_set&)
 			{
@@ -54,10 +56,10 @@ namespace Blender
 				//Py_set
 				Py_Initialize();
 				// Store main and globals
-				entryMainModule = import("BlenderModule");
-				entryNamespace = entryMainModule.attr("__dict__");
+				blenderModule = import("BlenderModule");
+				blenderNamespace = blenderModule.attr("__dict__");
 			}
-			catch(const error_already_set&)
+			catch (const error_already_set&)
 			{
 				PyErr_Print();
 			}
@@ -67,7 +69,9 @@ namespace Blender
 	//---------------------------------------
 	// Forward renderfile processing
 	//---------------------------------------
-	void BlenderRenderer::ProcessRenderfile(const std::string& renderfile)
+	void BlenderRenderer::ProcessRenderfile(
+		const std::string& renderfile
+	)
 	{
 		rendererImpl->ProcessRenderfile(renderfile);
 	}

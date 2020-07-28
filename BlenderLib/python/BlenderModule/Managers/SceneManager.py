@@ -1,5 +1,5 @@
 from ..Utils.Importer import ImportBpy
-from ..Utils.ShaderCompiler import CompileFolder
+from ..Utils.ShaderCompiler import CompileFolder, EnsureInstalled
 from ..Utils.Logger import GetLogger, GetLevel, SetLevel
 from ..Utils import FileDir, FileName, FullFileName, FullPath
 from ..Converters import Camera, Lights, Material, Mesh, Shader
@@ -39,15 +39,28 @@ class Scene(object):
         self.__isActive = True
         ctx = bpy.context.scene
         ctx.camera = self.__camera.ObjectInstance
+        ctx.view_settings.view_transform = ("Raw", "Standard")[self.__camera.CameraDepthOnly]
         # Adjust render settings
         outputDir = FullPath(self.__settings.get("outputDir", "output"))
-        ctx.render.filepath = self.__camera.CameraResultFile
+        ctx.render.filepath = FullPath(self.__camera.CameraResultFile)
         ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDepthOnly]
-        ctx.render.image_settings.color_depth = ("8", "32")[self.__camera.CameraDepthOnly]
-        ctx.render.image_settings.color_mode = ("RGBA", "BW")[self.__camera.CameraDepthOnly]
+        ctx.render.image_settings.color_mode = ("RGBA", "RGB")[self.__camera.CameraDepthOnly]
+        ctx.render.image_settings.color_depth = ("8", "8")[self.__camera.CameraDepthOnly]
         ctx.render.image_settings.file_format = "PNG"
         ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
+        ctx.render.use_compositing = False
+        ctx.render.use_sequencer = False
+        # Adjust raytracing settings
+        ctx.appleseed.use_embree = True
+        ctx.appleseed.force_aa = (self.__camera.CameraAASamples == 1, True)[self.__camera.CameraDepthOnly]
+        ctx.appleseed.samples = (self.__camera.CameraAASamples, 1)[self.__camera.CameraDepthOnly]
+        ctx.appleseed.max_bounces_unlimited = self.__camera.CameraRayBounces < 0
+        ctx.appleseed.max_bounces = self.__camera.CameraRayBounces
+        ctx.appleseed.max_specular_bounces_unlimited = self.__camera.CameraRayBounces < 0
+        ctx.appleseed.max_specular_bounces = self.__camera.CameraRayBounces
+        ctx.appleseed.max_diffuse_bounces_unlimited = self.__camera.CameraRayBounces < 0
+        ctx.appleseed.max_diffuse_bounces = self.__camera.CameraRayBounces
         # Possibly store to blend file
         if self.__settings.get("storeBlend", False):
             saveFile = f"{FileDir(self.__camera.CameraResultFile)}\\{FileName(self.__camera.CameraResultFile)}.blend"
@@ -59,9 +72,12 @@ class Scene(object):
     # Initialize scene for rendering
     def __Setup(self):
         logger.info("Setting up scene")
+        # Make sure blenderseed is available
+        modulePath = f'{bpy.utils.user_resource("SCRIPTS", "addons")}\\blenderseed'
+        pluginPath = FullPath(self.__settings.get("pluginPath", "..\\blenderseed.zip"))
+        isInstalled = EnsureInstalled(modulePath, pluginPath)
         # Compile all shaders
         searchPaths = ""
-        modulePath = f'{bpy.utils.user_resource("SCRIPTS", "addons")}\\blenderseed'
         compilePaths = self.__settings.get("shaderDirs", [])
         compilePaths.append(FullPath(f"{FileDir(__file__)}\\..\\Shaders\\"))
         # Compile & add each shader directory
@@ -73,11 +89,10 @@ class Scene(object):
         # Init texture system
         Shader.SetTextureSystem(TextureManager.TextureFactory(modulePath))
         # Init blenderseed plugin
-        try:
+        if isInstalled:
             bpy.ops.preferences.addon_refresh()
             bpy.ops.preferences.addon_enable(module = "blenderseed")
-        except:
-            pluginPath = FullPath(self.__settings.get("pluginDir", "blenderseed.zip"))
+        else:
             bpy.ops.preferences.addon_install(filepath = pluginPath)
             bpy.ops.preferences.addon_enable(module = "blenderseed")
         # Remove default stuff from scene

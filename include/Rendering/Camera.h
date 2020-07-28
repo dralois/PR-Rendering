@@ -11,6 +11,7 @@
 #pragma warning(pop)
 
 #define PI (3.1415926535897931f)
+#define PIOVER2 (1.5707963267948966f)
 
 //---------------------------------------
 // Camera object wrapper for rendering
@@ -28,6 +29,8 @@ private:
 	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
 	bool depthOnly;
+	int rayBounces;
+	int aaSamples;
 	OSLShader* cameraEffect;
 
 	//---------------------------------------
@@ -51,6 +54,12 @@ private:
 		writer.Key("depthOnly");
 		writer.Bool(depthOnly);
 
+		writer.Key("rayBounces");
+		writer.Int(rayBounces);
+
+		writer.Key("aaSamples");
+		writer.Int(aaSamples);
+
 		// Camera does not always have an effect set
 		if (cameraEffect)
 		{
@@ -70,10 +79,14 @@ public:
 	inline Eigen::Vector2f GetFOV() const { return fieldOfView; }
 	inline void SetShift(Eigen::Vector2f shift) { lensShift = shift; }
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return shift; }
-	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(near, far); }
+	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(abs(near), abs(far)); }
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
 	inline void SetResultFile(ReferencePath result) { resultFile = result; }
 	inline const ReferencePath GetResultFile() const { return resultFile; }
+	inline const int GetRayBounces() const { return rayBounces; }
+	inline void SetRayBounces(int bounces) { rayBounces = bounces; }
+	inline const int GetAASamples() const { return aaSamples; }
+	inline void SetAASamples(int samples) { aaSamples = samples; }
 	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
 	inline bool GetDepthOnly() const { return depthOnly; }
 
@@ -149,6 +162,8 @@ public:
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
 		resultFile(),
 		depthOnly(false),
+		rayBounces(-1),
+		aaSamples(16),
 		cameraEffect(NULL)
 	{
 	}

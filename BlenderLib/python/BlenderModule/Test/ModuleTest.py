@@ -7,38 +7,38 @@ testScene = {
     {
         "logLevel" : "info",
         "resolution" : [1280, 720],
-        "pluginDir" : "blenderseed.zip",
+        "pluginDir" : "..\\blenderseed.zip",
         "shaderDirs" : ["Test"]
     },
     "camera" :
     {
         "position" : [6.0, -3.0, 5.0],
         "rotation" : [0.9, 0.0, 1.1],
-        "resultFile" : "Test\\test_render.png",
+        "resultFile" : ".\\Test\\test_render.png",
     },
     "meshes" : [
         {
             "position" : [-0.5, -0.5, 0.0],
             "scale" : [0.5, 0.5, 0.5],
-            "file" : "Test\\module_test.obj",
+            "file" : ".\\Test\\module_test.obj",
             "shader" :
             {
                 "name" : "simple_texture",
                 "textures" : [
                     {
-                        "filePath" : "Test\\module_test.png"
+                        "filePath" : ".\\Test\\module_test.png"
                     }
                 ],
                 "params" :
                 {
-                    "filename" : "Test\\module_test.png"
+                    "filename" : ".\\Test\\module_test.png"
                 }
             }
         },
         {
             "position" : [1.0, 1.0, 0.0],
             "scale" : [0.5, 0.5, 0.5],
-            "file" : "Test\\module_test.obj",
+            "file" : ".\\Test\\module_test.obj",
             "shader" :
             {
                 "name" : "module_test",

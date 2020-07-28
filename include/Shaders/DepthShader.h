@@ -15,7 +15,8 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	bool isBody;
+	float camNear;
+	float camFar;
 
 	//---------------------------------------
 	// Methods
@@ -23,8 +24,10 @@ protected:
 
 	void DepthShader::X_AddToJSON(JSONWriterRef writer) override
 	{
-		writer.Key("isBody");
-		writer.Bool(isBody);
+		writer.Key("clipNear");
+		AddFloat(writer, camNear);
+		writer.Key("clipFar");
+		AddFloat(writer, camFar);
 	}
 
 public:
@@ -33,10 +36,12 @@ public:
 	//---------------------------------------
 
 	DepthShader(
-		bool isBody
+		float camNear,
+		float camFar
 	) :
 		OSLShader("depth_obj", (std::vector<Texture>)0),
-		isBody(isBody)
+		camNear(camNear),
+		camFar(camFar)
 	{
 	}
 };

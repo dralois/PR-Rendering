@@ -116,3 +116,31 @@ static cv::Rect ComputeBoundingBox(
 	minRect.y += minRect.height / 2;
 	return minRect;
 }
+
+//---------------------------------------
+// Converts packed depth to float
+//---------------------------------------
+static cv::Mat UnpackRGBDepth(
+	const cv::Mat& packed
+)
+{
+	cv::Mat unpacked;
+	unpacked.create(packed.rows, packed.cols, CV_32FC1);
+	const float depthScale = (256.0f * 256.0f * 256.0f) / (256.0f * 256.0f * 256.0f - 1.0f);
+	// Unpack & convert each pixel to linear float depth
+	for (int i = 0; i < packed.rows; i++)
+	{
+		for (int j = 0; j < packed.cols; j++)
+		{
+			cv::Vec3f depthPacked = cv::Vec3f(
+				(float)packed.at<cv::Vec3b>(i, j)[0],
+				(float)packed.at<cv::Vec3b>(i, j)[1],
+				(float)packed.at<cv::Vec3b>(i, j)[2]
+			);
+			unpacked.at<float>(i, j) = depthScale *
+				depthPacked.dot(cv::Vec3f(1.0f, 1.0f / 256.0f, 1.0f / (256.0f * 256.0f)));
+		}
+	}
+	// Return unpacked depth map
+	return unpacked;
+}

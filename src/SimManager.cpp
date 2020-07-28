@@ -58,12 +58,12 @@ void SimManager::X_LoadMeshes()
 				boost::filesystem::ifstream meshFile(meshPath);
 				if (!meshFile.good())
 				{
-					std::cout << "Did not find obj " << meshPath << "... Skipping." << std::endl;
+					std::cout << "Mesh missing: " << meshPath << "... Skipping." << std::endl;
 					continue;
 				}
 				else
 				{
-					std::cout << "Loading obj " << meshPath.filename() << std::endl;
+					std::cout << '\r' << "Loading mesh: " << meshPath << std::flush;
 				}
 
 				// Create and save physx mesh
@@ -76,6 +76,7 @@ void SimManager::X_LoadMeshes()
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
 				vecpRenderMesh.push_back(renderCurr);
 			}
+			std::cout << std::endl;
 		}
 	}
 }

@@ -90,7 +90,7 @@ namespace Renderer
 		cv::Mat Render_impl::X_GetDepth()
 		{
 			// Setup buffers
-			cv::Mat image(height, width, CV_16UC1);
+			cv::Mat image(height, width, CV_32FC1);
 			GLfloat* data = new GLfloat[height * width];
 
 			// Read results
@@ -103,13 +103,13 @@ namespace Renderer
 				for (int j = 0; j < width; j++)
 				{
 					// Read pixel
-					const float depthBufferValue = data[static_cast<int>(i * width + j)];
-					// Convert from [0,1] to z distance
-					const float zn = (2 * depthBufferValue - 1);
-					const float ze = (2 * farClip * nearClip) /
-						(farClip + nearClip + zn * (nearClip - farClip));
+					float depthBufferValue = data[static_cast<int>(i * width + j)];
+					// Convert from NDC [-1, 1] to linear depth [0, 1]
+					depthBufferValue = (2.0f * depthBufferValue - 1.0f);
+					float linearDepth = (2.0f * farClip * nearClip) /
+						(farClip + nearClip - depthBufferValue * (farClip - nearClip));
 					// Save as OpenCV pixel
-					image.at<unsigned short>(height - i - 1, j) = 1000 * ze;
+					image.at<float>(height - i - 1, j) = linearDepth;
 				}
 			}
 

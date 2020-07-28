@@ -30,21 +30,17 @@ public:
 
 	inline ReferencePath GetPath() const { return filePath; }
 	inline void SetPath(
-		ReferencePath path,
-		bool isDepth = false
+		ReferencePath path
 	)
 	{
-		depthImage = isDepth;
 		filePath = path;
 	}
 
 	inline const cv::Mat& GetTexture() const { return loadedImage; }
 	inline void SetTexture(
-		const cv::Mat& img,
-		bool isDepth = false
+		const cv::Mat& img
 	)
 	{
-		depthImage = isDepth;
 		loadedImage = img;
 	}
 

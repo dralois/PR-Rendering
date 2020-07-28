@@ -1,14 +1,25 @@
-surface effect_closure
+shader effect_closure
 [[
     string as_node_name = "asEffectClosure",
-    string as_category = "surface"
+    string as_category = "shader"
 ]]
 (
     color in_color = 0
     [[
         string label = "Final Pixel Color"
+    ]],
+    output closure color out_color = 0
+    [[
+        string label = "Lit Output"
     ]]
 )
 {
-    Ci = in_color * emission();
+    if(raytype("npr"))
+    {
+        out_color = in_color * as_npr_shading();
+    }
+    else
+    {
+        return;
+    }
 }

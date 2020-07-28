@@ -1,14 +1,18 @@
-surface shader_closure
+shader diffuse_closure
 [[
     string as_node_name = "asDiffuseClosure",
-    string as_category = "surface"
+    string as_category = "shader"
 ]]
 (
-    color in_color = 0
+    color in_color = color(0)
     [[
-        string label = "Final Pixel Color"
+        string label = "Input Color"
+    ]],
+    output closure color out_color = 0
+    [[
+        string label = "Diffuse Shaded Output"
     ]]
 )
 {
-    Ci = in_color * diffuse(Ng);
+    out_color = in_color * diffuse(Ng);
 }

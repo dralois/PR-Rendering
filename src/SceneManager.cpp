@@ -119,6 +119,7 @@ void SceneManager::X_PxRunSim(
 	{
 		pPxScene->simulate(timestep);
 		pPxScene->fetchResults(true);
+		std::cout << '\r' << "Simulating: " << (i + 1) << "/" << stepCount << std::flush;
 	}
 }
 
@@ -128,6 +129,7 @@ void SceneManager::X_PxRunSim(
 void SceneManager::X_PxSaveSimResults()
 {
 	float undoScale = 1.0f / SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_scale");
+	float objScale = undoScale * SafeGet<float>(pRenderSettings->GetJSONConfig(), "obj_scale");
 	// For each physx object
 	for (auto obj : vecpPxMeshCurrObjs)
 	{
@@ -140,14 +142,14 @@ void SceneManager::X_PxSaveSimResults()
 		// Undo scene scaling
 		pose.p *= undoScale;
 
-		// Convert physx position & rotation
-		PxMat44 pxmat(pose);
-		Eigen::Matrix4f mat(pxmat.front());
-
 		// Save & create mesh for rendering
 		RenderMesh* currMesh = new RenderMesh(*this->vecpRenderMeshObjs[obj->GetMeshId()]);
 		((MeshBase*)currMesh)->SetObjId(obj->GetObjId());
-		currMesh->SetTransform(mat);
+
+		Eigen::Affine3f currTrans;
+		currTrans.fromPositionOrientationScale(Eigen::Vector3f(pose.p.x, pose.p.y, pose.p.z),
+			Eigen::Quaternionf(pose.q.w, pose.q.x, pose.q.y, pose.q.z), currMesh->GetScale() * objScale);
+		currMesh->SetTransform(currTrans.matrix());
 		vecpRenderMeshCurrObjs.push_back(currMesh);
 
 #if DEBUG || _DEBUG
@@ -211,6 +213,7 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 	// Create writer
 	rapidjson::StringBuffer renderstring;
 	JSONWriter writer(renderstring);
+	writer.StartArray();
 	writer.StartObject();
 
 	// Add settings
@@ -242,6 +245,7 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 
 	// Send off to blender
 	writer.EndObject();
+	writer.EndArray();
 	std::string renderfile(renderstring.GetString());
 	pBlender->ProcessRenderfile(renderfile);
 
@@ -254,17 +258,29 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderObjsDepth(Texture& result)
 {
+	Texture packed(false);
+	ModifiablePath packedPath(result.GetPath().parent_path());
+	packedPath.append(result.GetPath().stem().string());
+	packedPath.concat("_packed.png");
+	packed.SetPath(packedPath);
+
 	// Set shaders
 	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		DepthShader* currShader = new DepthShader(true);
+		DepthShader* currShader = new DepthShader(renderCam.GetClipping().x(), renderCam.GetClipping().y());
 		currMesh->SetShader((OSLShader*)currShader);
 	}
 
+	// Set raytracing settings
 	renderCam.SetDepthOnly(true);
+	renderCam.SetAASamples(16);
+	renderCam.SetRayBounces(0);
 
 	// Send render command
-	X_ProcessRenderfile(result);
+	X_ProcessRenderfile(packed);
+
+	// Convert to linear depth
+	result.SetTexture(UnpackRGBDepth(packed.GetTexture()));
 }
 
 //---------------------------------------
@@ -279,7 +295,10 @@ void SceneManager::X_RenderObjsLabel(Texture& result)
 		currMesh->SetShader((OSLShader*)currShader);
 	}
 
+	// Set raytracing settings
 	renderCam.SetDepthOnly(false);
+	renderCam.SetAASamples(1);
+	renderCam.SetRayBounces(0);
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -297,7 +316,10 @@ void SceneManager::X_RenderObjsRGB(Texture& result)
 		// TODO
 	}
 
+	// Set raytracing settings
 	renderCam.SetDepthOnly(false);
+	renderCam.SetAASamples(16);
+	renderCam.SetRayBounces(-1);
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -305,6 +327,7 @@ void SceneManager::X_RenderObjsRGB(Texture& result)
 
 //---------------------------------------
 // Final image blend
+// TODO: Proper render setup
 //---------------------------------------
 void SceneManager::X_RenderImageBlend(
 	Texture& result,
@@ -316,7 +339,11 @@ void SceneManager::X_RenderImageBlend(
 	// Setup camera shader
 	BlendShader* finalBlend = new BlendShader(occlusion, original, rendered);
 	renderCam.SetEffect((OSLShader*)finalBlend);
+
+	// Set raytracing settings
 	renderCam.SetDepthOnly(false);
+	renderCam.SetAASamples(1);
+	renderCam.SetRayBounces(0);
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -385,10 +412,12 @@ int SceneManager::Run(int imageCount)
 	renderCam.LoadIntrinsics(pRenderSettings);
 
 	// Render scene depth with OpenGL
-	RenderResult sceneRenders = X_RenderSceneDepth();
+	RenderResult sceneRenders;// = X_RenderSceneDepth();
 
 	// For each scene iteration
-	for (int iter = 0; iter < pRenderSettings->GetIterationCount(); iter++)
+	int maxIters = pRenderSettings->GetIterationCount();
+	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
+	for (int iter = 0; iter < maxIters; iter++)
 	{
 		// Create physx representation of scan scene
 		X_PxCreateScene();
@@ -400,18 +429,23 @@ int SceneManager::Run(int imageCount)
 		X_PxSaveSimResults();
 
 		// For each camera pose
-		for (int currPose = 0; currPose < vecCameraPoses.size(); currPose++)
+		int lastPose = vecCameraPoses.size();
+		for (int currPose = 0; currPose < lastPose; currPose++)
 		{
+			std::cout << "Scene "<< scenePath << ": Iteration " << iter << "/" << maxIters
+				<< ": Pose " << currPose << "/" << lastPose << std::endl;
+
 			// Load camera pose
 			renderCam.LoadExtrinsics(vecCameraPoses.at(currPose));
-
-			// Load scene depth
-			Texture sceneDepth = std::get<1>(sceneRenders[currPose]);
 
 			// Render object depths
 			Texture bodiesDepth(true);
 			bodiesDepth.SetPath(pRenderSettings->GetImagePath("body_depth", currPose));
 			X_RenderObjsDepth(bodiesDepth);
+			bodiesDepth.StoreTexture();
+
+			// Load scene depth
+			Texture sceneDepth = std::get<1>(sceneRenders[currPose]);
 
 			// Create occlusion mask
 			bool objectsOccluded;
@@ -462,7 +496,7 @@ int SceneManager::Run(int imageCount)
 			}
 		}
 
-		// Done rendering
+		// Done with iteration
 		X_CleanupScene();
 	}
 

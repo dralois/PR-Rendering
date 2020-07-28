@@ -23,7 +23,7 @@ private:
 	std::string logLevel;
 	Eigen::Vector2i renderResolution;
 	ModifiablePath outputDir;
-	ModifiablePath pluginDir;
+	ModifiablePath pluginPath;
 	std::vector<ModifiablePath> shaderDirs;
 	Intrinsics customIntrinsics;
 
@@ -46,8 +46,9 @@ public:
 	// Blender rendering
 	inline bool GetStoreBlend() const { return storeBlend; }
 	inline Eigen::Vector2i GetRenderResolution() const { return renderResolution; }
+	inline void SetRenderResolution(Eigen::Vector2i res) { renderResolution = res; }
 	inline ReferencePath GetLogLevel() const { return logLevel; }
-	inline ReferencePath GetPluginDir() const { return pluginDir; }
+	inline ReferencePath GetPluginDir() const { return pluginPath; }
 	inline const std::vector<ModifiablePath>& GetShaderDirs() const { return shaderDirs; }
 	inline const Intrinsics& GetIntrinsics() const { return customIntrinsics; }
 
@@ -103,8 +104,8 @@ public:
 		writer.Key("resolution");
 		AddEigenVector<Eigen::Vector2i>(writer, renderResolution);
 
-		writer.Key("pluginDir");
-		AddString(writer, pluginDir.string());
+		writer.Key("pluginPath");
+		AddString(writer, pluginPath.string());
 
 		writer.Key("shaderDirs");
 		writer.StartArray();
@@ -144,7 +145,7 @@ public:
 		// Init render settings
 		logLevel = SafeGet<const char*>(jsonConfig, "log_level");
 		storeBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		pluginDir = ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl"));
+		pluginPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl"));
 		shaderDirs.push_back(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_bl")));
 		renderResolution = Eigen::Vector2i(SafeGet<int>(jsonConfig, "render_width"), SafeGet<int>(jsonConfig, "render_height"));
 		// Init custom intrinsics

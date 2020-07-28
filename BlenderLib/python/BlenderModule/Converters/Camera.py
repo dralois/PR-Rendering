@@ -78,7 +78,7 @@ class CameraData(DataWrapper):
         assert data is not None
         self.CameraFOV = data.get("fov", (0.6911,0.4711))
         self.CameraShift = data.get("shift", (0.0,0.0))
-        self.CameraNearZ = data.get("nearZ", 0.001)
+        self.CameraNearZ = -1.0 * data.get("nearZ", 0.001)
 
 # Camera object in scene
 class CameraInstance(ObjectWrapper):
@@ -89,9 +89,12 @@ class CameraInstance(ObjectWrapper):
         # Store descriptor
         self.__camData : CameraData
         self.__camData = blueprint
+        self.__ppcActive = False
+        # Render settings
         self.__result = ""
         self.__depthOnly = False
-        self.__ppcActive = False
+        self.__aaSamples = 16
+        self.__rayBounces = -1
         # Create postprocessing effect quad
         self.__ppcMesh = bpy.data.meshes.new("mesh_camera_ppc")
         self.__CreatePPCQuad()
@@ -132,6 +135,26 @@ class CameraInstance(ObjectWrapper):
     def CameraDepthOnly(self, value):
         self.__depthOnly = value
 
+    # Get anti aliasing sample count
+    @property
+    def CameraAASamples(self):
+        return self.__aaSamples
+
+    # Set anti aliasing sample count
+    @CameraAASamples.setter
+    def CameraAASamples(self, value):
+        self.__aaSamples = value
+
+    # Get max total bounces
+    @property
+    def CameraRayBounces(self):
+        return self.__rayBounces
+
+    # Set max total bounces
+    @CameraRayBounces.setter
+    def CameraRayBounces(self, value):
+        self.__rayBounces = value
+
     # Update camera postprocessing effect
     def ChangeFullscreenEffect(self, effect):
         # If effect is None deactivate current effect
@@ -155,6 +178,8 @@ class CameraInstance(ObjectWrapper):
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("resultFile", "")
         self.CameraDepthOnly = data.get("depthOnly", False)
+        self.CameraAASamples = data.get("aaSamples", 16)
+        self.CameraRayBounces = data.get("rayBounces", -1)
         self.ChangeFullscreenEffect(data.get("shader", None))
 
     # Override: Called when transform changes

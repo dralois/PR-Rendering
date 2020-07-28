@@ -58,3 +58,15 @@ def StoreBytecode(bytecode, codeFile):
     shaderFile = open(codeFile, "w")
     shaderFile.write(bytecode)
     shaderFile.close()
+
+# Ensures blenderseed is extracted & available
+def EnsureInstalled(modulePath, pluginPath):
+    if not os.path.exists(f"{modulePath}\\appleseed\\lib"):
+        from zipfile import ZipFile
+        with ZipFile(pluginPath, "r") as plugin:
+            plugin.extractall(os.path.split(modulePath)[0])
+        # Was not installed
+        return False
+    else:
+        # Is installed
+        return True

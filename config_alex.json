@@ -1,6 +1,6 @@
 {
-    "log_level": "error",
-    "store_blend": false,
+    "log_level": "info",
+    "store_blend": true,
 
     "shaders_gl": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/OpenGLLib/shaders",
     "shaders_bl": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/BlenderLib/python/BlenderModule/shaders",
@@ -11,8 +11,8 @@
     "temp_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Output/temp",
 
     "simulation_objects": 50,
-    "scene_iterations": 10,
-    "max_images": 2000,
+    "scene_iterations": 3,
+    "max_images": 100,
 
     "fx": 539.8100,
     "fy": 539.8300,

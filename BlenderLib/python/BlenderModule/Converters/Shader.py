@@ -38,7 +38,9 @@ class Shader(object):
                                             tex.get("colorDepth"))
             # Build shader and add closure to final node
             finalNode = shader.BuildShader(tree, data.get("params", {}))
-            cls.__AddShaderClosure(finalNode, tree)
+            if not shader.OutputsClosure:
+                finalNode = cls.__AddShaderClosure(finalNode, tree)
+            cls.__AddFinalClosure(finalNode, tree)
 
     # Builds fullscreen post processing effect from json params & adds nodes to tree
     @classmethod
@@ -55,22 +57,38 @@ class Shader(object):
                                             tex.get("colorDepth", ""))
             # Build shader and add closure to final node
             finalNode = shader.BuildShader(tree, data.get("params", {}))
-            cls.__AddEffectClosure(finalNode, tree)
+            if not shader.OutputsClosure:
+                finalNode = cls.__AddEffectClosure(finalNode, tree)
+            cls.__AddFinalClosure(finalNode, tree)
 
     # Add shader closure node and connect to closure output node
     @classmethod
-    def __AddShaderClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree):
+    def __AddFinalClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree) -> bpy.types.Node:
+        closure = tree.nodes.new("AppleseedasClosure2SurfaceNode")
+        tree.links.new(closure.inputs[0], finalNode.outputs[0])
+        return closure
+
+    # Add shader closure node and connect to closure output node
+    @classmethod
+    def __AddShaderClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree) -> bpy.types.Node:
         closure = tree.nodes.new("AppleseedasDiffuseClosureNode")
         tree.links.new(closure.inputs[0], finalNode.outputs[0])
+        return closure
 
     # Add effect closure node and connect to closure output node
     @classmethod
-    def __AddEffectClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree):
+    def __AddEffectClosure(cls, finalNode : bpy.types.Node, tree : bpy.types.NodeTree) -> bpy.types.Node:
         closure = tree.nodes.new("AppleseedasEffectClosureNode")
         tree.links.new(closure.inputs[0], finalNode.outputs[0])
+        return closure
 
 # Generic shader generator
 class ShaderBase(object):
+
+    # Override: Shader outputs closure instead of color
+    @classmethod
+    def OutputsClosure(self):
+        return False
 
     # Forwarded: Build internal node network and return closure output node
     @classmethod
@@ -79,6 +97,10 @@ class ShaderBase(object):
 
 # Generator for default shader
 class DefaultShader(ShaderBase):
+
+    @classmethod
+    def OutputsClosure(self):
+        return True
 
     @classmethod
     def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
@@ -109,13 +131,40 @@ class SimpleTexture(ShaderBase):
         textureNode.in_filename = GetTextureSystem().GetTexture(data.get("filename", ""))
         return textureNode
 
+# Generator for object depth shader
+class DepthObject(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        depthNode = tree.nodes.new("AppleseedasDepthObjNode")
+        depthNode.in_cameraClipNear = data.get("clipNear", 0.1)
+        depthNode.in_cameraClipFar = data.get("clipFar", 10.0)
+        return depthNode
+
+# Generator for object label shader
+class LabelObject(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        return tree.nodes.new("AppleseedasLabelObjNode")
+
+# Generator for final blending effect
+class BlendFinal(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        return tree.nodes.new("AppleseedasBlendFinalNode")
+
+
 # Get appropriate shader generator
 def GetShader(shaderID) -> ShaderBase:
     # Build mapping
     mapping = { "default" : DefaultShader,
                 "module_test" : TestShader,
                 "uv_to_color" : UV2Color,
-                "simple_texture" : SimpleTexture
+                "depth_obj" : DepthObject,
+                "label_obj" : LabelObject,
+                "blend_final" : BlendFinal
     }
     # Return appropriate class
     return mapping.get(shaderID, DefaultShader)
