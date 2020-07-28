@@ -16,7 +16,6 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
 	// Create settings
 	pRenderSettings = new Settings(jsonConfig);
-	// CHECK: Cleanup?
 	delete[] buffer;
 }
 

@@ -145,11 +145,12 @@ void SceneManager::X_PxSaveSimResults()
 		// Save & create mesh for rendering
 		RenderMesh* currMesh = new RenderMesh(*this->vecpRenderMeshObjs[obj->GetMeshId()]);
 		((MeshBase*)currMesh)->SetObjId(obj->GetObjId());
-
+		// Build transform from px pose
 		Eigen::Affine3f currTrans;
 		currTrans.fromPositionOrientationScale(Eigen::Vector3f(pose.p.x, pose.p.y, pose.p.z),
 			Eigen::Quaternionf(pose.q.w, pose.q.x, pose.q.y, pose.q.z), currMesh->GetScale() * objScale);
 		currMesh->SetTransform(currTrans.matrix());
+		// Store it
 		vecpRenderMeshCurrObjs.push_back(currMesh);
 
 #if DEBUG || _DEBUG
@@ -180,7 +181,9 @@ RenderResult SceneManager::X_RenderSceneDepth() const
 		renderCam.GetIntrinsics().GetFocalLenght().x(),
 		renderCam.GetIntrinsics().GetFocalLenght().y(),
 		renderCam.GetIntrinsics().GetPrincipalPoint().x(),
-		renderCam.GetIntrinsics().GetPrincipalPoint().y()
+		renderCam.GetIntrinsics().GetPrincipalPoint().y(),
+		renderCam.GetIntrinsics().GetWidth(),
+		renderCam.GetIntrinsics().GetHeight()
 	);
 
 	// For each image
@@ -412,7 +415,7 @@ int SceneManager::Run(int imageCount)
 	renderCam.LoadIntrinsics(pRenderSettings);
 
 	// Render scene depth with OpenGL
-	RenderResult sceneRenders;// = X_RenderSceneDepth();
+	RenderResult sceneRenders = X_RenderSceneDepth();
 
 	// For each scene iteration
 	int maxIters = pRenderSettings->GetIterationCount();

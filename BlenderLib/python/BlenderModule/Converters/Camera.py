@@ -47,6 +47,14 @@ class CameraData(DataWrapper):
         self.__camera.angle_x = value[0]
         self.__camera.angle_y = value[1]
 
+    @property
+    def CameraAspect(self):
+        return self.__camera.sensor_width / self.__camera.sensor_height
+
+    @CameraAspect.setter
+    def CameraAspect(self, value):
+        self.__camera.sensor_height = self.__camera.sensor_width / value
+
     # Get shift [x, y]
     @property
     def CameraShift(self):
@@ -76,6 +84,7 @@ class CameraData(DataWrapper):
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
+        self.CameraAspect = data.get("aspect", 1.5)
         self.CameraFOV = data.get("fov", (0.6911,0.4711))
         self.CameraShift = data.get("shift", (0.0,0.0))
         self.CameraNearZ = -1.0 * data.get("nearZ", 0.001)

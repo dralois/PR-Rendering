@@ -19,6 +19,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "rotation" : [ float, float, float, float ],
             "scale" : [ float, float, float ],
             "fov" : [ float, float ],
+            "aspect" : float,
             "shift" : [ float, float ],
             "nearZ" : float,
             "resultFile" : string,

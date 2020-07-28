@@ -110,6 +110,8 @@ public:
 		X_GetPosRotScale(meshPos, meshRot, meshScale);
 	}
 
+	//---------------------------------------
+
 	inline const Eigen::Vector3f RenderfileObject::GetPosition() const
 	{
 		Eigen::Vector3f pos, scl;
@@ -127,6 +129,8 @@ public:
 		X_SetPosRotScale(&pos, NULL, NULL);
 	}
 
+	//---------------------------------------
+
 	inline const Eigen::Quaternionf RenderfileObject::GetRotation() const
 	{
 		Eigen::Vector3f pos, scl;
@@ -143,6 +147,8 @@ public:
 	{
 		X_SetPosRotScale(NULL, &rot, NULL);
 	}
+
+	//---------------------------------------
 
 	inline const Eigen::Vector3f RenderfileObject::GetScale() const
 	{
@@ -173,7 +179,7 @@ public:
 		writer.Key("position");
 		AddEigenVector<Eigen::Vector3f>(writer, GetPosition());
 		writer.Key("rotation");
-		AddEigenVector<Eigen::Vector4f>(writer, GetRotation().coeffs());
+		AddEigenVector<Eigen::Vector4f>(writer, Eigen::Vector4f(GetRotation().w(), GetRotation().x(), GetRotation().y(), GetRotation().z()));
 		writer.Key("scale");
 		AddEigenVector<Eigen::Vector3f>(writer, GetScale());
 

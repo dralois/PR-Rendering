@@ -36,7 +36,7 @@ namespace Renderer
 		EXPORT_THIS std::vector<std::tuple<cv::Mat, cv::Mat>>
 			RenderScenes(const boost::filesystem::path& scenePath,
 				const std::vector<boost::filesystem::path>& camPoses,
-				float fx, float fy, float ox, float oy);
+				float fx, float fy, float ox, float oy, float w, float h);
 
 		//---------------------------------------
 		// Constructors

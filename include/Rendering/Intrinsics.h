@@ -45,7 +45,6 @@ public:
 	// Methods
 	//---------------------------------------
 
-	// CHECK: Load width / height from file?
 	inline void LoadIntrinsics(
 		ReferencePath intrFile,
 		Eigen::Vector2i res
@@ -61,7 +60,21 @@ public:
 		std::string line;
 		while (std::getline(intrFileStream, line))
 		{
-			// If it contains intrinsics
+			// Intrinsics resolution width
+			if (boost::algorithm::contains(line, "m_colorWidth"))
+			{
+				std::vector<std::string> entries;
+				boost::algorithm::split(entries, line, boost::algorithm::is_space());
+				resolution.x() = std::stoi(entries[2]);
+			}
+			// Intrinsics resolution height
+			if (boost::algorithm::contains(line, "m_colorHeight"))
+			{
+				std::vector<std::string> entries;
+				boost::algorithm::split(entries, line, boost::algorithm::is_space());
+				resolution.y() = std::stoi(entries[2]);
+			}
+			// Intrinsics focal length & principal point
 			if (boost::algorithm::contains(line, "m_calibrationColorIntrinsic"))
 			{
 				std::vector<std::string> entries;
@@ -71,9 +84,6 @@ public:
 				focalLength.y() = std::stof(entries[7]);
 				principalPoint.x() = std::stof(entries[4]);
 				principalPoint.y() = std::stof(entries[8]);
-				resolution.x() = res.x();
-				resolution.y() = res.y();
-				break;
 			}
 		}
 

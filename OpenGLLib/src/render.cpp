@@ -106,10 +106,10 @@ namespace Renderer
 					float depthBufferValue = data[static_cast<int>(i * width + j)];
 					// Convert from NDC [-1, 1] to linear depth [0, 1]
 					depthBufferValue = (2.0f * depthBufferValue - 1.0f);
-					float linearDepth = (2.0f * farClip * nearClip) /
+					float linearDepth = (2.0f * nearClip) /
 						(farClip + nearClip - depthBufferValue * (farClip - nearClip));
 					// Save as OpenCV pixel
-					image.at<float>(height - i - 1, j) = linearDepth;
+					image.at<cv::Vec<float, 1>>(height - i - 1, j) = linearDepth;
 				}
 			}
 
@@ -124,7 +124,9 @@ namespace Renderer
 		std::vector<std::tuple<cv::Mat, cv::Mat>> Render_impl::RenderScenes(
 			const boost::filesystem::path& scenePath,
 			const std::vector<boost::filesystem::path>& camPoses,
-			float fx, float fy, float ox, float oy
+			float fx, float fy,
+			float ox, float oy,
+			float w, float h
 		)
 		{
 			std::vector<std::tuple<cv::Mat, cv::Mat> > renderings;
@@ -134,14 +136,14 @@ namespace Renderer
 				boost::filesystem::path(shaderPath).append("textured3D.frag"));
 			Model model(boost::filesystem::path(scenePath).append("mesh.refined.obj"),
 				boost::filesystem::path(scenePath).append("mesh.refined_0.png"));
-			// Calculate intrinsics
+			// Build intrinsics
 			Intrinsics camRender;
-			camRender.fx = 2.0f * fx;
-			camRender.fy = 2.0f * fy;
-			camRender.ox = 2.0f * ox;
-			camRender.oy = 2.0f * oy;
-			camRender.w = width;
-			camRender.h = height;
+			camRender.fx = fx;
+			camRender.fy = fy;
+			camRender.ox = ox;
+			camRender.oy = oy;
+			camRender.w = w;
+			camRender.h = h;
 			// An corresponding matrix
 			projection = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, nearClip, farClip);
 
@@ -235,10 +237,12 @@ namespace Renderer
 	std::vector<std::tuple<cv::Mat, cv::Mat>> Render::RenderScenes(
 		const boost::filesystem::path& scenePath,
 		const std::vector<boost::filesystem::path>& camPoses,
-		float fx, float fy, float ox, float oy
+		float fx, float fy,
+		float ox, float oy,
+		float w, float h
 	)
 	{
-		return renderImpl->RenderScenes(scenePath, camPoses, fx, fy, ox, oy);
+		return renderImpl->RenderScenes(scenePath, camPoses, fx, fy, ox, oy, w, h);
 	}
 
 	//---------------------------------------

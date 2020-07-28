@@ -25,6 +25,7 @@ private:
 
 	Intrinsics cameraIntrinsics;
 	Eigen::Vector2f fieldOfView;
+	float aspectRatio;
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
@@ -41,6 +42,9 @@ private:
 	{
 		writer.Key("fov");
 		AddEigenVector<Eigen::Vector2f>(writer, fieldOfView);
+
+		writer.Key("aspect");
+		AddFloat(writer, aspectRatio);
 
 		writer.Key("shift");
 		AddEigenVector<Eigen::Vector2f>(writer, lensShift);
@@ -75,9 +79,8 @@ public:
 
 	inline const Intrinsics& GetIntrinsics() const { return cameraIntrinsics; }
 	inline void SetIntrinsics(Intrinsics intr) { cameraIntrinsics = intr; }
-	inline void SetFOV(Eigen::Vector2f fov) { fieldOfView = fov; }
 	inline Eigen::Vector2f GetFOV() const { return fieldOfView; }
-	inline void SetShift(Eigen::Vector2f shift) { lensShift = shift; }
+	inline float GetAspectRatio() const { return aspectRatio; }
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return shift; }
 	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(abs(near), abs(far)); }
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
@@ -138,17 +141,31 @@ public:
 		extrFileStream.close();
 
 		// Calculate fov
-		float fovx = 2.0f * atan(cameraIntrinsics.GetWidth() / (4.0f * cameraIntrinsics.GetFocalLenght().x())) * (180.0f / PI);
-		float fovy = 2.0f * atan(cameraIntrinsics.GetHeight() / (4.0f * cameraIntrinsics.GetFocalLenght().y())) * (180.0f / PI);
+		float fovx = 2.0f * atan(cameraIntrinsics.GetWidth() / (2.0f * cameraIntrinsics.GetFocalLenght().x()));
+		float fovy = 2.0f * atan(cameraIntrinsics.GetHeight() / (2.0f * cameraIntrinsics.GetFocalLenght().y()));
 
-		// Calculate lens shift
-		float shiftx = ((4.0f * cameraIntrinsics.GetPrincipalPoint().x()) - cameraIntrinsics.GetWidth()) / cameraIntrinsics.GetWidth();
-		float shifty = ((4.0f * cameraIntrinsics.GetPrincipalPoint().y()) - cameraIntrinsics.GetHeight()) / cameraIntrinsics.GetHeight();
+		// Calculate aspect ratio
+		float aspect = (cameraIntrinsics.GetFocalLenght().y() / cameraIntrinsics.GetFocalLenght().x()) *
+			(static_cast<float>(cameraIntrinsics.GetWidth()) / static_cast<float>(cameraIntrinsics.GetHeight()));
+
+		// Find max(width, height) (so shift is equal in x/y)
+		float resMax = static_cast<float>(cameraIntrinsics.GetWidth() > cameraIntrinsics.GetHeight() ?
+			cameraIntrinsics.GetWidth() : cameraIntrinsics.GetHeight());
+
+		// Calculate lens shift (Blender specific)
+		float shiftx = (cameraIntrinsics.GetPrincipalPoint().x() - (0.5f * cameraIntrinsics.GetWidth())) / cameraIntrinsics.GetWidth();
+		shiftx *= -0.5f * (static_cast<float>(cameraIntrinsics.GetWidth()) / resMax);
+		float shifty = (cameraIntrinsics.GetPrincipalPoint().y() - (0.5f * cameraIntrinsics.GetHeight())) / cameraIntrinsics.GetHeight();
+		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetHeight()) / resMax);
 
 		// Store in Camera
-		SetFOV(Eigen::Vector2f(fovx, fovy));
-		SetShift(Eigen::Vector2f(shiftx, shifty));
+		fieldOfView = Eigen::Vector2f(fovx, fovy);
+		aspectRatio = aspect;
+		lensShift = Eigen::Vector2f(shiftx, shifty);
+
 		SetTransform(matTrans);
+		// Transform from OpenGL -> Blender coordinate system
+		SetScale(Eigen::Vector3f(1.0f, -1.0f, -1.0f));
 	}
 
 	//---------------------------------------
