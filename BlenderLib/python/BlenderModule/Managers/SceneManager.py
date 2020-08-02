@@ -39,22 +39,27 @@ class Scene(object):
         self.__isActive = True
         ctx = bpy.context.scene
         ctx.camera = self.__camera.ObjectInstance
-        ctx.view_settings.view_transform = ("Raw", "Standard")[self.__camera.CameraDepthOnly]
+        ctx.view_settings.view_transform = ("Raw", "Standard")[self.__camera.CameraDataOnly]
         # Adjust render settings
-        outputDir = FullPath(self.__settings.get("outputDir", "output"))
         ctx.render.filepath = FullPath(self.__camera.CameraResultFile)
-        ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDepthOnly]
-        ctx.render.image_settings.color_mode = ("RGBA", "RGB")[self.__camera.CameraDepthOnly]
-        ctx.render.image_settings.color_depth = ("8", "8")[self.__camera.CameraDepthOnly]
-        ctx.render.image_settings.file_format = "PNG"
+        ctx.render.image_settings.file_format = ("PNG", "OPEN_EXR")[self.__camera.CameraDataOnly]
+        ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDataOnly]
+        ctx.render.image_settings.color_mode = ("RGBA", "RGB")[self.__camera.CameraDataOnly]
+        ctx.render.image_settings.color_depth = ("8", "32")[self.__camera.CameraDataOnly]
         ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
         ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
         ctx.render.use_compositing = False
         ctx.render.use_sequencer = False
+        # Shading override
+        if len(self.__camera.CameraShadingOverride) > 0:
+            ctx.appleseed.shading_override = True
+            ctx.appleseed.override_mode = self.__camera.CameraShadingOverride
+        else:
+            ctx.appleseed.shading_override = False
         # Adjust raytracing settings
         ctx.appleseed.use_embree = True
-        ctx.appleseed.force_aa = (self.__camera.CameraAASamples == 1, True)[self.__camera.CameraDepthOnly]
-        ctx.appleseed.samples = (self.__camera.CameraAASamples, 1)[self.__camera.CameraDepthOnly]
+        ctx.appleseed.force_aa = (self.__camera.CameraAASamples > 1, False)[self.__camera.CameraDataOnly]
+        ctx.appleseed.samples = (self.__camera.CameraAASamples, 1)[self.__camera.CameraDataOnly]
         ctx.appleseed.max_bounces_unlimited = self.__camera.CameraRayBounces < 0
         ctx.appleseed.max_bounces = self.__camera.CameraRayBounces
         ctx.appleseed.max_specular_bounces_unlimited = self.__camera.CameraRayBounces < 0

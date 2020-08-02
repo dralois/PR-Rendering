@@ -77,11 +77,12 @@ public:
 		MeshBase* currMesh = (MeshBase*)currBody;
 
 		// Only annotate properly visible objects
-		if (!ComputeObjectVisible(labeled, segmented, currMesh->GetLabelId()))
+		cv::Mat currObjectMask;
+		if (!ComputeObjectVisible(labeled, segmented, currObjectMask, currMesh->GetLabelId()))
 			return;
 
 		// Compute bounding box
-		cv::Rect bbox = ComputeBoundingBox(labeled == currMesh->GetLabelId());
+		cv::Rect bbox = ComputeBoundingBox(currObjectMask);
 
 		// Compute world space pose of object
 		Eigen::Vector3f pos(currBody->GetPosition());

@@ -48,7 +48,6 @@ private:
 	Blender::BlenderRenderer* pBlender;
 
 	// Rendering
-	Settings renderSettings;
 	Camera renderCam;
 	std::vector<Light*> vecpLights;
 

@@ -101,9 +101,10 @@ class CameraInstance(ObjectWrapper):
         self.__ppcActive = False
         # Render settings
         self.__result = ""
-        self.__depthOnly = False
+        self.__dataOnly = False
         self.__aaSamples = 16
         self.__rayBounces = -1
+        self.__shadingOverride = ""
         # Create postprocessing effect quad
         self.__ppcMesh = bpy.data.meshes.new("mesh_camera_ppc")
         self.__CreatePPCQuad()
@@ -134,15 +135,15 @@ class CameraInstance(ObjectWrapper):
     def CameraResultFile(self, value):
         self.__result = value
 
-    # Get result file name
+    # Get data / color rendering
     @property
-    def CameraDepthOnly(self):
-        return self.__depthOnly
+    def CameraDataOnly(self):
+        return self.__dataOnly
 
-    # Set result file name
-    @CameraDepthOnly.setter
-    def CameraDepthOnly(self, value):
-        self.__depthOnly = value
+    # Set data / color rendering
+    @CameraDataOnly.setter
+    def CameraDataOnly(self, value):
+        self.__dataOnly = value
 
     # Get anti aliasing sample count
     @property
@@ -163,6 +164,16 @@ class CameraInstance(ObjectWrapper):
     @CameraRayBounces.setter
     def CameraRayBounces(self, value):
         self.__rayBounces = value
+
+    # Get shading override to use
+    @property
+    def CameraShadingOverride(self):
+        return self.__shadingOverride
+
+    # Set shading override to use
+    @CameraShadingOverride.setter
+    def CameraShadingOverride(self, value):
+        self.__shadingOverride = value
 
     # Update camera postprocessing effect
     def ChangeFullscreenEffect(self, effect):
@@ -186,9 +197,10 @@ class CameraInstance(ObjectWrapper):
         assert data is not None
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("resultFile", "")
-        self.CameraDepthOnly = data.get("depthOnly", False)
+        self.CameraDataOnly = data.get("dataOnly", False)
         self.CameraAASamples = data.get("aaSamples", 16)
         self.CameraRayBounces = data.get("rayBounces", -1)
+        self.CameraShadingOverride = data.get("shadingOverride", "")
         self.ChangeFullscreenEffect(data.get("shader", None))
 
     # Override: Called when transform changes

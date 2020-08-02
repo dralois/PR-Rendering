@@ -29,9 +29,10 @@ private:
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
-	bool depthOnly;
+	bool dataOnly;
 	int rayBounces;
 	int aaSamples;
+	std::string shadingOverride;
 	OSLShader* cameraEffect;
 
 	//---------------------------------------
@@ -55,14 +56,17 @@ private:
 		writer.Key("resultFile");
 		AddString(writer, resultFile.string());
 
-		writer.Key("depthOnly");
-		writer.Bool(depthOnly);
+		writer.Key("dataOnly");
+		writer.Bool(dataOnly);
 
 		writer.Key("rayBounces");
 		writer.Int(rayBounces);
 
 		writer.Key("aaSamples");
 		writer.Int(aaSamples);
+
+		writer.Key("shadingOverride");
+		AddString(writer, shadingOverride);
 
 		// Camera does not always have an effect set
 		if (cameraEffect)
@@ -86,12 +90,14 @@ public:
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
 	inline void SetResultFile(ReferencePath result) { resultFile = result; }
 	inline const ReferencePath GetResultFile() const { return resultFile; }
-	inline const int GetRayBounces() const { return rayBounces; }
+	inline void SetDataOnly(bool rendersData) { dataOnly = rendersData; }
+	inline bool GetDataOnly() const { return dataOnly; }
+	inline int GetRayBounces() const { return rayBounces; }
 	inline void SetRayBounces(int bounces) { rayBounces = bounces; }
-	inline const int GetAASamples() const { return aaSamples; }
+	inline int GetAASamples() const { return aaSamples; }
 	inline void SetAASamples(int samples) { aaSamples = samples; }
-	inline void SetDepthOnly(bool renderDepth) { depthOnly = renderDepth; }
-	inline bool GetDepthOnly() const { return depthOnly; }
+	inline const std::string& GetShadingOverride() const { return shadingOverride; }
+	inline void SetShadingOverride(const std::string& so) { shadingOverride = so; }
 
 	inline const OSLShader* GetEffect() const { return cameraEffect; }
 	inline void SetEffect(OSLShader* effect)
@@ -177,10 +183,12 @@ public:
 		fieldOfView(Eigen::Vector2f(0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
-		resultFile(),
-		depthOnly(false),
+		resultFile(""),
+		aspectRatio(1.777f),
+		dataOnly(false),
 		rayBounces(-1),
 		aaSamples(16),
+		shadingOverride(""),
 		cameraEffect(NULL)
 	{
 	}

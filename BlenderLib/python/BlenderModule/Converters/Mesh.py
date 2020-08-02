@@ -8,8 +8,10 @@ from .Base import DataWrapper, ObjectWrapper
 bpy = ImportBpy()
 logger = GetLogger()
 
+import sys
 import bmesh
 import mathutils
+from os import devnull
 
 # Mesh descriptor
 class MeshData(DataWrapper):
@@ -69,10 +71,14 @@ class MeshData(DataWrapper):
 
     # Load mesh from obj file
     def __LoadMeshObj(self):
+        # Redirect stdout temporarily
+        sys.stdout = open(devnull, "w")
         # Load mesh to active scene & store from selection
         bpy.ops.import_scene.obj(filepath = self.__filePath)
-        loader : bpy.types.Object = bpy.context.selected_objects[0]
+        # Restore stdout
+        sys.stdout = sys.__stdout__
         # Delete potentially loaded materials
+        loader : bpy.types.Object = bpy.context.selected_objects[0]
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])
         # Update internals
         newMesh = loader.data

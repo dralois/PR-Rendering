@@ -7,7 +7,7 @@
 #include <Transformable.h>
 #pragma warning(pop)
 
-//#define PX_EXTRACT_INTERNAL
+#define PX_EXTRACT_INTERNAL 0
 
 //---------------------------------------
 // Base class for physx meshes

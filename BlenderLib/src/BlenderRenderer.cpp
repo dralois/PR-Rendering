@@ -22,6 +22,7 @@ namespace Blender
 
 		object blenderModule;
 		object blenderNamespace;
+		object renderManager;
 
 	public:
 		//---------------------------------------
@@ -34,9 +35,6 @@ namespace Blender
 		{
 			try
 			{
-				object utils = import("BlenderModule.Utils");
-				utils.attr("SetupMultiprocessing")();
-				object renderManager = import("BlenderModule.Managers.RenderManager");
 				renderManager.attr("RenderScenes")(renderfile);
 			}
 			catch (const error_already_set&)
@@ -58,6 +56,11 @@ namespace Blender
 				// Store main and globals
 				blenderModule = import("BlenderModule");
 				blenderNamespace = blenderModule.attr("__dict__");
+				// Setup embedded python for multiprocessing
+				object utils = import("BlenderModule.Utils");
+				utils.attr("SetupMultiprocessing")();
+				// Store render manager instance
+				renderManager = import("BlenderModule.Managers.RenderManager");
 			}
 			catch (const error_already_set&)
 			{

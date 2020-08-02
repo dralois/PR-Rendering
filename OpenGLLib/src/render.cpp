@@ -25,7 +25,6 @@ namespace Renderer
 		int width, height;
 		float nearClip, farClip;
 		GLFWwindow* window;
-		Eigen::Matrix4f projection;
 		boost::filesystem::path shaderPath;
 
 		//---------------------------------------
@@ -44,12 +43,12 @@ namespace Renderer
 		//---------------------------------------
 		// Render a model
 		//---------------------------------------
-		void Render_impl::X_Render(Model& model, Shader& shader, Eigen::Matrix4f& pose)
+		void Render_impl::X_Render(Model& model, Shader& shader, Eigen::Matrix4f& pose, Eigen::Matrix4f& proj)
 		{
 			shader.Use();
-			// Bind mvp matrix
-			Eigen::Matrix4f mvp = projection * pose;
-			glUniformMatrix4fv(glGetUniformLocation(shader.GetProgram(), "model_view_projection"), 1, GL_FALSE, mvp.data());
+			// Bind uniforms
+			glUniformMatrix4fv(glGetUniformLocation(shader.GetProgram(), "matP"), 1, GL_FALSE, proj.data());
+			glUniformMatrix4fv(glGetUniformLocation(shader.GetProgram(), "matV"), 1, GL_FALSE, pose.data());
 			// Draw the model
 			model.Draw(shader);
 		}
@@ -67,27 +66,23 @@ namespace Renderer
 			glReadBuffer(GL_FRONT);
 			glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
 
-			// For each pixel
-			const int channels = 3;
-			for (int i = 0; i < height; i++)
-			{
-				for (int j = 0; j < width; j++)
-				{
-					// Save as OpenCV pixel
-					for (int c = 0; c < channels; c++)
-						image.at<cv::Vec3b>(height - i - 1, j)[2 - c] =
-						(uchar)data[(channels * i * width) + (channels * j) + c];
-				}
-			}
+			// Convert OpenGL RGB -> OpenCV BGR
+			image.forEach<cv::Vec3b>([&](cv::Vec3b& val, const int pixel[]) -> void {
+				const int x = pixel[1];
+				const int y = height - pixel[0] - 1;
+				const int idx = ((y * width) + x) * 3;
+				const uchar* rgb = data + idx;
+				val = cv::Vec3b(rgb[2], rgb[1], rgb[0]);
+			});
 
-			// Return OpenCV image
+			// Return image
 			return image;
 		}
 
 		//---------------------------------------
 		// Fetch depth render results
 		//---------------------------------------
-		cv::Mat Render_impl::X_GetDepth()
+		cv::Mat Render_impl::X_GetDepth(float fov)
 		{
 			// Setup buffers
 			cv::Mat image(height, width, CV_32FC1);
@@ -97,23 +92,28 @@ namespace Renderer
 			glReadBuffer(GL_FRONT);
 			glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, &data[0]);
 
-			// For each pixel
-			for (int i = 0; i < height; i++)
-			{
-				for (int j = 0; j < width; j++)
-				{
-					// Read pixel
-					float depthBufferValue = data[static_cast<int>(i * width + j)];
-					// Convert from NDC [-1, 1] to linear depth [0, 1]
-					depthBufferValue = (2.0f * depthBufferValue - 1.0f);
-					float linearDepth = (2.0f * nearClip) /
-						(farClip + nearClip - depthBufferValue * (farClip - nearClip));
-					// Save as OpenCV pixel
-					image.at<cv::Vec<float, 1>>(height - i - 1, j) = linearDepth;
-				}
-			}
+			// Calculate constants
+			const float centerX = static_cast<float>(width) / 2.0f - 0.5f;
+			const float centerY = static_cast<float>(height) / 2.0f - 0.5f;
+			const float focalLength = (static_cast<float>(height) / 2.0f) / tan(fov / 2.0f);
 
-			// Return OpenCV image
+			// Parallel compute of actual distance
+			image.forEach<float>([&](float& val, const int pixel[]) -> void {
+				const int x = pixel[1];
+				const int y = height - pixel[0] - 1;
+				const float depth = data[((y * width) + x)];
+				// Distance to near plane
+				const float distToPlane = nearClip / (farClip - depth * (farClip - nearClip)) * farClip;
+				// True distance camera - pixel at far plane
+				const float diagonal = cv::norm(cv::Vec3f(
+					static_cast<float>(x) - centerX,
+					static_cast<float>(y) - centerY,
+					focalLength));
+				// Compute distance camera - pixel
+				val = distToPlane * (diagonal / focalLength);
+			});
+
+			// Return image
 			return image;
 		}
 
@@ -136,6 +136,7 @@ namespace Renderer
 				boost::filesystem::path(shaderPath).append("textured3D.frag"));
 			Model model(boost::filesystem::path(scenePath).append("mesh.refined.obj"),
 				boost::filesystem::path(scenePath).append("mesh.refined_0.png"));
+
 			// Build intrinsics
 			Intrinsics camRender;
 			camRender.fx = fx;
@@ -144,8 +145,10 @@ namespace Renderer
 			camRender.oy = oy;
 			camRender.w = w;
 			camRender.h = h;
-			// An corresponding matrix
-			projection = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, nearClip, farClip);
+
+			// And corresponding matrix & fov
+			Eigen::Matrix4f camProj = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, nearClip, farClip);
+			float fov = 2.0f * atan(h / (2.0f * fy));
 
 			// Make window visible
 			glfwSetWindowOpacity(window, 1.0f);
@@ -164,12 +167,12 @@ namespace Renderer
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 				// Render pose
-				X_Render(model, shader, camMat);
+				X_Render(model, shader, camMat, camProj);
 
 				// Fetch results
 				glfwSwapBuffers(window);
 				col = X_GetRGB();
-				dep = X_GetDepth();
+				dep = X_GetDepth(fov);
 
 				// Save in vector
 				renderings.push_back(std::make_tuple(col, dep));

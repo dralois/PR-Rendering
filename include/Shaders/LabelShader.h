@@ -15,7 +15,9 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	int maskId;
+	int maskRed;
+	int maskGreen;
+	int maskBlue;
 
 	//---------------------------------------
 	// Methods
@@ -23,8 +25,12 @@ protected:
 
 	void LabelShader::X_AddToJSON(JSONWriterRef writer) override
 	{
-		writer.Key("maskId");
-		writer.Int(maskId);
+		writer.Key("maskRed");
+		writer.Int(maskRed);
+		writer.Key("maskGreen");
+		writer.Int(maskGreen);
+		writer.Key("maskBlue");
+		writer.Int(maskBlue);
 	}
 
 public:
@@ -33,10 +39,14 @@ public:
 	//---------------------------------------
 
 	LabelShader(
-		int maskId
+		int red,
+		int green,
+		int blue
 	):
 		OSLShader("label_obj", (std::vector<Texture>)0),
-		maskId(maskId)
+		maskRed(red),
+		maskGreen(green),
+		maskBlue(blue)
 	{
 	}
 };

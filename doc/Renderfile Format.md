@@ -23,9 +23,10 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "shift" : [ float, float ],
             "nearZ" : float,
             "resultFile" : string,
-            "depthOnly" : bool,
+            "dataOnly" : bool,
             "aaSamples" : int,
             "rayBounces" : int,
+            "shadingOverride" : string,
             "shader" :
             {
                 "name" : string,

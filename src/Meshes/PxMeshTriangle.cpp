@@ -89,7 +89,7 @@ void PxMeshTriangle::X_ExportMesh()
 		vecIndices.push_back(trisBuff[(i * 3) + 2]);
 	}
 
-#ifdef EXPORT_TO_FILE
+#if EXPORT_TO_FILE
 	// Store to obj file
 	X_StoreFile("_px");
 #endif // EXPORT_TO_FILE
@@ -103,7 +103,7 @@ void PxMeshTriangle::X_CreateMesh()
 	// Cook / load mesh
 	X_CookMesh();
 
-#ifdef PX_EXTRACT_INTERNAL
+#if PX_EXTRACT_INTERNAL
 	// Export cooked mesh to file
 	X_ExportMesh();
 #endif // PX_EXTRACT_INTERNAL

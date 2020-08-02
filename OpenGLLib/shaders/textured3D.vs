@@ -1,14 +1,17 @@
 #version 330 core
+
 layout ( location = 0 ) in vec3 position;
 layout ( location = 1 ) in vec3 normal;
 layout ( location = 2 ) in vec2 texCoords;
 
-out vec2 TexCoords;
+uniform mat4 matV;
+uniform mat4 matP;
 
-uniform mat4 model_view_projection;
+out vec2 v2f_texCoords;
 
-void main( )
+void main()
 {
-    gl_Position = model_view_projection * vec4( position, 1.0f );
-    TexCoords = texCoords;
+    vec4 cs_pos = matV * vec4(position, 1.0f);
+    v2f_texCoords = texCoords;
+    gl_Position = matP * cs_pos;
 }

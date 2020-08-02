@@ -22,7 +22,7 @@ def GetLogger():
         __logger = logging.getLogger(__name__)
         # Logs to console in a nice format
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("[Wrapper] %(threadName)s : %(message)s"))
+        handler.setFormatter(logging.Formatter("[Wrapper] %(processName)s : %(message)s"))
         __logger.addHandler(handler)
         __logger.setLevel(logging.INFO)
 

@@ -1,5 +1,8 @@
 #include <SceneManager.h>
 
+#define STORE_SCENE_TEX 0
+#define STORE_DEBUG_TEX 1
+
 #define PI (3.1415926535897931f)
 #define PIOVER2 (1.5707963267948966f)
 
@@ -121,6 +124,8 @@ void SceneManager::X_PxRunSim(
 		pPxScene->fetchResults(true);
 		std::cout << '\r' << "Simulating: " << (i + 1) << "/" << stepCount << std::flush;
 	}
+	// Formatting
+	std::cout << std::endl;
 }
 
 //---------------------------------------
@@ -147,8 +152,10 @@ void SceneManager::X_PxSaveSimResults()
 		((MeshBase*)currMesh)->SetObjId(obj->GetObjId());
 		// Build transform from px pose
 		Eigen::Affine3f currTrans;
-		currTrans.fromPositionOrientationScale(Eigen::Vector3f(pose.p.x, pose.p.y, pose.p.z),
-			Eigen::Quaternionf(pose.q.w, pose.q.x, pose.q.y, pose.q.z), currMesh->GetScale() * objScale);
+		currTrans.fromPositionOrientationScale(
+			Eigen::Vector3f(pose.p.x, pose.p.y, pose.p.z),
+			Eigen::Quaternionf(pose.q.w, pose.q.x, pose.q.y, pose.q.z),
+			currMesh->GetScale() * objScale);
 		currMesh->SetTransform(currTrans.matrix());
 		// Store it
 		vecpRenderMeshCurrObjs.push_back(currMesh);
@@ -190,16 +197,18 @@ RenderResult SceneManager::X_RenderSceneDepth() const
 	RenderResult results;
 	for (int render_count = 0; render_count < renders.size(); render_count++)
 	{
-		// Create & store rgb texture
+		// Create rgb & depth textures
 		Texture rgbScene(false);
-		rgbScene.SetTexture(std::get<0>(renders[render_count]));
-		rgbScene.SetPath(pRenderSettings->GetImagePath("rgb", render_count));
-		rgbScene.StoreTexture();
-		// Create & store depth texture
 		Texture depthScene(true);
+		rgbScene.SetTexture(std::get<0>(renders[render_count]));
 		depthScene.SetTexture(std::get<1>(renders[render_count]));
-		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count));
+		rgbScene.SetPath(pRenderSettings->GetImagePath("scene_rgb", render_count));
+		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count), "exr");
+#if STORE_SCENE_TEX
+		// Store if enabled
+		rgbScene.StoreTexture();
 		depthScene.StoreTexture();
+#endif //STORE_SCENE_TEX
 		// Store in result vector
 		results.push_back(std::make_tuple(rgbScene, depthScene));
 	}
@@ -240,7 +249,7 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 	// Add lights
 	writer.Key("lights");
 	writer.StartArray();
-	for(auto currLight : vecpLights)
+	for (auto currLight : vecpLights)
 	{
 		currLight->AddToJSON(writer);
 	}
@@ -261,11 +270,11 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderObjsDepth(Texture& result)
 {
-	Texture packed(false);
+	Texture packed(true);
 	ModifiablePath packedPath(result.GetPath().parent_path());
 	packedPath.append(result.GetPath().stem().string());
-	packedPath.concat("_packed.png");
-	packed.SetPath(packedPath);
+	packedPath.concat("_packed");
+	packed.SetPath(packedPath, "exr");
 
 	// Set shaders
 	for (auto currMesh : vecpRenderMeshCurrObjs)
@@ -274,16 +283,18 @@ void SceneManager::X_RenderObjsDepth(Texture& result)
 		currMesh->SetShader((OSLShader*)currShader);
 	}
 
-	// Set raytracing settings
-	renderCam.SetDepthOnly(true);
-	renderCam.SetAASamples(16);
+	// Render settings
+	renderCam.SetDataOnly(true);
+	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
+	renderCam.SetShadingOverride("depth");
 
 	// Send render command
 	X_ProcessRenderfile(packed);
 
-	// Convert to linear depth
-	result.SetTexture(UnpackRGBDepth(packed.GetTexture()));
+	// Convert to linear depth & delete packed texture
+	result.SetTexture(UnpackDepth(packed.GetTexture(), renderCam.GetClipping().x(), renderCam.GetClipping().y()));
+	packed.DeleteTexture();
 }
 
 //---------------------------------------
@@ -291,20 +302,33 @@ void SceneManager::X_RenderObjsDepth(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderObjsLabel(Texture& result)
 {
+	Texture packed(true);
+	ModifiablePath packedPath(result.GetPath().parent_path());
+	packedPath.append(result.GetPath().stem().string());
+	packedPath.concat("_packed");
+	packed.SetPath(packedPath, "exr");
+
 	// Set shaders
 	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		LabelShader* currShader = new LabelShader(currMesh->GetLabelId());
+		cv::Vec3b encodedId = EncodeInt(currMesh->GetLabelId());
+		// Store encoded Id as BGR
+		LabelShader* currShader = new LabelShader(encodedId[2], encodedId[1], encodedId[0]);
 		currMesh->SetShader((OSLShader*)currShader);
 	}
 
 	// Set raytracing settings
-	renderCam.SetDepthOnly(false);
+	renderCam.SetDataOnly(true);
 	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
+	renderCam.SetShadingOverride("");
 
 	// Send render command
 	X_ProcessRenderfile(result);
+
+	// Convert to 8b rgb & delete packed texture
+	result.SetTexture(UnpackLabel(packed.GetTexture()));
+	packed.DeleteTexture();
 }
 
 //---------------------------------------
@@ -320,9 +344,10 @@ void SceneManager::X_RenderObjsRGB(Texture& result)
 	}
 
 	// Set raytracing settings
-	renderCam.SetDepthOnly(false);
+	renderCam.SetDataOnly(false);
 	renderCam.SetAASamples(16);
 	renderCam.SetRayBounces(-1);
+	renderCam.SetShadingOverride("");
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -344,9 +369,10 @@ void SceneManager::X_RenderImageBlend(
 	renderCam.SetEffect((OSLShader*)finalBlend);
 
 	// Set raytracing settings
-	renderCam.SetDepthOnly(false);
+	renderCam.SetDataOnly(false);
 	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
+	renderCam.SetShadingOverride("");
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -435,7 +461,7 @@ int SceneManager::Run(int imageCount)
 		int lastPose = vecCameraPoses.size();
 		for (int currPose = 0; currPose < lastPose; currPose++)
 		{
-			std::cout << "Scene "<< scenePath << ": Iteration " << iter << "/" << maxIters
+			std::cout << "Scene " << scenePath << ": Iteration " << iter << "/" << maxIters
 				<< ": Pose " << currPose << "/" << lastPose << std::endl;
 
 			// Load camera pose
@@ -445,7 +471,9 @@ int SceneManager::Run(int imageCount)
 			Texture bodiesDepth(true);
 			bodiesDepth.SetPath(pRenderSettings->GetImagePath("body_depth", currPose));
 			X_RenderObjsDepth(bodiesDepth);
+#if STORE_DEBUG_TEX
 			bodiesDepth.StoreTexture();
+#endif //STORE_DEBUG_TEX
 
 			// Load scene depth
 			Texture sceneDepth = std::get<1>(sceneRenders[currPose]);
@@ -453,7 +481,11 @@ int SceneManager::Run(int imageCount)
 			// Create occlusion mask
 			bool objectsOccluded;
 			Texture bodiesMasked(false);
+			bodiesMasked.SetPath(pRenderSettings->GetImagePath("body_mask", currPose));
 			bodiesMasked.SetTexture(ComputeOcclusionMask(bodiesDepth.GetTexture(), sceneDepth.GetTexture(), objectsOccluded));
+#if STORE_DEBUG_TEX
+			bodiesMasked.StoreTexture();
+#endif //STORE_DEBUG_TEX
 
 			// If any objects visible
 			if (!objectsOccluded)
@@ -464,6 +496,9 @@ int SceneManager::Run(int imageCount)
 				Texture bodiesLabeled(false);
 				bodiesLabeled.SetPath(pRenderSettings->GetImagePath("body_label", currImg));
 				X_RenderObjsLabel(bodiesLabeled);
+#if STORE_DEBUG_TEX
+				bodiesLabeled.StoreTexture();
+#endif //STORE_DEBUG_TEX
 
 				// Blend depth images
 				Texture blendedDepth(true);
@@ -482,17 +517,17 @@ int SceneManager::Run(int imageCount)
 					pAnnotations->Write(currMesh, bodiesLabeled.GetTexture(),
 						bodiesSegmented.GetTexture(), renderCam, currImg);
 
-				// Render final image blend
-				Texture finalBlend(false);
-				finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currPose, true));
-				// TODO: Replace with correct images
-				X_RenderImageBlend(finalBlend, bodiesSegmented, Texture(), Texture());
+				//// Render final image blend
+				//Texture finalBlend(false);
+				//finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currPose, true));
+				//// TODO: Replace with correct images
+				//X_RenderImageBlend(finalBlend, bodiesSegmented, Texture(), Texture());
 
 				newImages++;
 			}
 
 			// Exit if target reached
-			if (imageCount + newImages >= renderSettings.GetMaxImageCount())
+			if (imageCount + newImages >= pRenderSettings->GetMaxImageCount())
 			{
 				X_CleanupScene();
 				return newImages;
@@ -539,9 +574,9 @@ SceneManager::SceneManager(
 		Light* addLight = new Light(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
 		// Add 8 lights in a box pattern
 		addLight->SetPosition(Eigen::Vector3f(
-			i % 2 == 0 ? 1000.0f : -1000.0f,
-			(i >> 2) % 2 == 0 ? 100.0f : 1000.0f,
-			(i >> 1) % 2 == 0 ? 1000.0f : -1000.0f)
+			i % 2 == 0 ? 10.0f : -10.0f,
+			(i >> 1) % 2 == 0 ? 10.0f : -10.0f,
+			(i >> 2) % 2 == 0 ? 1.0f : 10.0f)
 		);
 		vecpLights.push_back(addLight);
 	}
@@ -568,7 +603,7 @@ SceneManager::~SceneManager()
 	delete pBlender;
 	delete pRenderer;
 	delete pAnnotations;
-	for(auto currLight : vecpLights)
+	for (auto currLight : vecpLights)
 	{
 		delete currLight;
 	}

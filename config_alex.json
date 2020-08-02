@@ -18,8 +18,8 @@
     "fy": 539.8300,
     "ox": 318.2700,
     "oy": 239.5600,
-    "width": 1920,
-    "height": 1080,
+    "width": 640,
+    "height": 480,
     "custom_intrinsics": false,
 
     "near_z": 0.1,

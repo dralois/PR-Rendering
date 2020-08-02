@@ -1,12 +1,12 @@
 #version 330 core
 
-in vec2 TexCoords;
+uniform sampler2D texture_diffuse;
+
+in vec2 v2f_texCoords;
 
 out vec4 color;
 
-uniform sampler2D texture_diffuse;
-
-void main( )
+void main()
 {
-    color = vec4( texture( texture_diffuse, TexCoords ));
+    color = vec4(texture(texture_diffuse, v2f_texCoords));
 }

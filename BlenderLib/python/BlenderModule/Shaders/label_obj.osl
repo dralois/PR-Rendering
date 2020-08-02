@@ -4,11 +4,28 @@ shader label_obj
     string as_category = "shader"
 ]]
 (
-    output color out_color = 0
+    int in_maskR = 0
     [[
-        string label = "Output"
+        string label = "Red Channel Output"
+    ]],
+    int in_maskG = 0
+    [[
+        string label = "Green Channel Output"
+    ]],
+    int in_maskB = 0
+    [[
+        string label = "Blue Channel Output"
+    ]],
+    output closure color out_idEncoded = 0
+    [[
+        string label = "Encoded Object Id"
     ]]
 )
 {
-    return;
+    color encoded = color(
+        (float)in_maskR / 255.0,
+        (float)in_maskG / 255.0,
+        (float)in_maskB / 255.0);
+    // Add emission closure to color encoded Id
+    out_idEncoded = encoded * emission();
 }

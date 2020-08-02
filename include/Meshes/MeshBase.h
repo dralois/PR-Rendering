@@ -7,7 +7,7 @@
 #include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
-//#define EXPORT_TO_FILE
+#define EXPORT_TO_FILE 0
 
 //---------------------------------------
 // Base class for all meshes

@@ -18,29 +18,9 @@ shader depth_obj
     ]]
 )
 {
-    // Only npr rays to avoid cost
-    if(raytype("npr"))
-    {
-        // Calculate distance to point
-        point camPos = point("camera", 0.0, 0.0, 0.0);
-        float depth = distance(camPos, P);
-        // Convert to [0, 1]
-        depth = (depth - in_cameraClipNear) / (in_cameraClipFar - in_cameraClipNear);
-        depth *= (256.0 * 256.0 * 256.0 - 1.0) / (256.0 * 256.0 * 256.0);
-        // Create encoding array
-        float encode[4] = {depth * 1.0, depth * 256.0, depth * 256.0 * 256.0, depth * 256.0 * 256.0 * 256.0};
-        // 32 bit float -> 4 * 8 bit parts
-        for(int i = 0; i < 4; i++)
-            encode[i] = fmod(encode[i], 1.0);
-        // Black magic trickery
-        vector encodexyz = vector(encode[0], encode[1], encode[2]);
-        vector encodeyzw = vector(encode[1], encode[2], encode[3]);
-        color packed = (color) (encodexyz - encodeyzw / 256.0 + vector(1.0 / 512.0));
-        // Add NPR (non-photorealistic) closure
-        out_depthEncoded = packed * as_npr_shading();
-    }
-    else
-    {
-        return;
-    }
+    // Calculate distance to point in [0, 1]
+    point camPos = point("camera", 0.0, 0.0, 0.0);
+    float depth = (distance(camPos, P) - in_cameraClipNear) / (in_cameraClipFar - in_cameraClipNear);
+    // Add emission closure
+    out_depthEncoded = color(depth) * emission();
 }

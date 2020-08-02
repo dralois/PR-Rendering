@@ -21,7 +21,7 @@ private:
 
 	ModifiablePath filePath;
 	cv::Mat loadedImage;
-	bool depthImage;
+	bool dataImage;
 
 public:
 	//---------------------------------------
@@ -30,10 +30,14 @@ public:
 
 	inline ReferencePath GetPath() const { return filePath; }
 	inline void SetPath(
-		ReferencePath path
+		ReferencePath path,
+		const std::string& extension = ""
 	)
 	{
-		filePath = path;
+		filePath = path.parent_path();
+		filePath.append(path.stem().string());
+		filePath.concat(".");
+		filePath.concat(extension.empty() ? dataImage ? "tiff" : "png" : extension);
 	}
 
 	inline const cv::Mat& GetTexture() const { return loadedImage; }
@@ -56,22 +60,42 @@ public:
 		AddString(writer, filePath.string());
 
 		writer.Key("colorSpace");
-		AddString(writer, depthImage ? "float" : "default");
+		AddString(writer, dataImage ? "float" : "default");
 
 		writer.Key("colorDepth");
-		AddString(writer, depthImage ? "linear" : "sRGB");
+		AddString(writer, dataImage ? "linear" : "sRGB");
 
 		writer.EndObject();
 	}
 
 	void LoadTexture()
 	{
-		loadedImage = cv::imread(filePath.string(), depthImage ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
+		loadedImage = cv::imread(filePath.string(), dataImage ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
 	}
 
 	void StoreTexture()
 	{
-		cv::imwrite(filePath.string(), loadedImage);
+		switch (loadedImage.type())
+		{
+		case CV_32FC1:
+		case CV_32FC3:
+			cv::imwrite(filePath.string(), loadedImage);
+			break;
+		case CV_8UC1:
+		case CV_8UC3:
+		case CV_8UC4:
+			cv::imwrite(filePath.string(), loadedImage);
+			break;
+		default:
+			std::cout << "Can't store " << filePath << " (type " << loadedImage.type() << ")" << std::endl;
+			break;
+		}
+	}
+
+	void DeleteTexture()
+	{
+		boost::filesystem::remove(filePath);
+		filePath = "";
 	}
 
 	//---------------------------------------
@@ -79,11 +103,11 @@ public:
 	//---------------------------------------
 
 	Texture(
-		bool isDepth = false
+		bool containsData = false
 	) :
 		filePath(),
 		loadedImage(),
-		depthImage(isDepth)
+		dataImage(containsData)
 	{
 	}
 };

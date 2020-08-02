@@ -146,7 +146,11 @@ class LabelObject(ShaderBase):
 
     @classmethod
     def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
-        return tree.nodes.new("AppleseedasLabelObjNode")
+        labelNode = tree.nodes.new("AppleseedasLabelObjNode")
+        labelNode.in_maskR = data.get("maskRed", 0)
+        labelNode.in_maskG = data.get("maskGreen", 0)
+        labelNode.in_maskB = data.get("maskBlue", 0)
+        return labelNode
 
 # Generator for final blending effect
 class BlendFinal(ShaderBase):
