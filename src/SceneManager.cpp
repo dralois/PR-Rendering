@@ -198,16 +198,16 @@ RenderResult SceneManager::X_RenderSceneDepth() const
 	for (int render_count = 0; render_count < renders.size(); render_count++)
 	{
 		// Create rgb & depth textures
-		Texture rgbScene(false);
-		Texture depthScene(true);
+		Texture rgbScene(false, false);
+		Texture depthScene(true, true);
 		rgbScene.SetTexture(std::get<0>(renders[render_count]));
 		depthScene.SetTexture(std::get<1>(renders[render_count]));
 		rgbScene.SetPath(pRenderSettings->GetImagePath("scene_rgb", render_count));
-		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count), "exr");
+		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count));
 #if STORE_SCENE_TEX
 		// Store if enabled
 		rgbScene.StoreTexture();
-		depthScene.StoreTexture();
+		depthScene.StoreDepth01(renderCam.GetClipping().x(), renderCam.GetClipping().y());
 #endif //STORE_SCENE_TEX
 		// Store in result vector
 		results.push_back(std::make_tuple(rgbScene, depthScene));
@@ -270,7 +270,7 @@ void SceneManager::X_ProcessRenderfile(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderObjsDepth(Texture& result)
 {
-	Texture packed(true);
+	Texture packed(true, true);
 	ModifiablePath packedPath(result.GetPath().parent_path());
 	packedPath.append(result.GetPath().stem().string());
 	packedPath.concat("_packed");
@@ -293,7 +293,7 @@ void SceneManager::X_RenderObjsDepth(Texture& result)
 	X_ProcessRenderfile(packed);
 
 	// Convert to linear depth & delete packed texture
-	result.SetTexture(UnpackDepth(packed.GetTexture(), renderCam.GetClipping().x(), renderCam.GetClipping().y()));
+	result.SetTexture(UnpackDepth(packed.GetTexture()));
 	packed.DeleteTexture();
 }
 
@@ -302,7 +302,7 @@ void SceneManager::X_RenderObjsDepth(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderObjsLabel(Texture& result)
 {
-	Texture packed(true);
+	Texture packed(true, false);
 	ModifiablePath packedPath(result.GetPath().parent_path());
 	packedPath.append(result.GetPath().stem().string());
 	packedPath.concat("_packed");
@@ -324,7 +324,7 @@ void SceneManager::X_RenderObjsLabel(Texture& result)
 	renderCam.SetShadingOverride("");
 
 	// Send render command
-	X_ProcessRenderfile(result);
+	X_ProcessRenderfile(packed);
 
 	// Convert to 8b rgb & delete packed texture
 	result.SetTexture(UnpackLabel(packed.GetTexture()));
@@ -468,11 +468,11 @@ int SceneManager::Run(int imageCount)
 			renderCam.LoadExtrinsics(vecCameraPoses.at(currPose));
 
 			// Render object depths
-			Texture bodiesDepth(true);
+			Texture bodiesDepth(true, true);
 			bodiesDepth.SetPath(pRenderSettings->GetImagePath("body_depth", currPose));
 			X_RenderObjsDepth(bodiesDepth);
 #if STORE_DEBUG_TEX
-			bodiesDepth.StoreTexture();
+			bodiesDepth.StoreDepth01(renderCam.GetClipping().x(), renderCam.GetClipping().y());
 #endif //STORE_DEBUG_TEX
 
 			// Load scene depth
@@ -480,7 +480,7 @@ int SceneManager::Run(int imageCount)
 
 			// Create occlusion mask
 			bool objectsOccluded;
-			Texture bodiesMasked(false);
+			Texture bodiesMasked(false, true);
 			bodiesMasked.SetPath(pRenderSettings->GetImagePath("body_mask", currPose));
 			bodiesMasked.SetTexture(ComputeOcclusionMask(bodiesDepth.GetTexture(), sceneDepth.GetTexture(), objectsOccluded));
 #if STORE_DEBUG_TEX
@@ -493,22 +493,22 @@ int SceneManager::Run(int imageCount)
 				int currImg = imageCount + newImages;
 
 				// Render object labels (IDs as color)
-				Texture bodiesLabeled(false);
-				bodiesLabeled.SetPath(pRenderSettings->GetImagePath("body_label", currImg));
+				Texture bodiesLabeled(false, false);
+				bodiesLabeled.SetPath(pRenderSettings->GetImagePath("body_label", currPose));
 				X_RenderObjsLabel(bodiesLabeled);
 #if STORE_DEBUG_TEX
 				bodiesLabeled.StoreTexture();
 #endif //STORE_DEBUG_TEX
 
 				// Blend depth images
-				Texture blendedDepth(true);
+				Texture blendedDepth(true, true);
 				blendedDepth.SetPath(pRenderSettings->GetImagePath("depth", currImg, true));
 				blendedDepth.SetTexture(ComputeDepthBlend(bodiesDepth.GetTexture(), sceneDepth.GetTexture()));
 				blendedDepth.StoreTexture();
 
 				// Blend label and mask images
-				Texture bodiesSegmented(false);
-				bodiesSegmented.SetPath(pRenderSettings->GetImagePath("segs", currPose, true));
+				Texture bodiesSegmented(false, false);
+				bodiesSegmented.SetPath(pRenderSettings->GetImagePath("segs", currImg, true));
 				bodiesSegmented.SetTexture(ComputeSegmentMask(bodiesLabeled.GetTexture(), bodiesMasked.GetTexture()));
 				bodiesSegmented.StoreTexture();
 
@@ -519,7 +519,7 @@ int SceneManager::Run(int imageCount)
 
 				//// Render final image blend
 				//Texture finalBlend(false);
-				//finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currPose, true));
+				//finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currImg, true));
 				//// TODO: Replace with correct images
 				//X_RenderImageBlend(finalBlend, bodiesSegmented, Texture(), Texture());
 

@@ -82,7 +82,7 @@ namespace Renderer
 		//---------------------------------------
 		// Fetch depth render results
 		//---------------------------------------
-		cv::Mat Render_impl::X_GetDepth(float fov)
+		cv::Mat Render_impl::X_GetDepth(const Eigen::Matrix4f& proj)
 		{
 			// Setup buffers
 			cv::Mat image(height, width, CV_32FC1);
@@ -93,24 +93,36 @@ namespace Renderer
 			glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, &data[0]);
 
 			// Calculate constants
-			const float centerX = static_cast<float>(width) / 2.0f - 0.5f;
-			const float centerY = static_cast<float>(height) / 2.0f - 0.5f;
-			const float focalLength = (static_cast<float>(height) / 2.0f) / tan(fov / 2.0f);
+			float t2 = proj(2, 3);
+			float t1 = proj(2, 2);
+			float e1 = proj(3, 2);
+			Eigen::Matrix4f projInv = proj.inverse().transpose();
+			cv::Matx44f projInvCv(projInv.data());
 
 			// Parallel compute of actual distance
 			image.forEach<float>([&](float& val, const int pixel[]) -> void {
 				const int x = pixel[1];
 				const int y = height - pixel[0] - 1;
 				const float depth = data[((y * width) + x)];
-				// Distance to near plane
-				const float distToPlane = nearClip / (farClip - depth * (farClip - nearClip)) * farClip;
-				// True distance camera - pixel at far plane
-				const float diagonal = cv::norm(cv::Vec3f(
-					static_cast<float>(x) - centerX,
-					static_cast<float>(y) - centerY,
-					focalLength));
-				// Compute distance camera - pixel
-				val = distToPlane * (diagonal / focalLength);
+				// Transform pixel to NDC space
+				const cv::Vec3f ndc(
+					((2.0f * x) / width) - 1.0f,
+					((2.0f * y) / height) - 1.0f,
+					(2.0f * depth) - 1.0f
+				);
+				// Transform to clip space
+				const float w = t2 / (ndc[2] - (t1 / e1));
+				const cv::Vec4f clip(
+					ndc[0] * w,
+					ndc[1] * w,
+					ndc[2] * w,
+					w
+				);
+				// Transform to eye space
+				cv::Vec4f eye = projInvCv * clip;
+				eye[3] = 0.0f;
+				// Store distance
+				val = cv::norm(eye);
 			});
 
 			// Return image
@@ -146,9 +158,8 @@ namespace Renderer
 			camRender.w = w;
 			camRender.h = h;
 
-			// And corresponding matrix & fov
+			// And corresponding matrix
 			Eigen::Matrix4f camProj = Camera::Perspective<Eigen::Matrix4f::Scalar>(camRender, nearClip, farClip);
-			float fov = 2.0f * atan(h / (2.0f * fy));
 
 			// Make window visible
 			glfwSetWindowOpacity(window, 1.0f);
@@ -172,7 +183,7 @@ namespace Renderer
 				// Fetch results
 				glfwSwapBuffers(window);
 				col = X_GetRGB();
-				dep = X_GetDepth(fov);
+				dep = X_GetDepth(camProj);
 
 				// Save in vector
 				renderings.push_back(std::make_tuple(col, dep));

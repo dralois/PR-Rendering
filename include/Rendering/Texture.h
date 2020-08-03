@@ -21,7 +21,8 @@ private:
 
 	ModifiablePath filePath;
 	cv::Mat loadedImage;
-	bool dataImage;
+	bool floatPrecision;
+	bool singleChannel;
 
 public:
 	//---------------------------------------
@@ -37,7 +38,7 @@ public:
 		filePath = path.parent_path();
 		filePath.append(path.stem().string());
 		filePath.concat(".");
-		filePath.concat(extension.empty() ? dataImage ? "tiff" : "png" : extension);
+		filePath.concat(extension.empty() ? floatPrecision ? "tiff" : "png" : extension);
 	}
 
 	inline const cv::Mat& GetTexture() const { return loadedImage; }
@@ -60,17 +61,19 @@ public:
 		AddString(writer, filePath.string());
 
 		writer.Key("colorSpace");
-		AddString(writer, dataImage ? "float" : "default");
+		AddString(writer, floatPrecision ? "float" : "default");
 
 		writer.Key("colorDepth");
-		AddString(writer, dataImage ? "linear" : "sRGB");
+		AddString(writer, singleChannel ? "linear" : "sRGB");
 
 		writer.EndObject();
 	}
 
 	void LoadTexture()
 	{
-		loadedImage = cv::imread(filePath.string(), dataImage ? cv::IMREAD_ANYDEPTH : cv::IMREAD_COLOR);
+		loadedImage = cv::imread(filePath.string(),
+			(singleChannel ? cv::IMREAD_GRAYSCALE : cv::IMREAD_COLOR) |
+			(floatPrecision ? cv::IMREAD_ANYDEPTH : cv::IMREAD_ANYCOLOR));
 	}
 
 	void StoreTexture()
@@ -83,12 +86,25 @@ public:
 			break;
 		case CV_8UC1:
 		case CV_8UC3:
-		case CV_8UC4:
 			cv::imwrite(filePath.string(), loadedImage);
 			break;
 		default:
 			std::cout << "Can't store " << filePath << " (type " << loadedImage.type() << ")" << std::endl;
 			break;
+		}
+	}
+
+	void StoreDepth01(float nearClip, float farClip)
+	{
+		if (loadedImage.type() == CV_32FC1)
+		{
+			cv::Mat depth;
+			// Map to [0, 1] range and save that image
+			loadedImage.copyTo(depth);
+			depth.forEach<float>([&](float& val, const int pixel[]) -> void {
+				val = (val - nearClip) / (farClip - nearClip);
+			});
+			cv::imwrite(filePath.string(), depth);
 		}
 	}
 
@@ -103,11 +119,13 @@ public:
 	//---------------------------------------
 
 	Texture(
-		bool containsData = false
+		bool floatPrecision = false,
+		bool singleChannel = false
 	) :
 		filePath(),
 		loadedImage(),
-		dataImage(containsData)
+		floatPrecision(floatPrecision),
+		singleChannel(singleChannel)
 	{
 	}
 };

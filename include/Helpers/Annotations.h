@@ -24,6 +24,7 @@ private:
 	//---------------------------------------
 
 	boost::filesystem::ofstream osAnnotations;
+	cv::Mat objectMask;
 
 	//---------------------------------------
 	// Methods
@@ -64,6 +65,8 @@ public:
 			osAnnotations.close();
 		// Open or create file
 		osAnnotations.open(path, std::ios_base::app);
+		// Create mask storage
+		objectMask.create(settings->GetRenderResolution().y(), settings->GetRenderResolution().x(), CV_8UC1);
 	}
 
 	inline void Write(
@@ -77,12 +80,11 @@ public:
 		MeshBase* currMesh = (MeshBase*)currBody;
 
 		// Only annotate properly visible objects
-		cv::Mat currObjectMask;
-		if (!ComputeObjectVisible(labeled, segmented, currObjectMask, currMesh->GetLabelId()))
+		if (!ComputeObjectVisible(labeled, segmented, objectMask, currMesh->GetLabelId()))
 			return;
 
 		// Compute bounding box
-		cv::Rect bbox = ComputeBoundingBox(currObjectMask);
+		cv::Rect bbox = ComputeBoundingBox(objectMask);
 
 		// Compute world space pose of object
 		Eigen::Vector3f pos(currBody->GetPosition());

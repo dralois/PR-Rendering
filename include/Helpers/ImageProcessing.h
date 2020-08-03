@@ -14,6 +14,11 @@ static cv::Vec3b EncodeInt(
 	int toEncode
 )
 {
+	static std::hash<int> hash;
+	// Hash for nicer color spread
+	static int maxVal = 16777216;
+	toEncode = ((int) hash(toEncode)) % maxVal;
+	// Shift into uchars
 	uchar encode8 = (uchar)toEncode;
 	toEncode >>= 8;
 	uchar encode16 = (uchar)toEncode;
@@ -81,18 +86,19 @@ static bool ComputeObjectVisible(
 )
 {
 	// Single out current object
-	auto encodedId = EncodeInt(bodyId);
-	objectMask = labeled == encodedId;
-	// Determine unmasked amount
-	float bodySum = cv::sum(objectMask)[0];
+	const cv::Vec3b encodedId = EncodeInt(bodyId);
+	// Determine masked amount visible
+	cv::inRange(segmented, encodedId, encodedId, objectMask);
+	const float maskSum = cv::sum(objectMask)[0];
 	// Stop if object not visible at all
-	if (bodySum < FLT_EPSILON)
+	if (maskSum < FLT_EPSILON)
 		return false;
-	// Determine masked amount and coverage
-	float maskSum = cv::sum(segmented == encodedId)[0];
-	float percent = maskSum / bodySum;
-	// Visible if at least 30% uncovered & 2000px big
-	return (percent > 0.3f && static_cast<int>(maskSum) / 255 > 2000);
+	// Determine unmasked amount & visibility
+	cv::inRange(labeled, encodedId, encodedId, objectMask);
+	const float bodySum = cv::sum(objectMask)[0];
+	const float visibility = maskSum / bodySum;
+	// Visible if at least 30% unoccluded & 2000px big
+	return (visibility > 0.3f && static_cast<int>(maskSum) / 255 > 2000);
 }
 
 //---------------------------------------
@@ -140,31 +146,15 @@ static cv::Rect ComputeBoundingBox(
 // Converts packed depth to float
 //---------------------------------------
 static cv::Mat UnpackDepth(
-	const cv::Mat& packed,
-	float clipNear,
-	float clipFar
+	const cv::Mat& packed
 )
 {
 	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_32FC1);
-	// Unpack into one channel, clamp to near, no hit (0.0f) to inf
-	switch (packed.type())
-	{
-	case CV_32FC1:
-		unpacked.forEach<float>([&](float& val, const int pixel[]) -> void {
-			float distance = packed.at<float>(pixel[0], pixel[1]);
-			val = MAX(clipNear, distance == 0.0f ? FLT_MAX : distance);
-		});
-		break;
-	case CV_32FC3:
-		unpacked.forEach<float>([&](float& val, const int pixel[]) -> void {
-			float distance = packed.at<cv::Vec3f>(pixel[0], pixel[1])[0];
-			val = MAX(clipNear, distance == 0.0f ? FLT_MAX : distance);
-		});
-		break;
-	default:
-		std::cout << "Can't convert depth for format " << packed.type() << std::endl;
-		break;
-	}
+	// Unpack into one channel, convert no hit (0.0f) to inf
+	unpacked.forEach<float>([&](float& val, const int pixel[]) -> void {
+		float distance = packed.at<float>(pixel[0], pixel[1]);
+		val = distance == 0.0f ? FLT_MAX : distance;
+	});
 	return unpacked;
 }
 
