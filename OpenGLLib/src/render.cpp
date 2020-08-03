@@ -121,8 +121,8 @@ namespace Renderer
 				// Transform to eye space
 				cv::Vec4f eye = projInvCv * clip;
 				eye[3] = 0.0f;
-				// Store distance
-				val = cv::norm(eye);
+				// Store distance with 1cm offset
+				val = cv::norm(eye) + 0.01f;
 			});
 
 			// Return image
