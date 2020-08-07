@@ -22,7 +22,6 @@ private:
 	bool storeBlend;
 	std::string logLevel;
 	Eigen::Vector2i renderResolution;
-	ModifiablePath outputDir;
 	ModifiablePath pluginPath;
 	std::vector<ModifiablePath> shaderDirs;
 	Intrinsics customIntrinsics;
@@ -30,6 +29,8 @@ private:
 	// Simulation
 	int iterCount;
 	int objPerSim;
+	int stepsPerSim;
+	int batchSize;
 	int maxImages;
 
 	// Paths
@@ -46,7 +47,6 @@ public:
 	// Blender rendering
 	inline bool GetStoreBlend() const { return storeBlend; }
 	inline Eigen::Vector2i GetRenderResolution() const { return renderResolution; }
-	inline void SetRenderResolution(Eigen::Vector2i res) { renderResolution = res; }
 	inline ReferencePath GetLogLevel() const { return logLevel; }
 	inline ReferencePath GetPluginDir() const { return pluginPath; }
 	inline const std::vector<ModifiablePath>& GetShaderDirs() const { return shaderDirs; }
@@ -55,11 +55,11 @@ public:
 	// Simulation
 	inline int GetIterationCount() const { return iterCount; }
 	inline int GetObjectsPerSimulation() const { return objPerSim; }
+	inline int GetStepsPerSimulation() const { return stepsPerSim; }
+	inline int GetRenderBatchSize() const { return batchSize; }
 	inline int GetMaxImageCount() const { return maxImages; }
 
 	// Paths
-	inline void SetOutputDir(ReferencePath dir) { outputDir = dir; }
-	inline ReferencePath GetOutputDir() const { return outputDir; }
 	inline void SetScenePath(ReferencePath path) { scenePath = path; }
 	inline ReferencePath GetScenePath() const { return scenePath; }
 	inline ReferencePath GetMeshesPath() const { return meshesPath; }
@@ -101,9 +101,6 @@ public:
 		writer.Key("storeBlend");
 		writer.Bool(storeBlend);
 
-		writer.Key("resolution");
-		AddEigenVector<Eigen::Vector2i>(writer, renderResolution);
-
 		writer.Key("pluginPath");
 		AddString(writer, pluginPath.string());
 
@@ -135,18 +132,20 @@ public:
 		customIntrinsics()
 	{
 		// Init paths
-		meshesPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path"));
-		finalPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path"));
-		tempPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path"));
+		meshesPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path")));
+		finalPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path")));
+		tempPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path")));
 		// Init simulation settings
 		iterCount = SafeGet<int>(jsonConfig, "scene_iterations");
 		objPerSim = SafeGet<int>(jsonConfig, "simulation_objects");
+		stepsPerSim = SafeGet<int>(jsonConfig, "simulation_steps");
+		batchSize = SafeGet<int>(jsonConfig, "batch_size");
 		maxImages = SafeGet<int>(jsonConfig, "max_images");
 		// Init render settings
 		logLevel = SafeGet<const char*>(jsonConfig, "log_level");
 		storeBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		pluginPath = ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl"));
-		shaderDirs.push_back(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_bl")));
+		pluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl")));
+		shaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_bl"))));
 		renderResolution = Eigen::Vector2i(SafeGet<int>(jsonConfig, "render_width"), SafeGet<int>(jsonConfig, "render_height"));
 		// Init custom intrinsics
 		customIntrinsics.SetFocalLenght(Eigen::Vector2f(SafeGet<float>(jsonConfig, "fx"), SafeGet<float>(jsonConfig, "fy")));

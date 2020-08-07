@@ -32,6 +32,7 @@ void SimManager::X_LoadMeshes()
 			return;
 
 	JSONArray objects = jsonConfig["render_objs"].GetArray();
+	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
 
 	// Initialize vectors
 	vecpPxMesh.reserve(objects.Size());
@@ -48,7 +49,8 @@ void SimManager::X_LoadMeshes()
 				// Build paths
 				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
 				meshPath.append(SafeGet<const char*>(objects[i]));
-				meshPath.concat(".obj");
+				meshPath.concat(".");
+				meshPath.concat(format.empty() ? "obj" : format);
 				ModifiablePath texturePath(pRenderSettings->GetMeshesPath());
 				texturePath.append(SafeGet<const char*>(objects[i]));
 				texturePath.concat("_color.png");
@@ -94,13 +96,16 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 		{
 			for (auto entry : boost::filesystem::directory_iterator(path))
 			{
-				// Save folder in vector
+				// Save folder in vector, if it is a scene
 				if (boost::filesystem::is_directory(entry.path()))
 				{
-					vecSceneFolders.push_back(entry);
+					if(boost::filesystem::exists(ModifiablePath(entry.path()).append("rgbd")))
+					{
+						vecSceneFolders.push_back(entry);
+					}
 				}
 			}
-			// Finally sort vector and close dir
+			// Finally sort vector
 			std::sort(vecSceneFolders.begin(), vecSceneFolders.end());
 		}
 	}
@@ -140,7 +145,7 @@ SimManager::SimManager(ReferencePath configPath)
 	X_LoadMeshes();
 	// Setup scenes
 	ModifiablePath scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
-	X_SaveSceneFolders(scenesPath);
+	X_SaveSceneFolders(boost::filesystem::absolute(scenesPath));
 }
 
 //---------------------------------------

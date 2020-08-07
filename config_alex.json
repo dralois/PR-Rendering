@@ -1,17 +1,19 @@
 {
-    "log_level": "info",
-    "store_blend": true,
+    "log_level": "warning",
+    "store_blend": false,
 
-    "shaders_gl": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/OpenGLLib/shaders",
-    "shaders_bl": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/BlenderLib/python/BlenderModule/shaders",
-    "plugin_bl": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Git/BlenderLib/python/blenderseed.zip",
-    "meshes_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Bodies",
-    "scenes_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Scenes",
-    "final_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Output/final",
-    "temp_path": "C:/Users/dralois/Documents/Studium/Bachelor/SS20/Bachelor Arbeit/Output/temp",
+    "shaders_gl": "../OpenGLLib/shaders",
+    "shaders_bl": "../BlenderLib/python/BlenderModule/shaders",
+    "plugin_bl": "../BlenderLib/python/blenderseed.zip",
+    "meshes_path": "../../Bodies",
+    "scenes_path": "../../Scenes",
+    "final_path": "../../Output/final",
+    "temp_path": "../../Output/temp",
 
-    "simulation_objects": 50,
-    "scene_iterations": 3,
+    "simulation_objects": 100,
+    "simulation_steps": 2000,
+    "scene_iterations": 5,
+    "batch_size": 10,
     "max_images": 100,
 
     "fx": 539.8100,
@@ -28,6 +30,7 @@
     "render_height": 1080,
 
     "render_objs": ["obj_01", "obj_02", "obj_03", "obj_04", "obj_05", "obj_06", "obj_07", "obj_08", "obj_09", "obj_10", "obj_11", "obj_12", "obj_13"],
+    "mesh_format" : "obj",
     "scene_scale": 100.0,
     "obj_scale": 0.1
 }

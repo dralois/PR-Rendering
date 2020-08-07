@@ -54,6 +54,7 @@ int main(int argc, char** argv)
 		boost::filesystem::create_directories(tempDir / "body_depth");
 		boost::filesystem::create_directories(tempDir / "body_label");
 		boost::filesystem::create_directories(tempDir / "body_mask");
+		boost::filesystem::create_directories(tempDir / "body_rgb");
 		boost::filesystem::create_directories(tempDir / "scene_depth");
 		boost::filesystem::create_directories(tempDir / "scene_rgb");
 	}

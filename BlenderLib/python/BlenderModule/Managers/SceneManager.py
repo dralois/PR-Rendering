@@ -46,8 +46,8 @@ class Scene(object):
         ctx.render.image_settings.compression = (15, 0)[self.__camera.CameraDataOnly]
         ctx.render.image_settings.color_mode = ("RGBA", "RGB")[self.__camera.CameraDataOnly]
         ctx.render.image_settings.color_depth = ("8", "32")[self.__camera.CameraDataOnly]
-        ctx.render.resolution_x = self.__settings.get("resolution", (1920, 1080))[0]
-        ctx.render.resolution_y = self.__settings.get("resolution", (1920, 1080))[1]
+        ctx.render.resolution_x = self.__camera.CameraRenderResolution[0]
+        ctx.render.resolution_y = self.__camera.CameraRenderResolution[1]
         ctx.render.use_compositing = False
         ctx.render.use_sequencer = False
         # Shading override
@@ -86,8 +86,9 @@ class Scene(object):
         compilePaths = self.__settings.get("shaderDirs", [])
         compilePaths.append(FullPath(f"{FileDir(__file__)}\\..\\Shaders\\"))
         # Compile & add each shader directory
+        forceCompile = logger.level < 30 and self.__settings.get("storeBlend", False)
         for shaderPath in [FullPath(path) for path in compilePaths]:
-            CompileFolder(shaderPath, modulePath)
+            CompileFolder(shaderPath, modulePath, forceCompile)
             searchPaths += os.path.pathsep + shaderPath
         # Set shader searchpaths
         os.environ["APPLESEED_SEARCHPATH"] = searchPaths

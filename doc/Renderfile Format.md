@@ -9,7 +9,6 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
         {
             "logLevel" : string,
             "storeBlend" : bool,
-            "resolution" : [ int, int ],
             "pluginPath" : string,
             "shaderDirs" : [ string, ... ]
         },
@@ -23,6 +22,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
             "shift" : [ float, float ],
             "nearZ" : float,
             "resultFile" : string,
+            "resolution" : [ int, int ],
             "dataOnly" : bool,
             "aaSamples" : int,
             "rayBounces" : int,

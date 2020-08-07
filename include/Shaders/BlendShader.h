@@ -17,9 +17,9 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	Texture occlusion;
-	Texture original;
-	Texture rendered;
+	Texture* occlusion;
+	Texture* original;
+	Texture* rendered;
 
 	//---------------------------------------
 	// Methods
@@ -28,13 +28,13 @@ protected:
 	void BlendShader::X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("occlusionTexture");
-		AddString(writer, occlusion.GetPath().string());
+		AddString(writer, occlusion->GetPath().string());
 
 		writer.Key("originalImage");
-		AddString(writer, original.GetPath().string());
+		AddString(writer, original->GetPath().string());
 
 		writer.Key("renderedImage");
-		AddString(writer, rendered.GetPath().string());
+		AddString(writer, rendered->GetPath().string());
 	}
 
 public:
@@ -43,11 +43,11 @@ public:
 	//---------------------------------------
 
 	BlendShader(
-		const Texture& occlusion,
-		const Texture& original,
-		const Texture& rendered
+		Texture* occlusion,
+		Texture* original,
+		Texture* rendered
 	) :
-		OSLShader("blend_final", std::vector<Texture>{occlusion, original, rendered}),
+		OSLShader("blend_final", std::vector<Texture*>{occlusion, original, rendered}),
 		occlusion(occlusion),
 		original(original),
 		rendered(rendered)

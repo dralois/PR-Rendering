@@ -101,6 +101,7 @@ class CameraInstance(ObjectWrapper):
         self.__ppcActive = False
         # Render settings
         self.__result = ""
+        self.__resolution = (1920, 1080)
         self.__dataOnly = False
         self.__aaSamples = 16
         self.__rayBounces = -1
@@ -134,6 +135,16 @@ class CameraInstance(ObjectWrapper):
     @CameraResultFile.setter
     def CameraResultFile(self, value):
         self.__result = value
+
+    # Get render resolution
+    @property
+    def CameraRenderResolution(self):
+        return self.__resolution
+
+    # Set render resolution
+    @CameraRenderResolution.setter
+    def CameraRenderResolution(self, value):
+        self.__resolution = value
 
     # Get data / color rendering
     @property
@@ -197,6 +208,7 @@ class CameraInstance(ObjectWrapper):
         assert data is not None
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("resultFile", "")
+        self.CameraRenderResolution = data.get("resolution", (1920, 1080))
         self.CameraDataOnly = data.get("dataOnly", False)
         self.CameraAASamples = data.get("aaSamples", 16)
         self.CameraRayBounces = data.get("rayBounces", -1)

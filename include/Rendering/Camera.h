@@ -29,6 +29,7 @@ private:
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
+	Eigen::Vector2i resolution;
 	bool dataOnly;
 	int rayBounces;
 	int aaSamples;
@@ -55,6 +56,9 @@ private:
 
 		writer.Key("resultFile");
 		AddString(writer, resultFile.string());
+
+		writer.Key("resolution");
+		AddEigenVector<Eigen::Vector2i>(writer, resolution);
 
 		writer.Key("dataOnly");
 		writer.Bool(dataOnly);
@@ -90,6 +94,8 @@ public:
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
 	inline void SetResultFile(ReferencePath result) { resultFile = result; }
 	inline const ReferencePath GetResultFile() const { return resultFile; }
+	inline void SetRenderResolution(Eigen::Vector2i res) { resolution = res; }
+	inline Eigen::Vector2i SetRenderResolution() const { return resolution; }
 	inline void SetDataOnly(bool rendersData) { dataOnly = rendersData; }
 	inline bool GetDataOnly() const { return dataOnly; }
 	inline int GetRayBounces() const { return rayBounces; }
@@ -184,6 +190,7 @@ public:
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
 		resultFile(""),
+		resolution(Eigen::Vector2i(1920, 1080)),
 		aspectRatio(1.777f),
 		dataOnly(false),
 		rayBounces(-1),

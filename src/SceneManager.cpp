@@ -1,6 +1,6 @@
 #include <SceneManager.h>
 
-#define STORE_SCENE_TEX 0
+#define STORE_SCENE_TEX 1
 #define STORE_DEBUG_TEX 1
 
 #define PI (3.1415926535897931f)
@@ -57,13 +57,16 @@ void SceneManager::X_PxCreateObjs()
 		currObj->SetObjId(i);
 		currObj->CreateMesh();
 
+		auto sceneSize = pPxMeshScene->GetMaximum() - pPxMeshScene->GetMinimum();
+		auto sceneCenter = pPxMeshScene->GetMinimum() + (sceneSize / 2.0f);
+
 		// Random position in scene
-		float y = (rand() % 10) + 1;
-		float x = (rand() % ((int)(pPxMeshScene->GetMaximum().x - pPxMeshScene->GetMinimum().x))) + pPxMeshScene->GetMinimum().x;
-		float z = (rand() % ((int)(pPxMeshScene->GetMaximum().z - pPxMeshScene->GetMinimum().z))) + pPxMeshScene->GetMinimum().z;
+		float y = sceneCenter.y * 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f * sceneSize.y;
+		float x = pPxMeshScene->GetMinimum().x + (static_cast<float>(rand()) / RAND_MAX) * sceneSize.x;
+		float z = pPxMeshScene->GetMinimum().z + (static_cast<float>(rand()) / RAND_MAX) * sceneSize.z;
 
 		// Set pose and save mesh in vector
-		PxTransform pose(PxVec3(x, y, z), PxQuat(-0.7071068, 0, 0, 0.7071068));
+		PxTransform pose(PxVec3(z, y, x), PxQuat(PxIDENTITY::PxIdentity));
 		currObj->SetTransform(pose);
 		currObj->AddRigidActor(pPxScene);
 		vecpPxMeshCurrObjs.push_back(currObj);
@@ -179,12 +182,12 @@ void SceneManager::X_PxSaveSimResults()
 //---------------------------------------
 // Render scene depth
 //---------------------------------------
-RenderResult SceneManager::X_RenderSceneDepth() const
+RenderResult SceneManager::X_RenderSceneDepth(std::vector<ModifiablePath> poses) const
 {
 	// Render depth with OpenGL
 	auto renders = pRenderer->RenderScenes(
 		pRenderSettings->GetScenePath(),
-		vecCameraPoses,
+		poses,
 		renderCam.GetIntrinsics().GetFocalLenght().x(),
 		renderCam.GetIntrinsics().GetFocalLenght().y(),
 		renderCam.GetIntrinsics().GetPrincipalPoint().x(),
@@ -288,6 +291,7 @@ void SceneManager::X_RenderObjsDepth(Texture& result)
 	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
 	renderCam.SetShadingOverride("depth");
+	renderCam.SetRenderResolution(pRenderSettings->GetRenderResolution());
 
 	// Send render command
 	X_ProcessRenderfile(packed);
@@ -322,6 +326,7 @@ void SceneManager::X_RenderObjsLabel(Texture& result)
 	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
 	renderCam.SetShadingOverride("");
+	renderCam.SetRenderResolution(pRenderSettings->GetRenderResolution());
 
 	// Send render command
 	X_ProcessRenderfile(packed);
@@ -333,14 +338,18 @@ void SceneManager::X_RenderObjsLabel(Texture& result)
 
 //---------------------------------------
 // Render objects physically based
-// TODO: Object color rendering
 //---------------------------------------
-void SceneManager::X_RenderObjsRGB(Texture& result)
+void SceneManager::X_RenderObjsPBR(Texture& result)
 {
 	// Set shaders
+	std::vector<Texture*> texStorage;
 	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		// TODO
+		Texture* currTex = new Texture();
+		currTex->SetPath(currMesh->GetTexturePath());
+		texStorage.push_back(currTex);
+		PBRShader* currShader = new PBRShader(currTex);
+		currMesh->SetShader((OSLShader*)currShader);
 	}
 
 	// Set raytracing settings
@@ -348,9 +357,17 @@ void SceneManager::X_RenderObjsRGB(Texture& result)
 	renderCam.SetAASamples(16);
 	renderCam.SetRayBounces(-1);
 	renderCam.SetShadingOverride("");
+	renderCam.SetRenderResolution(Eigen::Vector2i(renderCam.GetIntrinsics().GetWidth(), renderCam.GetIntrinsics().GetHeight()));
 
 	// Send render command
 	X_ProcessRenderfile(result);
+
+	// Remove textures
+	for (auto tex : texStorage)
+	{
+		delete tex;
+	}
+	texStorage.clear();
 }
 
 //---------------------------------------
@@ -359,13 +376,13 @@ void SceneManager::X_RenderObjsRGB(Texture& result)
 //---------------------------------------
 void SceneManager::X_RenderImageBlend(
 	Texture& result,
-	const Texture& occlusion,
-	const Texture& original,
-	const Texture& rendered
+	Texture& occlusion,
+	Texture& original,
+	Texture& rendered
 )
 {
 	// Setup camera shader
-	BlendShader* finalBlend = new BlendShader(occlusion, original, rendered);
+	BlendShader* finalBlend = new BlendShader(&occlusion, &original, &rendered);
 	renderCam.SetEffect((OSLShader*)finalBlend);
 
 	// Set raytracing settings
@@ -373,6 +390,7 @@ void SceneManager::X_RenderImageBlend(
 	renderCam.SetAASamples(1);
 	renderCam.SetRayBounces(0);
 	renderCam.SetShadingOverride("");
+	renderCam.SetRenderResolution(pRenderSettings->GetRenderResolution());
 
 	// Send render command
 	X_ProcessRenderfile(result);
@@ -423,11 +441,11 @@ void SceneManager::X_GetImagesToProcess(
 
 //---------------------------------------
 // Run simulation
-// TODO: Object color rendering
 //---------------------------------------
 int SceneManager::Run(int imageCount)
 {
 	int newImages = 0;
+	RenderResult sceneRenders;
 
 	// Create/open annotation file
 	pAnnotations->Begin(pRenderSettings);
@@ -440,11 +458,9 @@ int SceneManager::Run(int imageCount)
 	// Fetch camera intrinsics
 	renderCam.LoadIntrinsics(pRenderSettings);
 
-	// Render scene depth with OpenGL
-	RenderResult sceneRenders = X_RenderSceneDepth();
-
 	// For each scene iteration
 	int maxIters = pRenderSettings->GetIterationCount();
+	int batchSize = pRenderSettings->GetRenderBatchSize();
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 	for (int iter = 0; iter < maxIters; iter++)
 	{
@@ -453,7 +469,7 @@ int SceneManager::Run(int imageCount)
 		// Create physx objects
 		X_PxCreateObjs();
 		// Run the simulation
-		X_PxRunSim(1.0f / 50.0f, 400);
+		X_PxRunSim(1.0f / 50.0f, pRenderSettings->GetStepsPerSimulation());
 		// Save results
 		X_PxSaveSimResults();
 
@@ -461,8 +477,26 @@ int SceneManager::Run(int imageCount)
 		int lastPose = vecCameraPoses.size();
 		for (int currPose = 0; currPose < lastPose; currPose++)
 		{
-			std::cout << "Scene " << scenePath << ": Iteration " << iter << "/" << maxIters
-				<< ": Pose " << currPose << "/" << lastPose << std::endl;
+			std::cout << "Scene " << scenePath << ": Iteration " << (iter + 1) << "/" << maxIters
+				<< ": Pose " << (currPose + 1) << "/" << lastPose << std::endl;
+
+			// Possibly render scene depth
+			if(currPose % batchSize == 0)
+			{
+				// Remove old renders
+				sceneRenders.clear();
+				// Determine range
+				uint start = currPose;
+				uint end = currPose + batchSize >= lastPose ?
+					lastPose - currPose : currPose + batchSize;
+				// Build vector
+				std::vector<ModifiablePath> currPoses(
+					vecCameraPoses.begin() + start,
+					vecCameraPoses.begin() + end
+				);
+				// Render scene depth with OpenGL
+				sceneRenders = X_RenderSceneDepth(currPoses);
+			}
 
 			// Load camera pose
 			renderCam.LoadExtrinsics(vecCameraPoses.at(currPose));
@@ -476,7 +510,7 @@ int SceneManager::Run(int imageCount)
 #endif //STORE_DEBUG_TEX
 
 			// Load scene depth
-			Texture sceneDepth = std::get<1>(sceneRenders[currPose]);
+			Texture sceneDepth = std::get<1>(sceneRenders[currPose % batchSize]);
 
 			// Create occlusion mask
 			bool objectsOccluded;
@@ -504,7 +538,11 @@ int SceneManager::Run(int imageCount)
 				Texture blendedDepth(true, true);
 				blendedDepth.SetPath(pRenderSettings->GetImagePath("depth", currImg, true));
 				blendedDepth.SetTexture(ComputeDepthBlend(bodiesDepth.GetTexture(), sceneDepth.GetTexture()));
+#if STORE_DEBUG_TEX
+				blendedDepth.StoreDepth01(renderCam.GetClipping().x(), renderCam.GetClipping().y());
+#else
 				blendedDepth.StoreTexture();
+#endif //STORE_DEBUG_TEX
 
 				// Blend label and mask images
 				Texture bodiesSegmented(false, false);
@@ -517,11 +555,29 @@ int SceneManager::Run(int imageCount)
 					pAnnotations->Write(currMesh, bodiesLabeled.GetTexture(),
 						bodiesSegmented.GetTexture(), renderCam, currImg);
 
-				//// Render final image blend
+				// PBR objects color rendering
+				Texture bodiesColor(false, false);
+				bodiesColor.SetPath(pRenderSettings->GetImagePath("body_rgb", currPose, false));
+				X_RenderObjsPBR(bodiesColor);
+#if STORE_DEBUG_TEX
+				bodiesColor.StoreTexture();
+#endif //STORE_DEBUG_TEX
+
+				// Load real scene RGB image
+				Texture sceneColor(false, false);
+				sceneColor.SetPath(vecCameraImages[currPose], "jpg");
+				sceneColor.LoadTexture();
+
+				// Simple blend with mask
+				Texture simpleBlend(false, false);
+				simpleBlend.SetPath(pRenderSettings->GetImagePath("rgb", currImg, true));
+				simpleBlend.SetTexture(ComputeRGBBlend(bodiesColor.GetTexture(), sceneColor.GetTexture(), bodiesMasked.GetTexture()));
+				simpleBlend.StoreTexture();
+
+				//// TODO: Render final image blend
 				//Texture finalBlend(false);
 				//finalBlend.SetPath(pRenderSettings->GetImagePath("rgb", currImg, true));
-				//// TODO: Replace with correct images
-				//X_RenderImageBlend(finalBlend, bodiesSegmented, Texture(), Texture());
+				//X_RenderImageBlend(finalBlend, bodiesMasked, sceneColor, bodiesColor);
 
 				newImages++;
 			}
@@ -562,6 +618,7 @@ SceneManager::SceneManager(
 
 	// Create camera & load clipping planes
 	renderCam = Camera();
+	renderCam.SetRenderResolution(pRenderSettings->GetRenderResolution());
 	renderCam.SetClipping(
 		SafeGet<float>(pRenderSettings->GetJSONConfig(), "near_z"),
 		SafeGet<float>(pRenderSettings->GetJSONConfig(), "far_z")
@@ -571,19 +628,20 @@ SceneManager::SceneManager(
 	for (int i = 0; i < 8; i++)
 	{
 		LightParamsBase* params = (LightParamsBase*)(new PointLightParams());
-		Light* addLight = new Light(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 2.0f, 1.0f);
+		Light* addLight = new Light(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 75.0f, 1.0f);
 		// Add 8 lights in a box pattern
 		addLight->SetPosition(Eigen::Vector3f(
-			i % 2 == 0 ? 10.0f : -10.0f,
-			(i >> 1) % 2 == 0 ? 10.0f : -10.0f,
-			(i >> 2) % 2 == 0 ? 1.0f : 10.0f)
+			i % 2 == 0 ? 5.0f : -5.0f,
+			(i >> 1) % 2 == 0 ? 5.0f : -5.0f,
+			(i >> 2) % 2 == 0 ? 5.0f : -5.0f)
 		);
 		vecpLights.push_back(addLight);
 	}
 
 	// Create OpenGL renderer
+	ModifiablePath shadersPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl"));
 	pRenderer = new Renderer::Render(
-		ModifiablePath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl")),
+		boost::filesystem::absolute(shadersPath),
 		pRenderSettings->GetRenderResolution().x(),
 		pRenderSettings->GetRenderResolution().y(),
 		renderCam.GetClipping().x(),

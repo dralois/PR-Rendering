@@ -83,15 +83,15 @@ private:
 	void X_PxSaveSimResults();
 
 	// Rendering
-	RenderResult X_RenderSceneDepth() const;
+	RenderResult X_RenderSceneDepth(std::vector<ModifiablePath> poses) const;
 	void X_RenderObjsDepth(Texture& result);
 	void X_RenderObjsLabel(Texture& result);
-	void X_RenderObjsRGB(Texture& result);
+	void X_RenderObjsPBR(Texture& result);
 	void X_RenderImageBlend(
 		Texture& result,
-		const Texture& occlusion,
-		const Texture& original,
-		const Texture& rendered
+		Texture& occlusion,
+		Texture& original,
+		Texture& rendered
 	);
 	void X_ProcessRenderfile(Texture& result);
 

@@ -6,31 +6,29 @@
 #pragma warning(pop)
 
 //---------------------------------------
-// Shader for mask creation
+// Shader for PBR rendering
 //---------------------------------------
-class LabelShader : OSLShader
+class PBRShader : OSLShader
 {
 protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
 
-	int maskRed;
-	int maskGreen;
-	int maskBlue;
+	Texture* diffuse;
+	float metalness;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	void LabelShader::X_AddToJSON(JSONWriterRef writer) override
+	void PBRShader::X_AddToJSON(JSONWriterRef writer) override
 	{
-		writer.Key("maskRed");
-		writer.Int(maskRed);
-		writer.Key("maskGreen");
-		writer.Int(maskGreen);
-		writer.Key("maskBlue");
-		writer.Int(maskBlue);
+		writer.Key("diffusePath");
+		AddString(writer, diffuse->GetPath().string());
+
+		writer.Key("metalness");
+		AddFloat(writer, metalness);
 	}
 
 public:
@@ -38,15 +36,13 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	LabelShader(
-		int red,
-		int green,
-		int blue
-	):
-		OSLShader("label_obj", (std::vector<Texture*>)0),
-		maskRed(red),
-		maskGreen(green),
-		maskBlue(blue)
+	PBRShader(
+		Texture* diffuse,
+		float metalness = 0.0f
+	) :
+		OSLShader("pbr_obj", std::vector<Texture*>{diffuse}),
+		diffuse(diffuse),
+		metalness(metalness)
 	{
 	}
 };

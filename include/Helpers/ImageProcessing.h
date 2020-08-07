@@ -114,6 +114,22 @@ static cv::Mat ComputeDepthBlend(
 }
 
 //---------------------------------------
+// Simple mask based blending operation
+//---------------------------------------
+static cv::Mat ComputeRGBBlend(
+	const cv::Mat& bodiesRGB,
+	const cv::Mat& sceneRGB,
+	const cv::Mat& bodiesMask
+)
+{
+	cv::Mat blendResult, maskResized;
+	sceneRGB.copyTo(blendResult);
+	cv::resize(bodiesMask, maskResized, cv::Size(bodiesRGB.cols, bodiesRGB.rows));
+	bodiesRGB.copyTo(blendResult, maskResized);
+	return blendResult;
+}
+
+//---------------------------------------
 // Creates label image from depth images
 //---------------------------------------
 static cv::Mat ComputeSegmentMask(

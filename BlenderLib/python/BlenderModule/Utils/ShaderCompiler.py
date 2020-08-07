@@ -8,7 +8,7 @@ import glob
 logger = GetLogger()
 
 # Compile and store every osl shader in a folder
-def CompileFolder(shaderFolder, modulePath):
+def CompileFolder(shaderFolder, modulePath, forceCompile):
     logger.info(f"Compiling shaders in folder {shaderFolder}")
     # Glob all osl files, compile and store them
     for oslShader in glob.glob(shaderFolder + "\\*.osl"):

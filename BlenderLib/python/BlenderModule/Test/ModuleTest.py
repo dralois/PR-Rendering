@@ -6,7 +6,7 @@ testScene = {
     "settings" :
     {
         "logLevel" : "info",
-        "resolution" : [1280, 720],
+        "storeBlend" : True,
         "pluginDir" : "..\\blenderseed.zip",
         "shaderDirs" : ["Test"]
     },
@@ -15,6 +15,7 @@ testScene = {
         "position" : [6.0, -3.0, 5.0],
         "rotation" : [0.9, 0.0, 1.1],
         "resultFile" : ".\\Test\\test_render.png",
+        "resolution" : [1280, 720]
     },
     "meshes" : [
         {

@@ -11,7 +11,9 @@
     "temp_path": "",
 
     "simulation_objects": 0,
+    "simulation_steps": 0,
     "scene_iterations": 0,
+    "batch_size": 0,
     "max_images": 0,
 
     "fx": 0.0,
@@ -28,6 +30,7 @@
     "render_height": 0,
 
     "render_objs": [""],
+    "mesh_format" : "",
     "scene_scale": 0.0,
     "obj_scale": 0.0
 }

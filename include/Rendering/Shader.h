@@ -19,7 +19,7 @@ protected:
 	//---------------------------------------
 
 	std::string name;
-	std::vector<Texture> textures;
+	std::vector<Texture*> textures;
 
 	//---------------------------------------
 	// Methods
@@ -44,7 +44,7 @@ public:
 		writer.StartArray();
 		for (auto currTex : textures)
 		{
-			currTex.AddToJSON(writer);
+			currTex->AddToJSON(writer);
 		}
 		writer.EndArray();
 
@@ -63,7 +63,7 @@ public:
 
 	OSLShader(
 		const std::string& name,
-		const std::vector<Texture>& textures
+		const std::vector<Texture*>& textures
 	) :
 		name(name),
 		textures(textures)

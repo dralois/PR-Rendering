@@ -159,6 +159,21 @@ class BlendFinal(ShaderBase):
     def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
         return tree.nodes.new("AppleseedasBlendFinalNode")
 
+# Generator for object PBR shading
+class PBRObject(ShaderBase):
+
+    @classmethod
+    def OutputsClosure(self):
+        return True
+
+    @classmethod
+    def BuildShader(self, tree : bpy.types.NodeTree, data : dict) -> bpy.types.Node:
+        texNode = tree.nodes.new("AppleseedasSimpleTextureNode")
+        texNode.in_filename = GetTextureSystem().GetTexture(data.get("diffusePath", ""))
+        pbrNode = tree.nodes.new("AppleseedasSbsPbrMaterialNode")
+        pbrNode.in_metallic = data.get("metalness", 0.0)
+        tree.links.new(pbrNode.inputs[1], texNode.outputs[0])
+        return pbrNode
 
 # Get appropriate shader generator
 def GetShader(shaderID) -> ShaderBase:
@@ -168,6 +183,7 @@ def GetShader(shaderID) -> ShaderBase:
                 "uv_to_color" : UV2Color,
                 "depth_obj" : DepthObject,
                 "label_obj" : LabelObject,
+                "pbr_obj" : PBRObject,
                 "blend_final" : BlendFinal
     }
     # Return appropriate class
