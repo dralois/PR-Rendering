@@ -1,7 +1,7 @@
 shader effect_closure
 [[
     string as_node_name = "asEffectClosure",
-    string as_category = "shader"
+    string as_category = "surface"
 ]]
 (
     color in_color = 0

@@ -1,7 +1,7 @@
 shader uv_to_color
 [[
     string as_node_name = "asUV2Color",
-    string as_category = "shader"
+    string as_category = "utility"
 ]]
 (
     output color out_color = 0

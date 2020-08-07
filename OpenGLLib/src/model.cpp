@@ -85,6 +85,9 @@ namespace Renderer
 
 		// Process mesh recursively
 		X_ProcessNode(scene->mRootNode, scene);
+
+		// Cleanup
+		importer.FreeScene();
 	}
 
 	//---------------------------------------
@@ -236,8 +239,10 @@ namespace Renderer
 	//---------------------------------------
 	// New model from given path
 	//---------------------------------------
-	Model::Model(const boost::filesystem::path& modelPath,
-		const boost::filesystem::path& texturePath) :
+	Model::Model(
+		const boost::filesystem::path& modelPath,
+		const boost::filesystem::path& texturePath
+	) :
 		modelPath(modelPath),
 		texturePath(texturePath)
 	{
