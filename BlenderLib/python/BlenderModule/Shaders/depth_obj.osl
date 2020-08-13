@@ -12,9 +12,9 @@ shader depth_obj
     [[
         string label = "Camera Far Clipping Plane"
     ]],
-    output closure color out_depthEncoded = 0
+    output closure color out_depthLinear = 0
     [[
-        string label = "Encoded Depth"
+        string label = "Linear 0-1 Depth"
     ]]
 )
 {
@@ -22,5 +22,5 @@ shader depth_obj
     point camPos = point("camera", 0.0, 0.0, 0.0);
     float depth = (distance(camPos, P) - in_cameraClipNear) / (in_cameraClipFar - in_cameraClipNear);
     // Add emission closure
-    out_depthEncoded = color(depth) * emission();
+    out_depthLinear = color(depth) * emission();
 }

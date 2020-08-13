@@ -3,6 +3,8 @@ import time
 
 __logger = None
 
+__performance = {}
+
 __mapping = {   "debug" : logging.DEBUG,
                 "info" : logging.INFO,
                 "warning" : logging.WARNING,
@@ -37,8 +39,14 @@ def SetLevel(level):
 def GetLevel():
     return __reversed.get(__logger.level, "error")
 
-# Convenience function
-def LogPerformance(start, what):
-    GetLogger().info("***********************************************")
-    GetLogger().info(f"{what} duration: {time.clock() - start}")
-    GetLogger().info("***********************************************")
+# Convenience performance measure function
+def LogPerformance(what):
+    global __performance
+    # Log duration or start timer
+    if what in __performance:
+        GetLogger().info("***********************************************")
+        GetLogger().info(f"{what} duration: {time.clock() - __performance[what]}")
+        GetLogger().info("***********************************************")
+        del __performance[what]
+    else:
+        __performance[what] = time.clock()

@@ -27,8 +27,12 @@ protected:
 
 	virtual void X_AddToJSON(JSONWriterRef writer) override
 	{
+		writer.Key("objectID");
+		writer.Int(GetObjId());
+
 		writer.Key("file");
 		AddString(writer, GetMeshPath().string());
+
 		// Mesh should always have a shader
 		if (oslShader)
 		{

@@ -29,7 +29,9 @@ namespace Blender
 			//---------------------------------------
 			// Methods
 			//---------------------------------------
+			EXPORT_THIS void LogPerformance(const std::string& what);
 			EXPORT_THIS void ProcessRenderfile(const std::string& renderfile);
+			EXPORT_THIS void UnloadProcesses();
 
 			//---------------------------------------
 			// Constructors

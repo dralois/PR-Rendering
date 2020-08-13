@@ -74,7 +74,7 @@ class MeshData(DataWrapper):
     def __LoadMeshObj(self):
         # Load mesh to active scene & store from selection
         sys.stdout = open(devnull, "w")
-        bpy.ops.import_scene.obj(filepath = self.__filePath)
+        bpy.ops.import_scene.obj(filepath=self.__filePath, axis_forward="Y", axis_up="Z")
         sys.stdout = sys.__stdout__
         # Delete potentially loaded materials
         loader : bpy.types.Object = bpy.context.selected_objects[0]

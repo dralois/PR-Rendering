@@ -23,19 +23,46 @@ namespace Blender
 		object blenderModule;
 		object blenderNamespace;
 		object renderManager;
+		object logger;
 
 	public:
 		//---------------------------------------
 		// Methods
 		//---------------------------------------
 
+		void LogPerformance(
+			const std::string& what
+		)
+		{
+			try
+			{
+				logger.attr("LogPerformance")(what);
+			}
+			catch (const error_already_set&)
+			{
+				PyErr_Print();
+			}
+		}
+		
 		void ProcessRenderfile(
 			const std::string& renderfile
 		)
 		{
 			try
 			{
-				renderManager.attr("RenderScenes")(renderfile);
+				renderManager.attr("ProcessRenderfile")(renderfile);
+			}
+			catch (const error_already_set&)
+			{
+				PyErr_Print();
+			}
+		}
+
+		void UnloadProcesses()
+		{
+			try
+			{
+				renderManager.attr("UnloadProcesses")();
 			}
 			catch (const error_already_set&)
 			{
@@ -51,7 +78,7 @@ namespace Blender
 		{
 			try
 			{
-				//Py_set
+				// Start embedded interpreter
 				Py_Initialize();
 				// Store main and globals
 				blenderModule = import("BlenderModule");
@@ -59,8 +86,11 @@ namespace Blender
 				// Setup embedded python for multiprocessing
 				object utils = import("BlenderModule.Utils");
 				utils.attr("SetupMultiprocessing")();
+				// Store logger for performance measuring
+				logger = import("BlenderModule.Utils.Logger");
 				// Store render manager instance
-				renderManager = import("BlenderModule.Managers.RenderManager");
+				object renderModule = import("BlenderModule.Managers.RenderManager");
+				renderManager = renderModule.attr("RenderManager")();
 			}
 			catch (const error_already_set&)
 			{
@@ -70,6 +100,16 @@ namespace Blender
 	};
 
 	//---------------------------------------
+	// Forward performance logging
+	//---------------------------------------
+	void BlenderRenderer::LogPerformance(
+		const std::string& what
+	)
+	{
+		rendererImpl->LogPerformance(what);
+	}
+
+	//---------------------------------------
 	// Forward renderfile processing
 	//---------------------------------------
 	void BlenderRenderer::ProcessRenderfile(
@@ -77,6 +117,14 @@ namespace Blender
 	)
 	{
 		rendererImpl->ProcessRenderfile(renderfile);
+	}
+
+	//---------------------------------------
+	// Forward process reloading
+	//---------------------------------------
+	void BlenderRenderer::UnloadProcesses()
+	{
+		rendererImpl->UnloadProcesses();
 	}
 
 	//---------------------------------------

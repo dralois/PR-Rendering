@@ -6,7 +6,6 @@ from typing import List, Dict
 from os import chdir
 import multiprocessing as mp
 import json
-import time
 
 # Render manager, handles multithreaded rendering
 class RenderManager(object):
@@ -47,11 +46,11 @@ class RenderManager(object):
 
     # Remove and reload all process
     def UnloadProcesses(self):
-        startReload = time.clock()
+        LogPerformance("Process reloading")
         for i in range(self.__maxWorkers):
             if self.__RemoveProcess(i):
                 self.__CreateProcess(i)
-        LogPerformance(startReload, "Process reloading")
+        LogPerformance("Process reloading")
 
     # Create & start a new process
     def __CreateProcess(self, index):
@@ -116,19 +115,19 @@ class RenderProcess(mp.Process):
             try:
                 # Check for work
                 data = self.__fileQueue.get(True, 0.1)
-                startBuild = time.clock()
                 # Create or update scene
+                LogPerformance("Process build")
                 if self.__scene is None:
                     self.__scene = CreateFromJSON(data)
                 else:
                     self.__scene = UpdateFromJSON(data, self.__scene)
-                LogPerformance(startBuild, "Process build")
+                LogPerformance("Process build")
                 # Process render queue
-                startRender = time.clock()
+                LogPerformance("Process render")
                 while self.__scene.RenderQueueRemaining() > 0:
                     self.__scene.RenderQueueProcessNext()
                 # Signal rendering complete to main thread
-                LogPerformance(startRender, "Process render")
+                LogPerformance("Process render")
                 self.__fileQueue.task_done()
             except mp.queues.Empty:
                 # Check for close signal
