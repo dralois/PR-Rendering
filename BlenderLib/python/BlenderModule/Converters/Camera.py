@@ -2,13 +2,10 @@ from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
 from ..Utils import FullPath
 from .Base import ObjectWrapper, DataWrapper
-from .Shader import Shader
 
 # Blender for multiprocessing
 bpy = ImportBpy()
 logger = GetLogger()
-
-import bmesh
 
 # Camera descriptor
 class CameraData(DataWrapper):
@@ -36,24 +33,18 @@ class CameraData(DataWrapper):
     def Valid(self):
         return self.__camera is not None
 
-    # Get FOV [x, y]
+    # Get FOV [aspect, x, y]
     @property
     def CameraFOV(self):
-        return self.__camera.angle_x, self.__camera.angle_y
+        aspect = self.__camera.sensor_width / self.__camera.sensor_height
+        return aspect, self.__camera.angle_x, self.__camera.angle_y
 
-    # Set FOV [x, y]
+    # Set FOV [aspect, x, y]
     @CameraFOV.setter
     def CameraFOV(self, value):
-        self.__camera.angle_x = value[0]
-        self.__camera.angle_y = value[1]
-
-    @property
-    def CameraAspect(self):
-        return self.__camera.sensor_width / self.__camera.sensor_height
-
-    @CameraAspect.setter
-    def CameraAspect(self, value):
-        self.__camera.sensor_height = self.__camera.sensor_width / value
+        self.__camera.sensor_height = self.__camera.sensor_width / value[0]
+        self.__camera.angle_x = value[1]
+        self.__camera.angle_y = value[2]
 
     # Get shift [x, y]
     @property
@@ -74,20 +65,15 @@ class CameraData(DataWrapper):
     # Set near z plane distance
     @CameraNearZ.setter
     def CameraNearZ(self, value):
-        self.__camera.appleseed.near_z = value
-
-    # Get camera frame rectangle (for current scene)
-    @property
-    def CameraFrame(self):
-        return self.__camera.view_frame(scene = bpy.context.scene)
+        nearZ = (-1.0 * value, value)[value < 0.0]
+        self.__camera.appleseed.near_z = nearZ
 
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
-        self.CameraAspect = data.get("aspect", 1.5)
-        self.CameraFOV = data.get("fov", (0.6911,0.4711))
-        self.CameraShift = data.get("shift", (0.0,0.0))
-        self.CameraNearZ = -1.0 * data.get("nearZ", 0.001)
+        self.CameraFOV = data.get("fov", (1.5, 0.6911, 0.4711))
+        self.CameraShift = data.get("shift", (0.0, 0.0))
+        self.CameraNearZ = data.get("nearZ", 0.001)
 
 # Camera object in scene
 class CameraInstance(ObjectWrapper):
@@ -98,7 +84,6 @@ class CameraInstance(ObjectWrapper):
         # Store descriptor
         self.__camData : CameraData
         self.__camData = blueprint
-        self.__ppcActive = False
         # Render settings
         self.__result = ""
         self.__resolution = (1920, 1080)
@@ -106,20 +91,6 @@ class CameraInstance(ObjectWrapper):
         self.__aaSamples = 16
         self.__rayBounces = -1
         self.__shadingOverride = ""
-        # Create postprocessing effect quad
-        self.__ppcMesh = bpy.data.meshes.new("mesh_camera_ppc")
-        self.__CreatePPCQuad()
-        # Create object & position quad
-        self.__ppcObj = bpy.data.objects.new("obj_camera_ppc", self.__ppcMesh)
-        self._TransformUpdate()
-        # Create & setup material
-        self.__ppcMat = bpy.data.materials.new("mat_camera_ppc")
-        self.__ppcMat.use_nodes = True
-        self.__ppcMat.node_tree.nodes.clear()
-        # Bind material to quad
-        self.__ppcObj.data.materials.append(self.__ppcMat)
-        self.__ppcObj.material_slots[0].link = "OBJECT"
-        self.__ppcObj.material_slots[0].material = self.__ppcMat
 
     # Get camera data
     @property
@@ -138,12 +109,12 @@ class CameraInstance(ObjectWrapper):
 
     # Get render resolution
     @property
-    def CameraRenderResolution(self):
+    def CameraResolution(self):
         return self.__resolution
 
     # Set render resolution
-    @CameraRenderResolution.setter
-    def CameraRenderResolution(self, value):
+    @CameraResolution.setter
+    def CameraResolution(self, value):
         self.__resolution = value
 
     # Get data / color rendering
@@ -186,67 +157,13 @@ class CameraInstance(ObjectWrapper):
     def CameraShadingOverride(self, value):
         self.__shadingOverride = value
 
-    # Update camera postprocessing effect
-    def ChangeFullscreenEffect(self, effect):
-        # If effect is None deactivate current effect
-        if effect is None:
-            # Unlink quad if necessary
-            if self.__ppcActive:
-                self.__ppcActive = False
-                bpy.context.collection.objects.unlink(self.__ppcObj)
-        else:
-            # Otherwise add & activate it
-            self.__ppcMat.node_tree.nodes.clear()
-            Shader.AddPostProcessing(self.__ppcMat.node_tree, effect)
-            # Link quad if necessary
-            if not self.__ppcActive:
-                self.__ppcActive = True
-                bpy.context.collection.objects.link(self.__ppcObj)
-
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
         super().CreateFromJSON(data)
         self.CameraResultFile = data.get("resultFile", "")
-        self.CameraRenderResolution = data.get("resolution", (1920, 1080))
+        self.CameraResolution = data.get("resolution", (1920, 1080))
         self.CameraDataOnly = data.get("dataOnly", False)
         self.CameraAASamples = data.get("aaSamples", 16)
         self.CameraRayBounces = data.get("rayBounces", -1)
         self.CameraShadingOverride = data.get("shadingOverride", "")
-        self.ChangeFullscreenEffect(data.get("shader", None))
-
-    # Override: Called when transform changes
-    def _TransformUpdate(self):
-        # Temporarily link for update
-        if not self.__ppcActive:
-            bpy.context.collection.objects.link(self.__ppcObj)
-        # Set transform & translate by near plane distance
-        self.__ppcObj.select_set(True)
-        self.__ppcObj.matrix_world = self.ObjectTransform
-        bpy.ops.transform.translate(value=(0,0,self.Blueprint.CameraNearZ), orient_type="LOCAL")
-        self.__ppcObj.select_set(False)
-        # Undo link for update
-        if not self.__ppcActive:
-            bpy.context.collection.objects.unlink(self.__ppcObj)
-
-    # Creates quad the size of the near plane rectangle
-    def __CreatePPCQuad(self):
-        # Create default quad
-        quadMesh = bmesh.new()
-        bmesh.ops.create_grid(quadMesh, x_segments = 1, y_segments = 1, size = 1.0, calc_uvs = True)
-        # Change vertices to match camera frame
-        quadMesh.verts.ensure_lookup_table()
-        quadMesh.verts[0].co = self.Blueprint.CameraFrame[2]
-        quadMesh.verts[1].co = self.Blueprint.CameraFrame[1]
-        quadMesh.verts[2].co = self.Blueprint.CameraFrame[3]
-        quadMesh.verts[3].co = self.Blueprint.CameraFrame[0]
-        # Change UVs to the common standard for fullscreen effects
-        quadMesh.faces.ensure_lookup_table()
-        uv_layer = quadMesh.loops.layers.uv.new()
-        quadMesh.faces[0].loops[0][uv_layer].uv = (0,0)
-        quadMesh.faces[0].loops[1][uv_layer].uv = (1,0)
-        quadMesh.faces[0].loops[2][uv_layer].uv = (1,1)
-        quadMesh.faces[0].loops[3][uv_layer].uv = (0,1)
-        # Update postprocessing quad
-        quadMesh.to_mesh(self.__ppcMesh)
-        quadMesh.free()

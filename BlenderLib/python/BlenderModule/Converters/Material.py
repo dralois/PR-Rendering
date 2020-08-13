@@ -58,7 +58,7 @@ class MaterialData(DataWrapper):
         # Create if necessary
         if cls.__defaultMat is None:
             # Add default shader tree to new default material
-            cls.__defaultMat = bpy.data.materials.new("default")
+            cls.__defaultMat = bpy.data.materials.new("mat_default")
             cls.__defaultMat.use_nodes = True
             cls.__defaultMat.node_tree.nodes.clear()
             Shader.AddShader(cls.__defaultMat.node_tree, None)

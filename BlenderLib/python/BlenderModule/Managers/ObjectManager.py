@@ -41,7 +41,7 @@ class BlueprintStorage(Generic[T]):
         if blueprintID not in self.__blueprints:
             blueprint = self._MakeBlueprint(data)
             self.__blueprints[blueprintID] = blueprint
-            logger.info(f"Adding blueprint {blueprintID} ({type(blueprint)})")
+            logger.debug(f"{self}: Adding blueprint {blueprintID}")
         # Return unique or existing blueprint
         if unique:
             return self._AddUnique(self.__blueprints[blueprintID])
@@ -58,15 +58,15 @@ class BlueprintStorage(Generic[T]):
 
     # Store unique blueprint copy
     def _AddUnique(self, blueprint : T) -> T:
-        logger.info(f"Adding unique blueprint of {blueprint.BlueprintID} ({type(blueprint)})")
+        logger.debug(f"{self}: Adding unique blueprint {blueprint.Name}")
         # Make new version from blueprint & add & return it
-        unique = type(blueprint)(blueprint.BlueprintID + self.__NextUniqueID(), blueprint)
+        unique = type(blueprint)(blueprint.Name + self.__NextUniqueID(), blueprint)
         self.__uniques.append(unique)
         return unique
 
     # Remove unique blueprint copy from storage
     def _RemoveUnique(self, unique : T):
-        logger.info(f"Removing unique blueprint of {unique.BlueprintID} ({type(unique)})")
+        logger.debug(f"{self}: Removing unique blueprint {unique.Name}")
         if unique in self.__uniques:
             self.__uniques.remove(unique)
 
@@ -82,9 +82,13 @@ class InstanceStorage(Generic[V, T], BlueprintStorage[T]):
         super().__init__()
         self.__instances : List[V]
         self.__instances = []
+        self.__hashCache = {}
+        self.__updateCache = []
 
     def __del__(self):
         del self.__instances
+        del self.__hashCache
+        del self.__updateCache
         super().__del__()
 
     # Get instance by json data
@@ -96,25 +100,56 @@ class InstanceStorage(Generic[V, T], BlueprintStorage[T]):
         instance = self._MakeInstance(data, blueprint)
         return self._AddInstance(instance)
 
+    # Update an existing instance from json data
+    def UpdateInstance(self, data : dict) -> V:
+        assert data is not None
+        # Create expected hash
+        search = self._BuildHash(data)
+        # Mark as up to date
+        self.__updateCache.append(search)
+        # Return updated instance if found
+        if search in self.__hashCache:
+            return self._UpdateInstance(data, self.__hashCache[search])
+        else:
+            return None
+
+    # Removes all instances that are not up to date
+    def ClearInstances(self):
+        for instance in self.__instances:
+            if self._BuildHash(instance) not in self.__updateCache:
+                self._RemoveInstance(instance)
+        # Clear up to date cache
+        self.__updateCache.clear()
+
     # Forwarded: Make new instance from json data & blueprint
     def _MakeInstance(self, data : dict, blueprint : T) -> V:
         raise NotImplementedError
 
+    # Forwarded: Build hash value for instance / json
+    def _BuildHash(self, toHash):
+        return hash(toHash)
+
+    # Forwarded: Updates existing instance with new json data
+    def _UpdateInstance(self, data : dict, instance : V) -> V:
+        raise NotImplementedError
+
     # Adds an instance to storage
     def _AddInstance(self, instance : V) -> V:
-        logger.info(f"Adding new instance of {instance.BlueprintID} ({type(instance)})")
+        logger.debug(f"{self}: Adding new instance of {instance.Name}")
         if instance is not None:
             self.__instances.append(instance)
+            self.__hashCache[self._BuildHash(instance)] = instance
             return instance
         else:
             raise ValueError
 
     # Removes an instance from storage
     def _RemoveInstance(self, instance : V):
-        logger.info(f"Removing instance {instance.BlueprintID} ({type(instance)})")
+        logger.debug(f"{self}: Removing instance {instance.Name}")
         if instance in self.__instances:
             self._RemoveUnique(instance)
             self.__instances.remove(instance)
+            del self.__hashCache[self._BuildHash(instance)]
         else:
             raise ValueError
 
@@ -177,11 +212,65 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
         meshInstance.MeshMaterial = uniqueMat
         return meshInstance
 
+    # Override: Build hash value for instance / json
+    def _BuildHash(self, toHash):
+        if isinstance(toHash, dict):
+            return toHash.get("objectID", -1)
+        elif isinstance(toHash, Mesh.MeshInstance):
+            return toHash.ObjectID
+        else:
+            return -1
+
+    # Override: Updates existing instance with new json data
+    def _UpdateInstance(self, data : dict, instance : V) -> V:
+        assert isinstance(instance, Mesh.MeshInstance)
+        assert data is not None
+        # Always get unique material
+        shader = data.get("shader", {})
+        uniqueMat = self.__materials.GetBlueprint(shader, True)
+        uniqueMat.CreateFromJSON(shader)
+        # Update instance & return it
+        instance.CreateFromJSON(data)
+        instance.MeshMaterial = uniqueMat
+        return instance
+
+# Camera storage & factory & instancer
+class CameraFactory(InstanceStorage[Camera.CameraInstance, Camera.CameraData]):
+
+    # Override: Get instance by json data
+    def GetInstance(self, data : dict, unique = True) -> Camera.CameraInstance:
+        # Camera should be unique
+        return super().GetInstance(data, unique)
+
+    # Override: Get blueprint identifier
+    def _GetBlueprintID(self, data : dict):
+        assert data is not None
+        return "cam_" + FileName(data.get("resultFile", "default"))
+
+    # Override: Make new blueprint from json data
+    def _MakeBlueprint(self, data : dict) -> Camera.CameraData:
+        assert data is not None
+        # Get identifier from json data
+        blueprintID = self._GetBlueprintID(data)
+        # Make & return new blueprint
+        newCam = Camera.CameraData(blueprintID)
+        newCam.CreateFromJSON(data)
+        return newCam
+
+    # Override: Make new instance from json data & blueprint
+    def _MakeInstance(self, data : dict, blueprint : Camera.CameraData) -> Camera.CameraInstance:
+        assert isinstance(blueprint, Camera.CameraData)
+        assert data is not None
+        # Make instance & return it
+        camInstance = Camera.CameraInstance(blueprint)
+        camInstance.CreateFromJSON(data)
+        return camInstance
+
 # Light storage & factory & instancer
 class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLightData]):
 
     # Override: Get instance by json data
-    def GetInstance(self, data : dict, unique = True) -> V:
+    def GetInstance(self, data : dict, unique = True) -> Lights.GenericLightInstance:
         # Lights should be unique
         return super().GetInstance(data, unique)
 
@@ -215,13 +304,13 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
         assert isinstance(blueprint, Lights.GenericLightData)
         assert data is not None
         # Make instance & return it
-        if "AREA" in blueprint.BlueprintID:
+        if isinstance(blueprint, Lights.AreaLightData):
             lightInstance = Lights.AreaLightInstance(blueprint)
-        elif "SPOT" in blueprint.BlueprintID:
+        elif isinstance(blueprint, Lights.SpotLightData):
             lightInstance = Lights.SpotLightInstance(blueprint)
-        elif "SUN" in blueprint.BlueprintID:
+        elif isinstance(blueprint, Lights.SpotLightData):
             lightInstance = Lights.SunLightInstance(blueprint)
-        elif "POINT" in blueprint.BlueprintID:
+        elif isinstance(blueprint, Lights.PointLightData):
             lightInstance = Lights.PointLightInstance(blueprint)
         else:
             raise ValueError

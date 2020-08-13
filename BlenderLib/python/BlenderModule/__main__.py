@@ -1,3 +1,3 @@
-from .Test.ModuleTest import TestMain, TestSubprocess
+from .Test.ModuleTest import TestBase, TestUpdate
 
-TestMain()
+TestUpdate()

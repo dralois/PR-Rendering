@@ -1,7 +1,9 @@
 from ..Utils.Importer import ImportBpy
+from ..Utils.Logger import GetLogger
 
 # Blender for multiprocessing
 bpy = ImportBpy()
+logger = GetLogger()
 
 import mathutils
 
@@ -18,7 +20,7 @@ class BaseWrapper(object):
 
     # Forwarded: Get blueprint name
     @property
-    def BlueprintID(self):
+    def Name(self):
         raise NotImplementedError
 
     # Forwarded: Get blueprint data
@@ -56,7 +58,7 @@ class DataWrapper(BaseWrapper):
 
     # Override: Get internal name
     @property
-    def BlueprintID(self):
+    def Name(self):
         return self.__data.name
 
     # Override: Get internal data
@@ -74,7 +76,7 @@ class DataWrapper(BaseWrapper):
 
     # Override: Cleanup old & update internal data
     def _Update(self, newData : bpy.types.ID):
-        oldName = self.BlueprintID
+        oldName = self.Name
         self._Cleanup()
         self.__data = newData
         self.__data.name = oldName
@@ -85,10 +87,11 @@ class ObjectWrapper(BaseWrapper):
     def __init__(self, data : DataWrapper):
         assert isinstance(data, DataWrapper)
         # Store object data
+        self.__id = -1
         self.__data = data
         # Create & add object to scene
         self.__obj : bpy.types.Object
-        self.__obj = bpy.data.objects.new("obj_" + data.BlueprintID, data.Blueprint)
+        self.__obj = bpy.data.objects.new("obj_" + data.Name, data.Blueprint)
         bpy.context.collection.objects.link(self.__obj)
 
     # Override: Get if instance valid
@@ -96,9 +99,9 @@ class ObjectWrapper(BaseWrapper):
     def Valid(self):
         return self.__data.Valid()
 
-    # Override: Get blueprint name
+    # Override: Get object name
     @property
-    def BlueprintID(self):
+    def Name(self):
         return self.__obj.name
 
     # Forwarded: Get blueprint
@@ -106,7 +109,12 @@ class ObjectWrapper(BaseWrapper):
     def Blueprint(self):
         raise NotImplementedError
 
-    # Get object instance
+    # Get object instance id
+    @property
+    def ObjectID(self):
+        return self.__id
+
+    # Get object instance data
     @property
     def ObjectInstance(self) -> bpy.types.Object:
         return self.__obj
@@ -120,33 +128,17 @@ class ObjectWrapper(BaseWrapper):
     @ObjectPosition.setter
     def ObjectPosition(self, value):
         self.__obj.location = value
-        self._TransformUpdate()
 
-    # Get rotation of object (euler)
+    # Get rotation of object
     @property
-    def ObjectRotationEuler(self) -> mathutils.Euler:
-        self.__obj.rotation_mode = "XYZ"
-        return self.__obj.rotation_euler
-
-    # Get rotation of object (quaternion)
-    @property
-    def ObjectRotationQuat(self) -> mathutils.Quaternion:
-        self.__obj.rotation_mode = "QUATERNION"
+    def ObjectRotation(self) -> mathutils.Quaternion:
         return self.__obj.rotation_quaternion
 
-    # Set rotation of object (euler)
-    @ObjectRotationEuler.setter
-    def ObjectRotationEuler(self, value):
-        self.__obj.rotation_mode = "XYZ"
-        self.__obj.rotation_euler = value
-        self._TransformUpdate()
-
-    # Set rotation of object (quaternion)
-    @ObjectRotationQuat.setter
-    def ObjectRotationQuat(self, value):
+    # Set rotation of object
+    @ObjectRotation.setter
+    def ObjectRotation(self, value):
         self.__obj.rotation_mode = "QUATERNION"
         self.__obj.rotation_quaternion = value
-        self._TransformUpdate()
 
     # Get scale of object
     @property
@@ -157,29 +149,15 @@ class ObjectWrapper(BaseWrapper):
     @ObjectScale.setter
     def ObjectScale(self, value):
         self.__obj.scale = value
-        self._TransformUpdate()
-
-    # Get transform matrix of object
-    @property
-    def ObjectTransform(self) -> mathutils.Matrix:
-        return self.__obj.matrix_world
-
-    # Set transform matrix of object
-    @ObjectTransform.setter
-    def ObjectTransform(self, value) -> mathutils.Matrix:
-        self.__obj.matrix_world = value
-        self._TransformUpdate()
 
     # Forwarded & Override: Create from json data
     def CreateFromJSON(self, data : dict):
+        # Parse identifier
+        self.__id = data.get("objectID", -1)
         # Parse transform
-        self.ObjectPosition = mathutils.Vector(data.get("position", (0.0,0.0,0.0)))
-        rot = data.get("rotation", (0.0,0.0,0.0))
-        if len(rot) == 3:
-            self.ObjectRotationEuler = mathutils.Euler(rot)
-        elif len(rot) == 4:
-            self.ObjectRotationQuat = mathutils.Quaternion(rot)
-        self.ObjectScale = data.get("scale", (1.0,1.0,1.0))
+        self.ObjectPosition = mathutils.Vector(data.get("position", (0.0, 0.0, 0.0)))
+        self.ObjectRotation = mathutils.Quaternion(data.get("rotation", (1.0, 0.0, 0.0, 0.0)))
+        self.ObjectScale = mathutils.Vector(data.get("scale", (1.0, 1.0, 1.0)))
         # Parse specific data
         self.__data.CreateFromJSON(data)
 
@@ -192,7 +170,3 @@ class ObjectWrapper(BaseWrapper):
     def _Update(self, newData : DataWrapper):
         self.__data = newData
         self.__obj.data = self.__data.Blueprint
-
-    # Forwarded: Called when transform changes
-    def _TransformUpdate(self):
-        pass

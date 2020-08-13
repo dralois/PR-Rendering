@@ -11,9 +11,10 @@ def SetupMultiprocessing():
     from platform import system
     exeFile = "python.exe" if system() == "Windows" else "bin\\python"
     exePath = f"{os.path.split(FileDir(os.__file__))[0]}\\{exeFile}"
-    # Set executable path
-    from multiprocessing import set_executable
+    # Set executable path & start method
+    from multiprocessing import set_executable, set_start_method
     set_executable(FullPath(exePath))
+    set_start_method("spawn")
 
 # Full path from (relative) path
 def FullPath(filePath):
@@ -22,7 +23,7 @@ def FullPath(filePath):
 # Full directory from (relative) path / file
 def FileDir(filePath):
     if os.path.isdir(FullPath(filePath)):
-        return path
+        return filePath
     else:
         return os.path.split(FullPath(filePath))[0]
 

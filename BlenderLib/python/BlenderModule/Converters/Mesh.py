@@ -10,7 +10,6 @@ logger = GetLogger()
 
 import sys
 import bmesh
-import mathutils
 from os import devnull
 
 # Mesh descriptor
@@ -18,6 +17,7 @@ class MeshData(DataWrapper):
 
     def __init__(self, blueprintID, cpy : DataWrapper = None):
         self.__isValid = False
+        self.__filePath = ""
         self.__mesh : bpy.types.Mesh
 
         if cpy is None:
@@ -45,8 +45,10 @@ class MeshData(DataWrapper):
     def CreateFromJSON(self, data : dict):
         assert data is not None
         # Parse filepath
-        self.__filePath = FullPath(data.get("file", ""))
-        # Load mesh or unit cube
+        parsed = FullPath(data.get("file", ""))
+        self.__isValid = (self.__filePath == parsed)
+        self.__filePath = parsed
+        # Load mesh or unit cube (once)
         if len(self.__filePath) > 0 and not self.__isValid:
             meshType = FileExt(self.__filePath)
             # Loading depends on extension
@@ -56,10 +58,9 @@ class MeshData(DataWrapper):
                 self.__LoadMeshGLTF()
             else:
                 logger.warning(f"Mesh format {meshType} not supported!")
+                self.__MakeCube()
         elif not self.__isValid:
             self.__MakeCube()
-        # Mesh is now valid
-        self.__isValid = True
 
     # Create cube mesh
     def __MakeCube(self):
@@ -71,11 +72,9 @@ class MeshData(DataWrapper):
 
     # Load mesh from obj file
     def __LoadMeshObj(self):
-        # Redirect stdout temporarily
-        sys.stdout = open(devnull, "w")
         # Load mesh to active scene & store from selection
+        sys.stdout = open(devnull, "w")
         bpy.ops.import_scene.obj(filepath = self.__filePath)
-        # Restore stdout
         sys.stdout = sys.__stdout__
         # Delete potentially loaded materials
         loader : bpy.types.Object = bpy.context.selected_objects[0]
@@ -87,7 +86,7 @@ class MeshData(DataWrapper):
         # Delete creator object
         bpy.data.objects.remove(loader)
 
-    # FIXME: Test if this works
+    # TODO: Test if this works
     # Load mesh from glTF file
     def __LoadMeshGLTF(self):
         # Load mesh to active scene & store from selection

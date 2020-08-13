@@ -1,7 +1,7 @@
 shader diffuse_closure
 [[
     string as_node_name = "asDiffuseClosure",
-    string as_category = "surface"
+    string as_category = "other"
 ]]
 (
     color in_color = color(0)

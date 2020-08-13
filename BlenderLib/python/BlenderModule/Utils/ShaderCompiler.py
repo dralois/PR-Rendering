@@ -13,7 +13,7 @@ def CompileFolder(shaderFolder, modulePath, forceCompile):
     # Glob all osl files, compile and store them
     for oslShader in glob.glob(shaderFolder + "\\*.osl"):
         compiledFile = f"{FileDir(oslShader)}\\{FileName(oslShader)}.oso"
-        if not os.path.exists(compiledFile) or logger.level < 30:
+        if not os.path.exists(compiledFile) or forceCompile:
             bytecode = CompileFile(FullPath(oslShader), modulePath)
             StoreBytecode(bytecode, compiledFile)
 

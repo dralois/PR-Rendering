@@ -1,77 +1,26 @@
-from ..Managers.RenderManager import RenderScenes, RenderSceneSingle
+from ..Managers.RenderManager import RenderManager
 
 import json
 
-testScene = {
-    "settings" :
-    {
-        "logLevel" : "info",
-        "storeBlend" : True,
-        "pluginDir" : "..\\blenderseed.zip",
-        "shaderDirs" : ["Test"]
-    },
-    "camera" :
-    {
-        "position" : [6.0, -3.0, 5.0],
-        "rotation" : [0.9, 0.0, 1.1],
-        "resultFile" : ".\\Test\\test_render.png",
-        "resolution" : [1280, 720]
-    },
-    "meshes" : [
-        {
-            "position" : [-0.5, -0.5, 0.0],
-            "scale" : [0.5, 0.5, 0.5],
-            "file" : ".\\Test\\module_test.obj",
-            "shader" :
-            {
-                "name" : "simple_texture",
-                "textures" : [
-                    {
-                        "filePath" : ".\\Test\\module_test.png"
-                    }
-                ],
-                "params" :
-                {
-                    "filename" : ".\\Test\\module_test.png"
-                }
-            }
-        },
-        {
-            "position" : [1.0, 1.0, 0.0],
-            "scale" : [0.5, 0.5, 0.5],
-            "file" : ".\\Test\\module_test.obj",
-            "shader" :
-            {
-                "name" : "module_test",
-                "params" :
-                {
-                    "color" : (0.3, 0.7, 0.5)
-                }
-            }
-        }
-    ],
-    "lights" : [
-        {
-            "position" : [3.0, -4.2, 5.0],
-            "type" : "POINT",
-            "intensity" : 100
-        }
-    ]
-}
-
 # Runs test in main thread
-def TestMain():
-    global testScene
-    # Tests serialization
-    temp = json.dumps(testScene)
-    testScene = json.loads(temp)
-    # Tests rendering
-    RenderSceneSingle(testScene)
+def TestBase():
+    # Load json file
+    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
+    sceneStr = json.dumps(testScene)
+    # Test rendering
+    mgr = RenderManager()
+    mgr.ProcessRenderfile(sceneStr)
 
-# Runs test in subprocess
-def TestSubprocess():
-    global testScene
-    # Tests serialization
-    sceneStr = json.dumps([testScene])
-    # Tests rendering
-    RenderScenes(sceneStr)
+# Runs renderfile update test in subprocess
+def TestUpdate():
+    # Load json files
+    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
+    updateScene = json.load(open(".\\BlenderModule\\Test\\module_test_update.json"))
+    testStr = json.dumps(testScene)
+    updateStr = json.dumps(updateScene)
+    # Test rendering & updating
+    mgr = RenderManager()
+    mgr.ProcessRenderfile(testStr)
+    mgr.ProcessRenderfile(updateStr)
+    mgr.UnloadProcesses()
+    mgr.ProcessRenderfile(testStr)

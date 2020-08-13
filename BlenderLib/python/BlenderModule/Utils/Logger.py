@@ -1,4 +1,5 @@
 import logging
+import time
 
 __logger = None
 
@@ -35,3 +36,9 @@ def SetLevel(level):
 # Get global logging level (string)
 def GetLevel():
     return __reversed.get(__logger.level, "error")
+
+# Convenience function
+def LogPerformance(start, what):
+    GetLogger().info("***********************************************")
+    GetLogger().info(f"{what} duration: {time.clock() - start}")
+    GetLogger().info("***********************************************")
