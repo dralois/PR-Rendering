@@ -8,7 +8,7 @@
 //---------------------------------------
 // Shader for PBR rendering
 //---------------------------------------
-class PBRShader : OSLShader
+class PBRShader : public OSLShader
 {
 protected:
 	//---------------------------------------

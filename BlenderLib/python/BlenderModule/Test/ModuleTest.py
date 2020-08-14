@@ -24,3 +24,12 @@ def TestUpdate():
     mgr.ProcessRenderfile(updateStr)
     mgr.UnloadProcesses()
     mgr.ProcessRenderfile(testStr)
+
+# Runs test multithreaded
+def TestMultithread():
+    # Load json file
+    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
+    sceneStr = json.dumps([testScene[0], testScene[0]])
+    # Test rendering
+    mgr = RenderManager()
+    mgr.ProcessRenderfile(sceneStr)

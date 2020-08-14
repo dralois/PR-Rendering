@@ -56,8 +56,8 @@ public:
 	// Properties
 	//---------------------------------------
 
-	inline const physx::PxVec3 GetMinimum() { return minimum.multiply(meshScale); };
-	inline const physx::PxVec3 GetMaximum() { return maximum.multiply(meshScale); };
+	inline const physx::PxVec3 GetMinimum() const { return minimum.multiply(meshScale); }
+	inline const physx::PxVec3 GetMaximum() const { return maximum.multiply(meshScale); }
 	virtual const physx::PxTransform GetTransform() override;
 	virtual void SetTransform(physx::PxTransform trans) override;
 	virtual const physx::PxVec3 GetPosition() override;

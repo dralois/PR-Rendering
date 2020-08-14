@@ -45,14 +45,14 @@ protected:
 		}
 	}
 
-	void RenderMesh::X_ExportMesh()	{ /* Does not apply to render mesh */ }
+	virtual void X_ExportMesh() override { /* Does not apply to render mesh */ }
 
 public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
 
-	inline const OSLShader* GetShader() { return oslShader; }
+	inline const OSLShader* GetShader() const { return oslShader; }
 	inline void SetShader(OSLShader* shader)
 	{
 		delete oslShader;
@@ -63,7 +63,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	void RenderMesh::CreateMesh() { /* Does not apply to render mesh */ }
+	virtual void CreateMesh() override { /* Does not apply to render mesh */ }
 
 	//---------------------------------------
 	// Constructors

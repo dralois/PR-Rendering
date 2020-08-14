@@ -8,7 +8,7 @@
 //---------------------------------------
 // Shader for depth map generation
 //---------------------------------------
-class DepthShader : OSLShader
+class DepthShader : public OSLShader
 {
 protected:
 	//---------------------------------------

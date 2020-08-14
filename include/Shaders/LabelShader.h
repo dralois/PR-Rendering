@@ -8,7 +8,7 @@
 //---------------------------------------
 // Shader for mask creation
 //---------------------------------------
-class LabelShader : OSLShader
+class LabelShader : public OSLShader
 {
 protected:
 	//---------------------------------------

@@ -1,3 +1,3 @@
-from .Test.ModuleTest import TestBase, TestUpdate
+from .Test.ModuleTest import TestBase, TestUpdate, TestMultithread
 
-TestUpdate()
+TestMultithread()
