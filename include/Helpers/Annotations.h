@@ -73,9 +73,9 @@ public:
 			<< bbox.x << "; " << bbox.y << "; " << bbox.width << "; " << bbox.height << "; "
 			<< currMesh->GetName() << "; " << currMesh->GetMeshId() << "; " << currMesh->GetObjId() << "; "
 			<< pos[0] << "; " << pos[1] << "; " << pos[2] << "; "
-			<< rot.coeffs()[3] << "; " << rot.coeffs()[0] << "; " << rot.coeffs()[1] << "; " << rot.coeffs()[2] << "["
+			<< rot.coeffs()[3] << "; " << rot.coeffs()[0] << "; " << rot.coeffs()[1] << "; " << rot.coeffs()[2] << ";"
 			<< renderCam.GetIntrinsics().GetFocalLenght().x() << "; " << renderCam.GetIntrinsics().GetFocalLenght().y() << "; "
-			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << "; " << renderCam.GetIntrinsics().GetPrincipalPoint().y() << "]"
+			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << "; " << renderCam.GetIntrinsics().GetPrincipalPoint().y()
 			<< "\n";
 	}
 

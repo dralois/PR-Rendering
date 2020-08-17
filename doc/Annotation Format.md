@@ -11,4 +11,4 @@ Bounding Box | x; y; w; h
 Object | name; meshID; objectID
 Position | x; y; z
 Rotation | w; x; y; z
-Intrinsics | [fx; fy; ox; oy]
+Intrinsics | fx; fy; ox; oy
