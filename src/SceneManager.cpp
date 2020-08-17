@@ -630,7 +630,7 @@ int SceneManager::Run(int imageCount)
 		for (int batch = 0; batch < batchMax; ++batch)
 		{
 			std::cout << "Scene " << scenePath << ": Iteration " << iter + 1 << "/" << maxIters
-				<< ", Batch " << batch + 1 << "/" << batchMax << std::endl;
+				<< ", Batch " << batch + 1 << "/" << batchMax << "("<< batchSize << " images)" << std::endl;
 
 			// Create batch
 			unsigned int start = batch * batchSize;

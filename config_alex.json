@@ -12,7 +12,7 @@
 
     "simulation_objects": 50,
     "simulation_steps": 2000,
-    "scene_iterations": 5,
+    "scene_iterations": 3,
     "batch_size": 10,
     "max_images": 100,
 

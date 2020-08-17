@@ -202,6 +202,20 @@ public:
 	{
 	}
 
-	Camera(Camera&& other) noexcept = default;
+	Camera(Camera&& other) :
+		RenderfileObject(std::move(other))
+	{
+		cameraIntrinsics = std::exchange(other.cameraIntrinsics, Intrinsics());
+		sourceFile = std::exchange(other.sourceFile, "");
+		aspectFOV = std::exchange(other.aspectFOV, Eigen::Vector3f());
+		lensShift = std::exchange(other.lensShift, Eigen::Vector2f());
+		clipPlanes = std::exchange(other.clipPlanes, Eigen::Vector2f());
+		resultFile = std::exchange(other.resultFile, ModifiablePath());
+		resolution = std::exchange(other.resolution, Eigen::Vector2i());
+		dataOnly = std::exchange(other.dataOnly, false);
+		rayBounces = std::exchange(other.rayBounces, 0);
+		aaSamples = std::exchange(other.aaSamples, 0);
+		shadingOverride = std::exchange(other.shadingOverride, "");
+	};
 
 };

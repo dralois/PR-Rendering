@@ -88,6 +88,12 @@ public:
 	{
 	}
 
+	RenderMesh(const RenderMesh& copy) :
+		MeshBase(copy),
+		oslShader(NULL)
+	{
+	}
+
 	~RenderMesh()
 	{
 		// Mesh is responsible for shader
