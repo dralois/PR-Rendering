@@ -94,6 +94,12 @@ public:
 	{
 	}
 
+	RenderMesh(RenderMesh&& other) :
+		MeshBase(std::move(other))
+	{
+		oslShader = std::exchange(other.oslShader, nullptr);
+	}
+
 	~RenderMesh()
 	{
 		// Mesh is responsible for shader

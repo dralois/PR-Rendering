@@ -56,7 +56,7 @@ public:
 	//---------------------------------------
 	MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId);
 	MeshBase(ReferencePath meshPath, int meshId);
-	MeshBase(MeshBase&& other) noexcept = default;
 	MeshBase(const MeshBase& copy);
+	MeshBase(MeshBase&& other);
 	~MeshBase();
 };

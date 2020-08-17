@@ -187,18 +187,18 @@ public:
 	}
 
 	Camera(const Camera& copy) :
-		RenderfileObject(),
+		RenderfileObject(copy),
 		cameraIntrinsics(copy.cameraIntrinsics),
 		sourceFile(copy.sourceFile),
 		aspectFOV(copy.aspectFOV),
 		lensShift(copy.lensShift),
 		clipPlanes(copy.clipPlanes),
-		resultFile(""),
+		resultFile(copy.resultFile),
 		resolution(copy.resolution),
-		dataOnly(false),
-		rayBounces(-1),
-		aaSamples(16),
-		shadingOverride("")
+		dataOnly(copy.dataOnly),
+		rayBounces(copy.rayBounces),
+		aaSamples(copy.aaSamples),
+		shadingOverride(copy.shadingOverride)
 	{
 	}
 

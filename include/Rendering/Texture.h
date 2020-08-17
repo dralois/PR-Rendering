@@ -171,6 +171,11 @@ public:
 		blendedDepth.SetPath(path, false);
 		blendedDepth.StoreTexture();
 	}
+	inline void StoreBlendedDepth01(ReferencePath path, float nearClip, float farClip)
+	{
+		blendedDepth.SetPath(path, false);
+		blendedDepth.StoreDepth01(nearClip, farClip);
+	}
 
 	//---------------------------------------
 	// Constructors

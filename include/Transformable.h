@@ -29,6 +29,22 @@ protected:
 	{
 	}
 
+	Transformable(const Transformable& copy):
+		meshTrans(copy.meshTrans),
+		meshPos(copy.meshPos),
+		meshRot(copy.meshRot),
+		meshScale(copy.meshScale)
+	{
+	}
+
+	Transformable(Transformable&& other)
+	{
+		std::swap(meshTrans, other.meshTrans);
+		std::swap(meshPos, other.meshPos);
+		std::swap(meshRot, other.meshRot);
+		std::swap(meshScale, other.meshScale);
+	}
+
 public:
 	//---------------------------------------
 	// Properties

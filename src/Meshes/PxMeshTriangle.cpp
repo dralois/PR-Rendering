@@ -74,7 +74,7 @@ void PxMeshTriangle::X_ExportMesh()
 	PxU32 vertsNum = pPxMesh->getNbVertices();
 
 	// Copy vertices into vector
-	for(int i = 0; i < vertsNum; i++)
+	for (int i = 0; i < vertsNum; i++)
 	{
 		vecVertices.push_back(vertsBuff[i].x);
 		vecVertices.push_back(vertsBuff[i].y);
@@ -82,7 +82,7 @@ void PxMeshTriangle::X_ExportMesh()
 	}
 
 	// Copy indices into vector
-	for(int i = 0; i < trisNum; i++)
+	for (int i = 0; i < trisNum; i++)
 	{
 		vecIndices.push_back(trisBuff[(i * 3)]);
 		vecIndices.push_back(trisBuff[(i * 3) + 1]);
@@ -131,6 +131,33 @@ void PxMeshTriangle::X_CreateShape()
 	// Create shape from the descriptor
 	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, PxManager::GetInstance().GetMaterial());
 	pPxShape->setName(GetName().c_str());
+}
+
+//---------------------------------------
+// Default constructor
+//---------------------------------------
+PxMeshTriangle::PxMeshTriangle(ReferencePath meshPath, int meshId) :
+	PxMesh(meshPath, meshId),
+	pPxMesh(NULL)
+{
+}
+
+//---------------------------------------
+// Copy constructor
+//---------------------------------------
+PxMeshTriangle::PxMeshTriangle(const PxMeshTriangle& copy) :
+	PxMesh(copy),
+	pPxMesh(copy.pPxMesh)
+{
+}
+
+//---------------------------------------
+// Move constructor
+//---------------------------------------
+PxMeshTriangle::PxMeshTriangle(PxMeshTriangle&& other) :
+	PxMesh(std::move(other))
+{
+	pPxMesh = std::exchange(other.pPxMesh, nullptr);
 }
 
 //---------------------------------------

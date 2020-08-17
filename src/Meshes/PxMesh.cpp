@@ -228,6 +228,20 @@ PxMesh::PxMesh(const PxMesh& copy) :
 }
 
 //---------------------------------------
+// Move constructor
+//---------------------------------------
+PxMesh::PxMesh(PxMesh&& other) :
+	MeshBase(std::move(other)),
+	Transformable(std::move(other))
+{
+	pPxShape = std::exchange(other.pPxShape, nullptr);
+	pPxActor = std::exchange(other.pPxActor, nullptr);
+	std::swap(firstInstance, other.firstInstance);
+	std::swap(minimum, other.minimum);
+	std::swap(maximum, other.maximum);
+}
+
+//---------------------------------------
 // Physx mesh cleanup
 //---------------------------------------
 PxMesh::~PxMesh()

@@ -89,9 +89,9 @@ void PxMeshConvex::X_ExportMesh()
 		// Save indices
 		for (PxU32 j = 2; j < face.mNbVerts; j++)
 		{
-			vecIndices.push_back((int) offset);
-			vecIndices.push_back((int) offset + j);
-			vecIndices.push_back((int) offset + j - 1);
+			vecIndices.push_back((int)offset);
+			vecIndices.push_back((int)offset + j);
+			vecIndices.push_back((int)offset + j - 1);
 		}
 		// Update counter
 		offset += face.mNbVerts;
@@ -139,6 +139,33 @@ void PxMeshConvex::X_CreateMesh()
 	// Save extends
 	maximum = pPxMesh->getLocalBounds().maximum;
 	minimum = pPxMesh->getLocalBounds().minimum;
+}
+
+//---------------------------------------
+// Default constructor
+//---------------------------------------
+PxMeshConvex::PxMeshConvex(ReferencePath meshPath, int meshId) :
+	PxMesh(meshPath, meshId),
+	pPxMesh(NULL)
+{
+}
+
+//---------------------------------------
+// Copy constructor
+//---------------------------------------
+PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy):
+	PxMesh(copy),
+	pPxMesh(copy.pPxMesh)
+{
+}
+
+//---------------------------------------
+// Move constructor
+//---------------------------------------
+PxMeshConvex::PxMeshConvex(PxMeshConvex&& other):
+	PxMesh(std::move(other))
+{
+	pPxMesh = std::exchange(other.pPxMesh, nullptr);
 }
 
 //---------------------------------------

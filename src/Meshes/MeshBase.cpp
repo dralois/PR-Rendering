@@ -208,6 +208,21 @@ MeshBase::MeshBase(const MeshBase& copy) :
 }
 
 //---------------------------------------
+// Move constructor
+//---------------------------------------
+MeshBase::MeshBase(MeshBase&& other)
+{
+	meshId = std::exchange(other.meshId, -1);
+	objId = std::exchange(other.objId, -1);
+	std::swap(meshPath, other.meshPath);
+	std::swap(texturePath, other.texturePath);
+	std::swap(vecVertices, other.vecVertices);
+	std::swap(vecIndices, other.vecIndices);
+	std::swap(vecNormals, other.vecNormals);
+	std::swap(vecUVs, other.vecUVs);
+}
+
+//---------------------------------------
 // Mesh cleanup
 //---------------------------------------
 MeshBase::~MeshBase()

@@ -96,18 +96,14 @@ protected:
 		meshScale.setOnes();
 	}
 
-	RenderfileObject(RenderfileObject&& other) :
-		Transformable(
-			Eigen::Matrix4f(),
-			Eigen::Vector3f(),
-			Eigen::Quaternionf(),
-			Eigen::Vector3f()
-		)
+	RenderfileObject(const RenderfileObject& copy):
+		Transformable(copy)
 	{
-		meshTrans = std::exchange(other.meshTrans, Eigen::Matrix4f());
-		meshPos = std::exchange(other.meshPos, Eigen::Vector3f());
-		meshRot = std::exchange(other.meshRot, Eigen::Quaternionf());
-		meshScale = std::exchange(other.meshScale, Eigen::Vector3f());
+	}
+
+	RenderfileObject(RenderfileObject&& other) :
+		Transformable(std::move(other))
+	{
 	}
 
 public:

@@ -31,6 +31,8 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	using PxMesh::PxMesh;
+	PxMeshConvex(ReferencePath meshPath, int meshId);
+	PxMeshConvex(const PxMeshConvex& copy);
+	PxMeshConvex(PxMeshConvex&& other);
 	~PxMeshConvex();
 };

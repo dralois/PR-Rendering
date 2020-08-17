@@ -31,6 +31,8 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	using PxMesh::PxMesh;
+	PxMeshTriangle(ReferencePath meshPath, int meshId);
+	PxMeshTriangle(const PxMeshTriangle& copy);
+	PxMeshTriangle(PxMeshTriangle&& other);
 	~PxMeshTriangle();
 };

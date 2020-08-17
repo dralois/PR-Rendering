@@ -661,7 +661,12 @@ int SceneManager::Run(int imageCount)
 				if (!masks[i].Occluded())
 				{
 					// Store the blended depth
+#if STORE_DEBUG_TEX
+					masks[i].StoreBlendedDepth01(pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true),
+						camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+#else
 					masks[i].StoreBlendedDepth(pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true));
+#endif
 					// Move corresponding poses, masks & real images
 					unoccludedCams.push_back(std::move(currCams[i]));
 					unoccludedMasks.push_back(std::move(masks[i]));
