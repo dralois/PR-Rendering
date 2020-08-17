@@ -44,19 +44,19 @@ public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline int GetMeshId() { return meshId; };
-	inline int GetObjId() { return objId; };
-	inline void SetObjId(int id) { objId = id; };
-	inline int GetLabelId() { return (objId + 1) * 10; }
-	inline ReferencePath GetMeshPath() { return meshPath; }
-	inline ReferencePath GetTexturePath() { return texturePath; }
-	inline const std::string GetName() { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); };
+	inline int GetMeshId() const { return meshId; }
+	inline int GetObjId() const { return objId; }
+	inline void SetObjId(int id) { objId = id; }
+	inline ReferencePath GetMeshPath() const { return meshPath; }
+	inline ReferencePath GetTexturePath() const { return texturePath; }
+	inline std::string GetName() const { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); }
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 	MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId);
 	MeshBase(ReferencePath meshPath, int meshId);
+	MeshBase(MeshBase&& other) noexcept = default;
 	MeshBase(const MeshBase& copy);
 	~MeshBase();
 };

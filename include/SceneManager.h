@@ -28,8 +28,6 @@
 #include <Rendering/Texture.h>
 #pragma warning(pop)
 
-typedef std::vector<std::tuple<Texture, Texture>> RenderResult;
-
 //---------------------------------------
 // Simulates and renderes a scene
 //---------------------------------------
@@ -48,12 +46,8 @@ private:
 	Blender::BlenderRenderer* pBlender;
 
 	// Rendering
-	Camera renderCam;
+	Camera camBlueprint;
 	std::vector<Light*> vecpLights;
-
-	// Inputs
-	std::vector<ModifiablePath> vecCameraPoses;
-	std::vector<ModifiablePath> vecCameraImages;
 
 	// Meshes (Blueprint)
 	const std::vector<PxMeshConvex*> vecpPxMeshObjs;
@@ -82,24 +76,62 @@ private:
 	) const;
 	void X_PxSaveSimResults();
 
-	// Rendering
-	RenderResult X_RenderSceneDepth(std::vector<ModifiablePath> poses) const;
-	void X_RenderObjsDepth(Texture& result);
-	void X_RenderObjsLabel(Texture& result);
-	void X_RenderObjsPBR(Texture& result);
-	void X_RenderImageBlend(
-		Texture& result,
-		Texture& occlusion,
-		Texture& original,
-		Texture& rendered
+	// Open GL Renderer
+	std::vector<Texture> X_GLSceneDepth(const std::vector<ModifiablePath>& poses) const;
+
+	// Renderfile creation
+	void X_ConvertToRenderfile(
+		JSONWriterRef writer,
+		std::vector<RenderMesh*>& meshes,
+		std::vector<Camera>& cams
 	);
-	void X_ProcessRenderfile(Texture& result);
+	void X_BuildSceneDepth(
+		JSONWriterRef writer,
+		std::vector<Camera>& cams,
+		std::vector<Texture>& results,
+		int start
+	);
+	void X_BuildObjectsDepth(
+		JSONWriterRef writer,
+		std::vector<Camera>& cams,
+		std::vector<Texture>& results,
+		int start
+	);
+	void X_BuildObjectsLabel(
+		JSONWriterRef writer,
+		std::vector<Camera>& cams,
+		std::vector<Texture>& results,
+		int start
+	);
+	void X_BuildObjectsPBR(
+		JSONWriterRef writer,
+		std::vector<Camera>& cams,
+		std::vector<Texture>& results,
+		int start
+	);
+
+	// Blender rendering
+	std::vector<Mask> X_RenderDepthMasks(
+		std::vector<Camera>& cams,
+		int start
+	);
+	void X_RenderSegments(
+		std::vector<Camera>& cams,
+		std::vector<Mask>& masks,
+		int start
+	);
+	void X_RenderPBRBlend(
+		std::vector<Camera>& cams,
+		std::vector<Mask>& masks,
+		std::vector<SceneImage>& sceneRGBs,
+		int start
+	);
 
 	// Other
-	void X_GetImagesToProcess(
+	std::vector<SceneImage> X_GetImagesToProcess(
 		ReferencePath dir,
 		float varThreshold
-	);
+	) const;
 	void X_CleanupScene();
 
 public:

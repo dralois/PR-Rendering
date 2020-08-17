@@ -21,6 +21,7 @@ bool MeshBase::X_LoadFile()
 
 	// Read and load with assimp
 	const aiScene* scene = importer.ReadFile(meshPath.string(), aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+	std::cout << "Mesh has identity transform: " << scene->mRootNode->mTransformation.IsIdentity() << std::endl;
 
 	// Error handling
 	if (!scene)
@@ -173,6 +174,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath.string());
 	std::cout << "Exported mesh:" << savePath << std::endl;
+	exporter.FreeBlob();
 }
 
 //---------------------------------------

@@ -6,7 +6,6 @@
 
 #include <Rendering/Settings.h>
 #include <Rendering/Intrinsics.h>
-#include <Rendering/Shader.h>
 #include <Renderfile.h>
 #pragma warning(pop)
 
@@ -24,8 +23,8 @@ private:
 	//---------------------------------------
 
 	Intrinsics cameraIntrinsics;
-	Eigen::Vector2f fieldOfView;
-	float aspectRatio;
+	ModifiablePath sourceFile;
+	Eigen::Vector3f aspectFOV;
 	Eigen::Vector2f lensShift;
 	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
@@ -34,7 +33,6 @@ private:
 	int rayBounces;
 	int aaSamples;
 	std::string shadingOverride;
-	OSLShader* cameraEffect;
 
 	//---------------------------------------
 	// Methods
@@ -43,10 +41,7 @@ private:
 	virtual void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("fov");
-		AddEigenVector<Eigen::Vector2f>(writer, fieldOfView);
-
-		writer.Key("aspect");
-		AddFloat(writer, aspectRatio);
+		AddEigenVector<Eigen::Vector3f>(writer, aspectFOV);
 
 		writer.Key("shift");
 		AddEigenVector<Eigen::Vector2f>(writer, lensShift);
@@ -71,13 +66,6 @@ private:
 
 		writer.Key("shadingOverride");
 		AddString(writer, shadingOverride);
-
-		// Camera does not always have an effect set
-		if (cameraEffect)
-		{
-			writer.Key("shader");
-			cameraEffect->AddToJSON(writer);
-		}
 	}
 
 public:
@@ -86,50 +74,48 @@ public:
 	//---------------------------------------
 
 	inline const Intrinsics& GetIntrinsics() const { return cameraIntrinsics; }
-	inline void SetIntrinsics(Intrinsics intr) { cameraIntrinsics = intr; }
-	inline Eigen::Vector2f GetFOV() const { return fieldOfView; }
-	inline float GetAspectRatio() const { return aspectRatio; }
-	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return shift; }
-	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(abs(near), abs(far)); }
+	inline void SetIntrinsics(const Intrinsics& intr) { cameraIntrinsics = intr; }
+	inline ReferencePath GetSourceFile() const { return sourceFile; }
+	inline Eigen::Vector2f GetFOV() const { return Eigen::Vector2f(aspectFOV.y(), aspectFOV.z()); }
+	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return lensShift; }
 	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
-	inline void SetResultFile(ReferencePath result) { resultFile = result; }
-	inline const ReferencePath GetResultFile() const { return resultFile; }
-	inline void SetRenderResolution(Eigen::Vector2i res) { resolution = res; }
-	inline Eigen::Vector2i SetRenderResolution() const { return resolution; }
-	inline void SetDataOnly(bool rendersData) { dataOnly = rendersData; }
-	inline bool GetDataOnly() const { return dataOnly; }
-	inline int GetRayBounces() const { return rayBounces; }
-	inline void SetRayBounces(int bounces) { rayBounces = bounces; }
-	inline int GetAASamples() const { return aaSamples; }
-	inline void SetAASamples(int samples) { aaSamples = samples; }
-	inline const std::string& GetShadingOverride() const { return shadingOverride; }
-	inline void SetShadingOverride(const std::string& so) { shadingOverride = so; }
-
-	inline const OSLShader* GetEffect() const { return cameraEffect; }
-	inline void SetEffect(OSLShader* effect)
-	{
-		delete cameraEffect;
-		cameraEffect = effect;
-	}
+	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(abs(near), abs(far)); }
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	inline void LoadIntrinsics(const Settings* settings)
+	inline void SetupRendering(
+		ReferencePath outputFile,
+		Eigen::Vector2i renderResolution,
+		bool rendersData,
+		int sampleCount,
+		int maxRayBounces,
+		const std::string& shading
+	)
+	{
+		resultFile = outputFile;
+		resolution = renderResolution;
+		dataOnly = rendersData;
+		aaSamples = sampleCount;
+		rayBounces = maxRayBounces;
+		shadingOverride = shading;
+	}
+
+	inline void LoadIntrinsics(const Settings& settings)
 	{
 		// Load intrinsics (custom or provided ones)
-		if (SafeGet<bool>(settings->GetJSONConfig(), "custom_intrinsics"))
+		if (SafeGet<bool>(settings.GetJSONConfig(), "custom_intrinsics"))
 		{
-			SetIntrinsics(settings->GetIntrinsics());
+			SetIntrinsics(settings.GetIntrinsics());
 		}
 		else
 		{
 			Intrinsics fromFile;
 			// Load from file
 			fromFile.LoadIntrinsics(
-				settings->GetSceneRGBPath().append("_info.txt"),
-				settings->GetRenderResolution()
+				settings.GetSceneRGBPath().append("_info.txt"),
+				settings.GetRenderResolution()
 			);
 			// Store in camera
 			SetIntrinsics(fromFile);
@@ -145,6 +131,8 @@ public:
 		extrFileStream.open(extrFile);
 		if (!extrFileStream.is_open())
 			return;
+		else
+			sourceFile = ModifiablePath(extrFile);
 
 		// Load camera matrix
 		for (int i = 0; i < 4; i++)
@@ -171,8 +159,7 @@ public:
 		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetHeight()) / resMax);
 
 		// Store in Camera
-		fieldOfView = Eigen::Vector2f(fovx, fovy);
-		aspectRatio = aspect;
+		aspectFOV = Eigen::Vector3f(aspect, fovx, fovy);
 		lensShift = Eigen::Vector2f(shiftx, shifty);
 
 		SetTransform(matTrans);
@@ -186,23 +173,35 @@ public:
 
 	Camera() :
 		cameraIntrinsics(),
-		fieldOfView(Eigen::Vector2f(0.6911f, 0.4711f)),
+		sourceFile("None"),
+		aspectFOV(Eigen::Vector3f(1.5f, 0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
 		resultFile(""),
 		resolution(Eigen::Vector2i(1920, 1080)),
-		aspectRatio(1.777f),
 		dataOnly(false),
 		rayBounces(-1),
 		aaSamples(16),
-		shadingOverride(""),
-		cameraEffect(NULL)
+		shadingOverride("")
 	{
 	}
 
-	~Camera()
+	Camera(const Camera& copy) :
+		RenderfileObject(),
+		cameraIntrinsics(copy.cameraIntrinsics),
+		sourceFile(copy.sourceFile),
+		aspectFOV(copy.aspectFOV),
+		lensShift(copy.lensShift),
+		clipPlanes(copy.clipPlanes),
+		resultFile(""),
+		resolution(copy.resolution),
+		dataOnly(false),
+		rayBounces(-1),
+		aaSamples(16),
+		shadingOverride("")
 	{
-		// Camera is responsible for shader
-		delete cameraEffect;
 	}
+
+	Camera(Camera&& other) noexcept = default;
+
 };

@@ -32,11 +32,11 @@ public:
 	//---------------------------------------
 
 	inline void Begin(
-		const Settings* settings
+		const Settings& settings
 	)
 	{
 		// Build path
-		ModifiablePath path(settings->GetFinalPath());
+		ModifiablePath path(settings.GetFinalPath());
 		path.append("labels.csv");
 		// Make sure stream is ready
 		if (osAnnotations.is_open())
@@ -44,7 +44,7 @@ public:
 		// Open or create file
 		osAnnotations.open(path, std::ios_base::app);
 		// Create mask storage
-		objectMask.create(settings->GetRenderResolution().y(), settings->GetRenderResolution().x(), CV_8UC1);
+		objectMask.create(settings.GetRenderResolution().y(), settings.GetRenderResolution().x(), CV_8UC1);
 	}
 
 	inline void Write(
@@ -58,7 +58,7 @@ public:
 		MeshBase* currMesh = (MeshBase*)currBody;
 
 		// Only annotate properly visible objects
-		if (!ComputeObjectVisible(labeled, segmented, objectMask, currMesh->GetLabelId()))
+		if (!ComputeObjectVisible(labeled, segmented, objectMask, currMesh->GetObjId()))
 			return;
 
 		// Compute bounding box
@@ -69,14 +69,13 @@ public:
 		Eigen::Quaternionf rot(currBody->GetRotation());
 
 		// Add formatted info to annotation file
-		osAnnotations << currImage << ", " << bbox.x << ", " << bbox.y << ", " << bbox.width << ", " << bbox.height << ", "
-			<< "obj_" << FormatInt(currMesh->GetMeshId()) << ", "
-			<< rot.coeffs()[0] << ", " << rot.coeffs()[1] << ", " << rot.coeffs()[2] << ", " << rot.coeffs()[3] << ", "
-			<< "0" << ", " << "0" << ", "
-			<< pos[0] << ", " << pos[1] << ", " << pos[2] << ", "
-			<< currMesh->GetLabelId() << " ["
-			<< renderCam.GetIntrinsics().GetFocalLenght().x() << ", " << renderCam.GetIntrinsics().GetFocalLenght().y() << ", "
-			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << ", " << renderCam.GetIntrinsics().GetPrincipalPoint().y() << "]"
+		osAnnotations << FormatInt(currImage) << "; "
+			<< bbox.x << "; " << bbox.y << "; " << bbox.width << "; " << bbox.height << "; "
+			<< currMesh->GetName() << "; " << currMesh->GetMeshId() << "; " << currMesh->GetObjId() << "; "
+			<< pos[0] << "; " << pos[1] << "; " << pos[2] << "; "
+			<< rot.coeffs()[3] << "; " << rot.coeffs()[0] << "; " << rot.coeffs()[1] << "; " << rot.coeffs()[2] << "["
+			<< renderCam.GetIntrinsics().GetFocalLenght().x() << "; " << renderCam.GetIntrinsics().GetFocalLenght().y() << "; "
+			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << "; " << renderCam.GetIntrinsics().GetPrincipalPoint().y() << "]"
 			<< "\n";
 	}
 

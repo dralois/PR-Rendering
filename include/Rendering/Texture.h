@@ -1,6 +1,10 @@
 #pragma once
 
+#include <functional>
+
 #pragma warning(push, 0)
+#include <boost/algorithm/string.hpp>
+
 #include <opencv2/opencv.hpp>
 
 #include <Helpers/JSONUtils.h>
@@ -23,6 +27,7 @@ private:
 	cv::Mat loadedImage;
 	bool floatPrecision;
 	bool singleChannel;
+	bool isPacked;
 
 public:
 	//---------------------------------------
@@ -32,22 +37,19 @@ public:
 	inline ReferencePath GetPath() const { return filePath; }
 	inline void SetPath(
 		ReferencePath path,
+		bool packedTexture,
 		const std::string& extension = ""
 	)
 	{
+		isPacked = packedTexture;
 		filePath = path.parent_path();
 		filePath.append(path.stem().string());
-		filePath.concat(".");
+		filePath.concat(isPacked ? "_packed." : ".");
 		filePath.concat(extension.empty() ? floatPrecision ? "tiff" : "png" : extension);
 	}
 
 	inline const cv::Mat& GetTexture() const { return loadedImage; }
-	inline void SetTexture(
-		const cv::Mat& img
-	)
-	{
-		loadedImage = img;
-	}
+	inline void SetTexture(const cv::Mat& img) { loadedImage = img; }
 
 	//---------------------------------------
 	// Methods
@@ -69,11 +71,16 @@ public:
 		writer.EndObject();
 	}
 
-	void LoadTexture()
+	void LoadTexture(const std::function<cv::Mat(cv::Mat&)>& converter = NULL)
 	{
 		loadedImage = cv::imread(filePath.string(),
 			(singleChannel ? cv::IMREAD_GRAYSCALE : cv::IMREAD_COLOR) |
 			(floatPrecision ? cv::IMREAD_ANYDEPTH : cv::IMREAD_ANYCOLOR));
+		// Convert image into correct format if lambda is provided
+		if(converter)
+		{
+			loadedImage = converter(loadedImage);
+		}
 	}
 
 	void StoreTexture()
@@ -108,10 +115,19 @@ public:
 		}
 	}
 
-	void DeleteTexture()
+	void ReplacePacked()
 	{
-		boost::filesystem::remove(filePath);
-		filePath = "";
+		if(isPacked)
+		{
+			isPacked = false;
+			// Remove packed image from disk
+			boost::filesystem::remove(filePath);
+			// Determine & store unpacked path
+			ModifiablePath newPath = filePath.parent_path();
+			newPath.append(boost::algorithm::replace_last_copy(filePath.stem().string(), "_packed", "."));
+			newPath.concat(floatPrecision ? "tiff" : "png");
+			filePath = std::move(newPath);
+		}
 	}
 
 	//---------------------------------------
@@ -125,7 +141,95 @@ public:
 		filePath(),
 		loadedImage(),
 		floatPrecision(floatPrecision),
-		singleChannel(singleChannel)
+		singleChannel(singleChannel),
+		isPacked(false)
+	{
+	}
+};
+
+//---------------------------------------
+// Depth mask, blended depth & occlusion info
+//---------------------------------------
+class Mask : public Texture
+{
+private:
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+	bool isOccluded;
+	Texture blendedDepth;
+
+public:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	inline bool& Occluded() { return isOccluded; }
+	inline void LoadBlendedDepth(const cv::Mat& tex) { blendedDepth.SetTexture(tex); }
+	inline void StoreBlendedDepth(ReferencePath path)
+	{
+		blendedDepth.SetPath(path, false);
+		blendedDepth.StoreTexture();
+	}
+
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+
+	Mask():
+		Texture(false, true),
+		isOccluded(false),
+		blendedDepth(true, true)
+	{
+	}
+};
+
+//---------------------------------------
+// Real RGB & corresponding pose
+//---------------------------------------
+class SceneImage : Texture
+{
+private:
+	//---------------------------------------
+	// Fields
+	//---------------------------------------
+
+	bool sceneLoaded;
+	ModifiablePath posePath;
+
+public:
+	//---------------------------------------
+	// Properties
+	//---------------------------------------
+
+	inline ReferencePath GetPosePath() const { return posePath; }
+	inline void SetPosePath(ReferencePath path) { posePath = path; }
+
+	inline void SetScenePath(ReferencePath path)
+	{
+		// Real images are jpg format
+		SetPath(path, false, "jpg");
+	}
+
+	inline const cv::Mat& GetSceneTexture()
+	{
+		// Load real image only once & when required
+		if(!sceneLoaded)
+		{
+			LoadTexture();
+			sceneLoaded = true;
+		}
+		return GetTexture();
+	}
+
+	//---------------------------------------
+	// Constructors
+	//---------------------------------------
+
+	SceneImage():
+		Texture(false, false),
+		sceneLoaded(false),
+		posePath()
 	{
 	}
 };

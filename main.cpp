@@ -16,10 +16,10 @@ int main(int argc, char** argv)
 	// Only one input argument (path to the config file) allowed
 	if (argc != 2)
 	{
-		std::cerr << "Please provide only the path to the config file." << std::endl;
+		std::cout << "Please provide only the path to the config file." << std::endl;
 		for (size_t i = 0; i < argc; i++)
 		{
-			std::cerr << argv[i] << std::endl;
+			std::cout << argv[i] << std::endl;
 		}
 		return -1;
 	}
@@ -46,8 +46,6 @@ int main(int argc, char** argv)
 		boost::filesystem::create_directories(finalDir / "segs");
 	}
 
-	std::cout << "Creating Temp Directories" << std::endl;
-
 	// Create temporary output directories
 	if (!boost::filesystem::exists(tempDir))
 	{
@@ -60,9 +58,7 @@ int main(int argc, char** argv)
 	}
 
 	// Run the simulation
-	int exit = simulation.RunSimulation();
-
-	std::cout << "Deleting Temp Directories" << std::endl;
+	simulation.RunSimulation();
 
 	// Delete temporary output
 	if (boost::filesystem::exists(tempDir))
@@ -70,5 +66,5 @@ int main(int argc, char** argv)
 		boost::filesystem::remove_all(tempDir);
 	}
 
-	return exit;
+	return 0;
 }

@@ -44,9 +44,9 @@ def LogPerformance(what):
     global __performance
     # Log duration or start timer
     if what in __performance:
-        GetLogger().info("***********************************************")
-        GetLogger().info(f"{what} duration: {time.clock() - __performance[what]}")
-        GetLogger().info("***********************************************")
+        GetLogger().critical("***********************************************")
+        GetLogger().critical(f"{what} duration: {time.clock() - __performance[what]}")
+        GetLogger().critical("***********************************************")
         del __performance[what]
     else:
         __performance[what] = time.clock()

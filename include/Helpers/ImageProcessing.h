@@ -16,8 +16,8 @@ static cv::Vec3b EncodeInt(
 {
 	static std::hash<int> hash;
 	// Hash for nicer color spread
-	static int maxVal = 16777216;
-	toEncode = ((int) hash(toEncode)) % maxVal;
+	static int maxVal = (1 << 24) - 1;
+	toEncode = (((int) hash(toEncode)) % maxVal) + 1;
 	// Shift into uchars
 	uchar encode8 = (uchar)toEncode;
 	toEncode >>= 8;
@@ -161,9 +161,7 @@ static cv::Rect ComputeBoundingBox(
 //---------------------------------------
 // Converts packed depth to float
 //---------------------------------------
-static cv::Mat UnpackDepth(
-	const cv::Mat& packed
-)
+static auto UnpackDepth = [&](cv::Mat& packed) -> cv::Mat
 {
 	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_32FC1);
 	// Unpack into one channel, convert no hit (0.0f) to inf
@@ -172,14 +170,12 @@ static cv::Mat UnpackDepth(
 		val = distance == 0.0f ? FLT_MAX : distance;
 	});
 	return unpacked;
-}
+};
 
 //---------------------------------------
 // Converts packed label to rgb
 //---------------------------------------
-static cv::Mat UnpackLabel(
-	const cv::Mat& packed
-)
+static auto UnpackLabel = [&](cv::Mat& packed) -> cv::Mat
 {
 	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_8UC3);
 	// Unpack float and convert to rgb
@@ -188,4 +184,4 @@ static cv::Mat UnpackLabel(
 		val = cv::Vec3b((uchar)labelPacked[0], (uchar)labelPacked[1], (uchar)labelPacked[2]);
 	});
 	return unpacked;
-}
+};

@@ -10,7 +10,7 @@
     "final_path": "../../Output/final",
     "temp_path": "../../Output/temp",
 
-    "simulation_objects": 100,
+    "simulation_objects": 50,
     "simulation_steps": 2000,
     "scene_iterations": 5,
     "batch_size": 10,

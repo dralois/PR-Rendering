@@ -27,8 +27,8 @@ private:
 	std::vector<RenderMesh*> vecpRenderMesh;
 
 	// Config
-	rapidjson::Document jsonConfig;
 	Settings* pRenderSettings;
+	rapidjson::Document jsonConfig;
 	std::vector<ModifiablePath> vecSceneFolders;
 
 	//---------------------------------------
@@ -50,7 +50,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	int RunSimulation();
+	void RunSimulation();
 
 	//---------------------------------------
 	// Construtors

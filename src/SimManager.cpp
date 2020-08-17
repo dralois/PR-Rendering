@@ -27,14 +27,12 @@ void SimManager::X_LoadMeshes()
 	// Sanity check
 	if (!jsonConfig.HasMember("render_objs"))
 		return;
-	else
-		if (!jsonConfig["render_objs"].IsArray())
-			return;
+	else if (!jsonConfig["render_objs"].IsArray())
+		return;
 
+	// Initialize
 	JSONArray objects = jsonConfig["render_objs"].GetArray();
 	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
-
-	// Initialize vectors
 	vecpPxMesh.reserve(objects.Size());
 	vecpRenderMesh.reserve(objects.Size());
 
@@ -71,11 +69,11 @@ void SimManager::X_LoadMeshes()
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i);
 				pxCurr->SetScale(physx::PxVec3(SafeGet<float>(jsonConfig, "obj_scale")));
 				pxCurr->CreateMesh();
-				vecpPxMesh.push_back(pxCurr);
+				vecpPxMesh.push_back(std::move(pxCurr));
 
 				// Create and save arnold mesh
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
-				vecpRenderMesh.push_back(renderCurr);
+				vecpRenderMesh.push_back(std::move(renderCurr));
 			}
 			std::cout << std::endl;
 		}
@@ -87,7 +85,7 @@ void SimManager::X_LoadMeshes()
 //---------------------------------------
 void SimManager::X_SaveSceneFolders(ReferencePath path)
 {
-	vecSceneFolders = std::vector<ModifiablePath>();
+	vecSceneFolders.clear();
 
 	// Search provided directory
 	if (boost::filesystem::exists(path))
@@ -99,7 +97,7 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 				// Save folder in vector, if it is a scene
 				if (boost::filesystem::is_directory(entry.path()))
 				{
-					if(boost::filesystem::exists(ModifiablePath(entry.path()).append("rgbd")))
+					if (boost::filesystem::exists(ModifiablePath(entry.path()).append("rgbd")))
 					{
 						vecSceneFolders.push_back(entry);
 					}
@@ -114,10 +112,10 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 //---------------------------------------
 // Run simulation and rendering
 //---------------------------------------
-int SimManager::RunSimulation()
+void SimManager::RunSimulation()
 {
 	// Create mananger
-	SceneManager curr(pRenderSettings, vecpPxMesh, vecpRenderMesh);
+	SceneManager sceneMgr(pRenderSettings, vecpPxMesh, vecpRenderMesh);
 
 	// Render all scenes
 	int currImageCount = 0;
@@ -126,18 +124,23 @@ int SimManager::RunSimulation()
 		// Set path
 		pRenderSettings->SetScenePath(folder);
 		// Stop at max rendered images
-		currImageCount += curr.Run(currImageCount);
+		currImageCount += sceneMgr.Run(currImageCount);
 		if (currImageCount >= pRenderSettings->GetMaxImageCount())
 			break;
 	}
-
-	return 0;
 }
 
 //---------------------------------------
 // Creates new simulation
 //---------------------------------------
-SimManager::SimManager(ReferencePath configPath)
+SimManager::SimManager(
+	ReferencePath configPath
+) :
+	vecpPxMesh(),
+	vecpRenderMesh(),
+	jsonConfig(NULL),
+	pRenderSettings(NULL),
+	vecSceneFolders()
 {
 	// Init
 	PxManager::GetInstance().InitPhysx();

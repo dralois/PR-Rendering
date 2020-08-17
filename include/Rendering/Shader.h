@@ -69,4 +69,14 @@ public:
 		textures(textures)
 	{
 	}
+
+	~OSLShader()
+	{
+		// Shader base is responsible for its textures
+		for(auto tex : textures)
+		{
+			delete tex;
+		}
+		textures.clear();
+	}
 };

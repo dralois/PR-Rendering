@@ -23,6 +23,7 @@ private:
 	// Fields
 	//---------------------------------------
 
+	ModifiablePath sourceFile;
 	Eigen::Vector2f focalLength;
 	Eigen::Vector2f principalPoint;
 	Eigen::Vector2i resolution;
@@ -32,6 +33,7 @@ public:
 	// Properties
 	//---------------------------------------
 
+	inline ReferencePath GetSourceFile() const { return sourceFile; }
 	inline Eigen::Vector2f GetFocalLenght() const { return focalLength; }
 	inline void SetFocalLenght(Eigen::Vector2f f) { focalLength = f; }
 	inline Eigen::Vector2f GetPrincipalPoint() const { return principalPoint; }
@@ -55,6 +57,8 @@ public:
 		intrFileStream.open(intrFile);
 		if (!intrFileStream.is_open())
 			return;
+		else
+			sourceFile = ModifiablePath(intrFile);
 
 		// For each line
 		std::string line;
@@ -96,6 +100,7 @@ public:
 	//---------------------------------------
 
 	Intrinsics() :
+		sourceFile("None"),
 		focalLength(Eigen::Vector2f(0.0f, 0.0f)),
 		principalPoint(Eigen::Vector2f(0.0f, 0.0f)),
 		resolution(Eigen::Vector2i(0, 0))
