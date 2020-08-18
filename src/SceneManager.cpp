@@ -611,7 +611,7 @@ int SceneManager::Run(int imageCount)
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters; ++iter)
+	for (int iter = 0; iter < maxIters && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++iter)
 	{
 		// Create / open annotation file
 		pAnnotations->Begin(*pRenderSettings);
@@ -627,18 +627,22 @@ int SceneManager::Run(int imageCount)
 
 		// For every batch
 		int batchMax = ceil(static_cast<float>(poseCount) / static_cast<float>(batchSize));
-		for (int batch = 0; batch < batchMax; ++batch)
+		for (int batch = 0; batch < batchMax && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++batch)
 		{
+			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
 			std::cout << "Scene " << scenePath << ": Iteration " << iter + 1 << "/" << maxIters
-				<< ", Batch " << batch + 1 << "/" << batchMax << "("<< batchSize << " images)" << std::endl;
+				<< ", Batch " << batch + 1 << "/" << batchMax << " ("<< batchSize << " images)" << std::endl;
 
 			// Create batch
 			unsigned int start = batch * batchSize;
 			unsigned int end = start + batchSize >= poseCount ? poseCount : start + batchSize;
-			std::vector<SceneImage> currImages(
-				sceneImages.begin() + start,
-				sceneImages.begin() + end
-			);
+
+			// Copy corresponding images
+			std::vector<SceneImage> currImages;
+			for (int i = start; i < end; ++i)
+			{
+				currImages.push_back(sceneImages[i]);
+			}
 
 			// Load poses
 			std::vector<Camera> currCams(currImages.size(), Camera(camBlueprint));
@@ -648,7 +652,9 @@ int SceneManager::Run(int imageCount)
 			}
 
 			// Render depths & masks
+			pBlender->LogPerformance("Depth & Masks");
 			std::vector<Mask> masks = X_RenderDepthMasks(currCams, start);
+			pBlender->LogPerformance("Depth & Masks");
 
 			// Determine which images should be processed further
 			int unoccludedCount = 0;
@@ -679,19 +685,19 @@ int SceneManager::Run(int imageCount)
 			if(unoccludedCount > 0)
 			{
 				// Render labels & create annotations
+				pBlender->LogPerformance("Labels & Annotating");
 				X_RenderSegments(unoccludedCams, unoccludedMasks, newImages);
+				pBlender->LogPerformance("Labels & Annotating");
 
 				// Render synthetic image & blend with real one
+				pBlender->LogPerformance("PBR Render & Blend");
 				X_RenderPBRBlend(unoccludedCams, unoccludedMasks, unoccludedImages, newImages);
+				pBlender->LogPerformance("PBR Render & Blend");
 			}
 
-			// Exit if target now reached
+			// Update total count & output duration
+			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
 			newImages += unoccludedCount;
-			if (imageCount + newImages >= pRenderSettings->GetMaxImageCount())
-			{
-				X_CleanupScene();
-				return newImages;
-			}
 		}
 
 		// Done with iteration
