@@ -7,7 +7,7 @@
 #include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
-#define EXPORT_TO_FILE 0
+#define EXPORT_TO_FILE 1
 
 //---------------------------------------
 // Base class for all meshes
@@ -18,8 +18,8 @@ protected:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
-	int objId;
-	unsigned int meshId;
+	int objId = -1;
+	int meshId = -1;
 	ModifiablePath meshPath;
 	ModifiablePath texturePath;
 
@@ -49,7 +49,7 @@ public:
 	inline void SetObjId(int id) { objId = id; }
 	inline ReferencePath GetMeshPath() const { return meshPath; }
 	inline ReferencePath GetTexturePath() const { return texturePath; }
-	inline std::string GetName() const { return "mesh_" + std::to_string(meshId) + "_" + std::to_string(objId); }
+	inline std::string GetName() const { return meshPath.stem().string() + "_" + std::to_string(objId); }
 
 	//---------------------------------------
 	// Constructors

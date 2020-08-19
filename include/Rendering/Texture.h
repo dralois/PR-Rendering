@@ -111,7 +111,11 @@ public:
 			depth.forEach<float>([&](float& val, const int pixel[]) -> void {
 				val = (val - nearClip) / (farClip - nearClip);
 			});
-			cv::imwrite(filePath.string(), depth);
+			// Store seperately
+			ModifiablePath hrPath(filePath.parent_path());
+			hrPath.append(filePath.stem().string());
+			hrPath.concat("_01.tiff");
+			cv::imwrite(hrPath.string(), depth);
 		}
 	}
 

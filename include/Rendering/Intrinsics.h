@@ -54,11 +54,15 @@ public:
 	{
 		// File must exist
 		boost::filesystem::ifstream intrFileStream;
-		intrFileStream.open(intrFile);
-		if (!intrFileStream.is_open())
+		if (!intrFileStream.good())
+		{
 			return;
+		}
 		else
+		{
+			intrFileStream.open(intrFile);
 			sourceFile = ModifiablePath(intrFile);
+		}
 
 		// For each line
 		std::string line;

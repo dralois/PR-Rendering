@@ -55,10 +55,8 @@ public:
 		int currImage
 	)
 	{
-		MeshBase* currMesh = (MeshBase*)currBody;
-
 		// Only annotate properly visible objects
-		if (!ComputeObjectVisible(labeled, segmented, objectMask, currMesh->GetObjId()))
+		if (!ComputeObjectVisible(labeled, segmented, objectMask, currBody->GetObjId()))
 			return;
 
 		// Compute bounding box
@@ -71,7 +69,7 @@ public:
 		// Add formatted info to annotation file
 		osAnnotations << FormatInt(currImage) << "; "
 			<< bbox.x << "; " << bbox.y << "; " << bbox.width << "; " << bbox.height << "; "
-			<< currMesh->GetName() << "; " << currMesh->GetMeshId() << "; " << currMesh->GetObjId() << "; "
+			<< currBody->GetName() << "; " << currBody->GetMeshId() << "; " << currBody->GetObjId() << "; "
 			<< pos[0] << "; " << pos[1] << "; " << pos[2] << "; "
 			<< rot.coeffs()[3] << "; " << rot.coeffs()[0] << "; " << rot.coeffs()[1] << "; " << rot.coeffs()[2] << ";"
 			<< renderCam.GetIntrinsics().GetFocalLenght().x() << "; " << renderCam.GetIntrinsics().GetFocalLenght().y() << "; "

@@ -128,11 +128,15 @@ public:
 
 		// File must exist
 		boost::filesystem::ifstream extrFileStream;
-		extrFileStream.open(extrFile);
-		if (!extrFileStream.is_open())
+		if (!extrFileStream.good())
+		{
 			return;
+		}
 		else
+		{
+			extrFileStream.open(extrFile);
 			sourceFile = ModifiablePath(extrFile);
+		}
 
 		// Load camera matrix
 		for (int i = 0; i < 4; i++)
