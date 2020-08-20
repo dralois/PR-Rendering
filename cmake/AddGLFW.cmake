@@ -40,9 +40,7 @@ function(AddGLFW TO_TARGET INSTALL_PATH)
     endif()
 
     # Copy required dlls
-    if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/debug/bin ${INSTALL_PATH}/release/bin)
-    endif()
+    CopyContent(${TO_TARGET} ${INSTALL_PATH}/debug/bin ${INSTALL_PATH}/release/bin)
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE glfw)

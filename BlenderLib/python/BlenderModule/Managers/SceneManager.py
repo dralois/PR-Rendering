@@ -60,10 +60,10 @@ class Scene(object):
         self.__SetRenderSettings(currCam)
         # Adjust pathtracing & sampling settings
         self.__SetRaytracingSettings(currCam)
-        # Possibly store to blend file
-        if self.__storeBlend:
-            saveFile = f"{FileDir(currCam.CameraResultFile)}\\{FileName(currCam.CameraResultFile)}.blend"
-            bpy.ops.wm.save_mainfile(filepath = saveFile, check_existing = False)
+        # Store to blend file (last camera only)
+        if self.__storeBlend and len(self.__renderQueue) == 0:
+            saveFile = f"{FileDir(currCam.CameraResultFile)}\\Scene.blend"
+            bpy.ops.wm.save_mainfile(filepath=saveFile, check_existing=False)
         # Render scene to file
         logger.info(f"Rendering scene to {currCam.CameraResultFile}")
         bpy.ops.render.render(write_still = True)

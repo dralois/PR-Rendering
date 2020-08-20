@@ -44,9 +44,7 @@ function(AddAssimp TO_TARGET INSTALL_PATH)
     endif()
 
     # Copy required dlls
-    if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
-    endif()
+    CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE assimp::assimp)

@@ -2,6 +2,7 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
     # For reusability
     set(CONTENT_NAME physx)
     include(ContentHelpers)
+    include(FetchContent)
 
     # Parse components
     if(${ARGC} GREATER 2)
@@ -15,8 +16,6 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
 
     # Load and build if not so
     if(NOT ${CHECK_FOUND})
-        # Enable dependency download module
-        include(FetchContent)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/phcerdan/PhysX.git
@@ -64,10 +63,45 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
         CheckPhysX(CHECK_FOUND ${COMPONENTS})
     endif()
 
-    # Copy required dlls
+    # Find possible GPU dll dirs
+    SubDirList(DEBUG_DIRS ${FETCHCONTENT_BASE_DIR}/${CONTENT_NAME}-src/physx/bin debug)
+    SubDirList(RELEASE_DIRS ${FETCHCONTENT_BASE_DIR}/${CONTENT_NAME}-src/physx/bin release)
+
+    # Find actual GPU dlls
     if(WIN32)
-        CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
+        find_file(GPU_DEBUG_DLL
+                PhysXGpu_64.dll
+                PATHS
+                ${DEBUG_DIRS}
+                NO_DEFAULT_PATH
+        )
+        find_file(GPU_RELEASE_DLL
+                PhysXGpu_64.dll
+                HINTS
+                ${RELEASE_DIRS}
+                NO_DEFAULT_PATH
+        )
+    else()
+        find_file(GPU_DEBUG_DLL
+                libPhysXGpu_64.so
+                PATHS
+                ${DEBUG_DIRS}
+                NO_DEFAULT_PATH
+        )
+        find_file(GPU_RELEASE_DLL
+                libPhysXGpu_64.so
+                HINTS
+                ${RELEASE_DIRS}
+                NO_DEFAULT_PATH
+        )
     endif()
+
+    # Get directory of GPU dlls & add copy command
+    get_filename_component(GPU_DEBUG_DLL ${GPU_DEBUG_DLL} DIRECTORY)
+    get_filename_component(GPU_RELEASE_DLL ${GPU_RELEASE_DLL} DIRECTORY)
+    CopyContent(${TO_TARGET} ${GPU_DEBUG_DLL} ${GPU_RELEASE_DLL})
+    # Copy other required dlls
+    CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE ${COMPONENTS})
@@ -92,4 +126,15 @@ function(CheckPhysX CHECK_FOUND)
     endif()
     # Return result
     set(CHECK_FOUND ${PhysX_FOUND} PARENT_SCOPE)
+endfunction()
+
+# Finds all subdirectories and adds suffix to each
+function(SubDirList RESULT DIR SUFF)
+    file(GLOB CHILDREN RELATIVE ${DIR} ${DIR}/*)
+    foreach(CHILD ${CHILDREN})
+        if(IS_DIRECTORY ${DIR}/${CHILD})
+            set(DIRS "${DIRS};${DIR}/${CHILD}/${SUFF}")
+        endif()
+    endforeach()
+    set(${RESULT} ${DIRS} PARENT_SCOPE)
 endfunction()
