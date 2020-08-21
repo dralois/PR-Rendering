@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #pragma warning(push, 0)
 #include <boost/algorithm/string.hpp>
@@ -11,7 +12,6 @@
 #include <Helpers/PathUtils.h>
 #include <Helpers/PhysxManager.h>
 
-#include <OpenGLLib/render.h>
 #include <BlenderLib/BlenderRenderer.h>
 
 #include <Meshes/RenderMesh.h>
@@ -41,10 +41,6 @@ private:
 	// PhysX
 	physx::PxScene* pPxScene;
 
-	// Renderers
-	Renderer::Render* pRenderer;
-	Blender::BlenderRenderer* pBlender;
-
 	// Rendering
 	Camera camBlueprint;
 	std::vector<Light*> vecpLights;
@@ -62,22 +58,20 @@ private:
 	// Other
 	Settings* pRenderSettings;
 	AnnotationsManager* pAnnotations;
+	Blender::BlenderRenderer* pBlender;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
 	// Simulation
+	void X_PxSaveSimResults();
 	void X_PxCreateScene();
 	void X_PxCreateObjs();
 	void X_PxRunSim(
 		float timestep,
 		int stepCount
 	) const;
-	void X_PxSaveSimResults();
-
-	// Open GL Renderer
-	std::vector<Texture> X_GLSceneDepth(const std::vector<ModifiablePath>& poses) const;
 
 	// Renderfile creation
 	void X_ConvertToRenderfile(
@@ -128,18 +122,18 @@ private:
 	);
 
 	// Other
+	void X_CleanupScene();
 	std::vector<SceneImage> X_GetImagesToProcess(
 		ReferencePath dir,
 		float varThreshold
 	) const;
-	void X_CleanupScene();
 
 public:
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
-	int Run(int imageCount);
+	int ProcessNext(int imageCount);
 
 	//---------------------------------------
 	// Constructors

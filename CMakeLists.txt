@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.15...3.18)
 
 # Create project
 project(PRRendering
-        VERSION 1.0
+        VERSION 1.3
         DESCRIPTION "PR Rendering"
         LANGUAGES CXX)
 
@@ -84,7 +84,4 @@ endif()
 ###########################################################################################
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
-add_subdirectory(${CMAKE_SOURCE_DIR}/OpenGLLib)
-
 target_link_libraries(PRRendering PRIVATE BlenderLib)
-target_link_libraries(PRRendering PRIVATE OpenGLLib)

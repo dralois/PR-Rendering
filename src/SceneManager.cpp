@@ -1,6 +1,5 @@
 #include <SceneManager.h>
 
-#define USE_OPENGL 0
 #define STORE_DEBUG_TEX 1
 
 #define PI (3.1415926535897931f)
@@ -182,41 +181,6 @@ void SceneManager::X_PxSaveSimResults()
 		currMesh->SetTransform(currTrans.matrix());
 		vecpRenderMeshCurrObjs.push_back(std::move(currMesh));
 	}
-}
-
-//---------------------------------------
-// Render scene depth OpenGL
-//---------------------------------------
-std::vector<Texture> SceneManager::X_GLSceneDepth(
-	const std::vector<ModifiablePath>& poses
-) const
-{
-	// Render depth with OpenGL
-	auto renders = pRenderer->RenderScenes(
-		pRenderSettings->GetScenePath(),
-		poses,
-		camBlueprint.GetIntrinsics().GetFocalLenght().x(),
-		camBlueprint.GetIntrinsics().GetFocalLenght().y(),
-		camBlueprint.GetIntrinsics().GetPrincipalPoint().x(),
-		camBlueprint.GetIntrinsics().GetPrincipalPoint().y(),
-		camBlueprint.GetIntrinsics().GetWidth(),
-		camBlueprint.GetIntrinsics().GetHeight()
-	);
-
-	// For each image
-	std::vector<Texture> results;
-	for (int render_count = 0; render_count < renders.size(); render_count++)
-	{
-		// Create depth texture
-		Texture depthScene(true, true);
-		depthScene.SetTexture(std::get<1>(renders[render_count]));
-		depthScene.SetPath(pRenderSettings->GetImagePath("scene_depth", render_count), false);
-		// Store in result vector
-		results.push_back(std::move(depthScene));
-	}
-
-	// Return depth maps
-	return results;
 }
 
 //---------------------------------------
@@ -467,18 +431,7 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	// Create & process renderfile
 	RENDERFILE_BEGIN;
 	X_BuildObjectsDepth(RENDERFILE_WRITER, cams, objectDepths, start);
-#if !USE_OPENGL
 	X_BuildSceneDepth(RENDERFILE_WRITER, cams, sceneDepths, start);
-#else
-	// OpenGL: Extract poses
-	std::vector<ModifiablePath> poses;
-	for (const Camera& cam : cams)
-	{
-		poses.emplace_back(ModifiablePath(cam.GetSourceFile()));
-	}
-	// Immediately render
-	sceneDepths = X_GLSceneDepth(poses);
-#endif //!USE_OPENGL
 	RENDERFILE_PROCESS;
 
 	// For every pose
@@ -487,7 +440,6 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 		// Load & unpack object depth
 		objectDepths[curr].LoadTexture(UnpackDepth);
 		objectDepths[curr].ReplacePacked();
-#if !USE_OPENGL
 		// Load & unpack scene depth if not yet loaded
 		if (sceneDepths[curr].GetTexture().empty())
 		{
@@ -495,12 +447,10 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 			sceneDepths[curr].ReplacePacked();
 			sceneDepths[curr].StoreTexture();
 		}
-#endif //!USE_OPENGL
 #if STORE_DEBUG_TEX
+		// Store human readable
 		objectDepths[curr].StoreDepth01(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
-#if !USE_OPENGL
 		sceneDepths[curr].StoreDepth01(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
-#endif //!USE_OPENGL
 #endif //STORE_DEBUG_TEX
 
 		// Create blended depth texture & coverage mask
@@ -637,7 +587,7 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 //---------------------------------------
 // Run simulation & render synthetic images
 //---------------------------------------
-int SceneManager::Run(int imageCount)
+int SceneManager::ProcessNext(int imageCount)
 {
 	// Get non blurry images
 	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(pRenderSettings->GetSceneRGBPath(), 400.0f);
@@ -777,7 +727,6 @@ SceneManager::SceneManager(
 	pAnnotations(NULL),
 	vecpLights(),
 	pPxScene(NULL),
-	pRenderer(NULL),
 	pBlender(NULL)
 {
 	// Create annotations manager
@@ -803,18 +752,6 @@ SceneManager::SceneManager(
 		vecpLights.push_back(addLight);
 	}
 
-#if USE_OPENGL
-	// Create OpenGL renderer
-	ModifiablePath shadersPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl"));
-	pRenderer = new Renderer::Render(
-		boost::filesystem::absolute(shadersPath),
-		pRenderSettings->GetRenderResolution().x(),
-		pRenderSettings->GetRenderResolution().y(),
-		camBlueprint.GetClipping().x(),
-		camBlueprint.GetClipping().y()
-	);
-#endif //USE_OPENGL
-
 	// Create Blender render interface
 	pBlender = new Blender::BlenderRenderer();
 }
@@ -827,9 +764,8 @@ SceneManager::~SceneManager()
 	// Meshes & simulation
 	X_CleanupScene();
 
-	// Renderers etc.
+	// Renderer etc.
 	delete pBlender;
-	delete pRenderer;
 	delete pAnnotations;
 
 	// Lights

@@ -121,7 +121,7 @@ void SimManager::RunSimulation()
 		// Set path
 		pRenderSettings->SetScenePath(folder);
 		// Stop at max rendered images
-		currImageCount += sceneMgr.Run(currImageCount);
+		currImageCount += sceneMgr.ProcessNext(currImageCount);
 		if (currImageCount >= pRenderSettings->GetMaxImageCount())
 			break;
 	}
