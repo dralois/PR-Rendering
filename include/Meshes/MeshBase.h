@@ -7,7 +7,7 @@
 #include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
-#define EXPORT_TO_FILE 1
+#define EXPORT_TO_FILE 0
 
 //---------------------------------------
 // Base class for all meshes
@@ -33,7 +33,7 @@ protected:
 	//---------------------------------------
 	bool X_LoadFile();
 	void X_StoreFile(const std::string& ext) const;
-	virtual void X_ExportMesh() = 0;
+	virtual void X_ExtractMesh() = 0;
 
 public:
 	//---------------------------------------

@@ -31,6 +31,6 @@
 
     "render_objs": [""],
     "mesh_format" : "",
-    "scene_scale": 0.0,
-    "obj_scale": 0.0
+    "scene_unit": 0.0,
+    "objs_unit": 0.0
 }

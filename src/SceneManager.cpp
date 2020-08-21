@@ -1,6 +1,6 @@
 #include <SceneManager.h>
 
-#define USE_OPENGL 1
+#define USE_OPENGL 0
 #define STORE_DEBUG_TEX 1
 
 #define PI (3.1415926535897931f)
@@ -25,29 +25,32 @@ using namespace physx;
 //---------------------------------------
 void SceneManager::X_PxCreateScene()
 {
+	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
 	// Create physx mesh of scan scene
 	ModifiablePath meshPath(pRenderSettings->GetScenePath());
 	meshPath.append("mesh.refined.obj");
 	pPxMeshScene = new PxMeshTriangle(meshPath, 0);
-	pPxMeshScene->SetScale(PxVec3(SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_scale")));
-	pPxMeshScene->SetObjId(0);
 	pPxMeshScene->CreateMesh();
+	pPxMeshScene->SetObjId(0);
+	pPxMeshScene->SetScale(PxVec3(toMeters));
+	std::cout << std::endl;
 
-	// Standart gravity & continuous collision detection
+	bool cudaAvailable = PxManager::GetInstance().GetCudaManager() != nullptr;
+	// Standart gravity & continuous collision detection & GPU rigidbodies
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
+	sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION | PxSceneFlag::eENABLE_CCD |
+		(cudaAvailable ? PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM : PxSceneFlag::eENABLE_PCM);
+	sceneDesc.broadPhaseType = PxManager::GetInstance().GetCudaManager() ? PxBroadPhaseType::eGPU : PxBroadPhaseType::eABP;
+	sceneDesc.cpuDispatcher = PxDefaultCpuDispatcherCreate(std::thread::hardware_concurrency());
+	sceneDesc.cudaContextManager = PxManager::GetInstance().GetCudaManager();
+	sceneDesc.filterShader = PxManager::CCDFilterShader;
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	sceneDesc.cpuDispatcher = physx::PxDefaultCpuDispatcherCreate(4);
-	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-	sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-	// Objects should never be outside twice the scene bounds
-	sceneDesc.sanityBounds = PxBounds3(pPxMeshScene->GetMinimum() * 2.0f, pPxMeshScene->GetMaximum() * 2.0f);
+	sceneDesc.gpuMaxNumPartitions = 8;
+	// Objects should never spawn outside the scene bounds
+	sceneDesc.sanityBounds = pPxMeshScene->GetGlobalBounds();
 
-	// Create scene
+	// Create scene & add mesh
 	pPxScene = PxGetPhysics().createScene(sceneDesc);
-
-	// Scene meshes need to be rotated 90* around X during the simulation
-	PxTransform pose(PxVec3(0, 0, 0), PxQuat(-PIOVER2, PxVec3(1, 0, 0)));
-	pPxMeshScene->SetTransform(pose);
 	pPxMeshScene->AddRigidActor(pPxScene);
 }
 
@@ -59,26 +62,32 @@ void SceneManager::X_PxCreateObjs()
 	// Seed & setup
 	srand(time(NULL) % 1000);
 	vecpPxMeshCurrObjs.reserve(pRenderSettings->GetObjectsPerSimulation());
+	const PxVec3 sceneCenter = pPxMeshScene->GetGlobalBounds().getCenter();
+	const PxVec3 sceneExtends = pPxMeshScene->GetGlobalBounds().getExtents();
+
+	// Helper lambda for random floats
+	auto randf = [](float lower, float upper) -> float
+	{
+		float rand01 = static_cast<float>(rand()) / RAND_MAX;
+		return (rand01 * (upper - lower)) + lower;
+	};
 
 	// For each object
-	for (PxU32 i = 0; i < pRenderSettings->GetObjectsPerSimulation(); i++)
+	for (int i = 0; i < pRenderSettings->GetObjectsPerSimulation(); ++i)
 	{
-		int currPos = rand() % vecpPxMeshObjs.size();
+		int randObj = rand() % vecpPxMeshObjs.size();
 		// Fetch random object & create instance with new id
-		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs.at(currPos));
+		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs.at(randObj));
 		currObj->SetObjId(i);
 		currObj->CreateMesh();
 
-		auto sceneSize = pPxMeshScene->GetMaximum() - pPxMeshScene->GetMinimum();
-		auto sceneCenter = pPxMeshScene->GetMinimum() + (sceneSize / 2.0f);
-
 		// Random position in scene
-		float y = sceneCenter.y * 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f * sceneSize.y;
-		float x = pPxMeshScene->GetMinimum().x + (static_cast<float>(rand()) / RAND_MAX) * sceneSize.x;
-		float z = pPxMeshScene->GetMinimum().z + (static_cast<float>(rand()) / RAND_MAX) * sceneSize.z;
+		float x = sceneCenter.x + randf(-0.75f, 0.75f) * sceneExtends.x;
+		float y = sceneCenter.y + randf(0.25f, 0.75f) * sceneExtends.y;
+		float z = sceneCenter.z + randf(-0.75f, 0.75f) * sceneExtends.z;
 
 		// Set pose and save mesh in vector
-		PxTransform pose(PxVec3(z, y, x), PxQuat(PxIdentity));
+		PxTransform pose(PxVec3(x, y, z), PxQuat(PxIdentity));
 		currObj->SetTransform(pose);
 		currObj->AddRigidActor(pPxScene);
 		vecpPxMeshCurrObjs.push_back(std::move(currObj));
@@ -132,11 +141,11 @@ void SceneManager::X_PxRunSim(
 ) const
 {
 	// Simulate in steps
-	for (PxU32 i = 0; i < stepCount; i++)
+	for (int i = 0; i < stepCount; ++i)
 	{
 		pPxScene->simulate(timestep);
 		pPxScene->fetchResults(true);
-		std::cout << '\r' << "Simulating: " << (i + 1) << "/" << stepCount << std::flush;
+		std::cout << "\r\33[2K" << "Simulating:\t" << (i + 1) << "/" << stepCount << std::flush;
 	}
 	// Formatting
 	std::cout << std::endl;
@@ -147,47 +156,32 @@ void SceneManager::X_PxRunSim(
 //---------------------------------------
 void SceneManager::X_PxSaveSimResults()
 {
-	float undoScale = 1.0f / SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_scale");
-	float objScale = undoScale * SafeGet<float>(pRenderSettings->GetJSONConfig(), "obj_scale");
 	// For each physx object
-	for (auto obj : vecpPxMeshCurrObjs)
+	for (auto currPx : vecpPxMeshCurrObjs)
 	{
-		// Get position
-		PxTransform pose = obj->GetTransform();
-		// Undo 90* around X rotation
-		PxQuat undoRot(PIOVER2, PxVec3(1, 0, 0));
-		pose.q = (pose.q * undoRot).getNormalized();
-		pose.p = undoRot.rotate(pose.p);
-		// Undo scene scaling
-		pose.p *= undoScale;
+		// Get position & transform to Blender system (90* around X)
+		PxTransform pose = currPx->GetTransform();
+		PxTransform adjustPos = PxTransform(PxQuat(PIOVER2, PxVec3(1.0f, 0.0f, 0.0f))).transform(pose);
+		// Transform rotation to Blender system (-90* around local X)
+		PxVec3 localX = adjustPos.q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+		PxTransform adjustRot = PxTransform(PxQuat(-PIOVER2, localX)).transform(adjustPos);
 
 		// Save & create mesh for rendering
-		RenderMesh* currMesh = new RenderMesh(*this->vecpRenderMeshObjs[obj->GetMeshId()]);
-		currMesh->SetObjId(obj->GetObjId());
-		// Build transform from px pose
+		RenderMesh* currMesh = new RenderMesh(*vecpRenderMeshObjs[currPx->GetMeshId()]);
+		currMesh->SetObjId(currPx->GetObjId());
+
+		// Build transform from simulated pose
 		Eigen::Affine3f currTrans;
 		currTrans.fromPositionOrientationScale(
-			Eigen::Vector3f(pose.p.x, pose.p.y, pose.p.z),
-			Eigen::Quaternionf(pose.q.w, pose.q.x, pose.q.y, pose.q.z),
-			currMesh->GetScale() * objScale);
-		currMesh->SetTransform(currTrans.matrix());
-		// Store it
-		vecpRenderMeshCurrObjs.push_back(std::move(currMesh));
+			Eigen::Vector3f(adjustPos.p.x, adjustPos.p.y, adjustPos.p.z),
+			Eigen::Quaternionf(adjustRot.q.w, adjustRot.q.x, adjustRot.q.y, adjustRot.q.z),
+			currMesh->GetScale()
+		);
 
-#if DEBUG || _DEBUG
-		// Object transform update for pvd
-		obj->SetTransform(pose);
-		obj->SetScale(obj->GetScale() * undoScale);
+		// Store it
+		currMesh->SetTransform(currTrans.matrix());
+		vecpRenderMeshCurrObjs.push_back(std::move(currMesh));
 	}
-	// Scene transform update for pvd
-	pPxMeshScene->SetTransform(PxTransform(PxIdentity));
-	pPxMeshScene->SetScale(pPxMeshScene->GetScale() * undoScale);
-	// Simulate once for pvd
-	pPxScene->simulate(0.001f);
-	pPxScene->fetchResults(true);
-#else
-}
-#endif // DEBUG || _DEBUG
 }
 
 //---------------------------------------
@@ -271,7 +265,7 @@ void SceneManager::X_ConvertToRenderfile(
 }
 
 //---------------------------------------
-// TODO: Build scene depth renderfile
+// Build scene depth renderfile
 //---------------------------------------
 void SceneManager::X_BuildSceneDepth(
 	JSONWriterRef writer,
@@ -280,7 +274,52 @@ void SceneManager::X_BuildSceneDepth(
 	int start
 )
 {
-	X_ConvertToRenderfile(writer, std::vector<RenderMesh*>{}, cams);
+	std::vector<Camera> toRender;
+	toRender.reserve(cams.size());
+	// For every pose
+	for (int curr = 0; curr < cams.size(); ++curr)
+	{
+		// Determine depth output file
+		std::string pose(cams[curr].GetSourceFile().string());
+		boost::algorithm::replace_last(pose, "pose.txt", "depth.tiff");
+		// Create depth output texture
+		Texture currDepth(true, true);
+		// Either mark for rendering or already load texture
+		if (boost::filesystem::exists(pose))
+		{
+			currDepth.SetPath(pose, false);
+			currDepth.LoadTexture();
+		}
+		else
+		{
+			currDepth.SetPath(pose, true, "exr");
+			// Create & setup camera
+			Camera currCam = Camera(cams[curr]);
+			currCam.SetupRendering(
+				currDepth.GetPath(),
+				pRenderSettings->GetRenderResolution(),
+				true,
+				1,
+				0,
+				"depth"
+			);
+			// Mark for rendering
+			toRender.push_back(std::move(currCam));
+		}
+		// Place in output vector
+		results.emplace_back(std::move(currDepth));
+	}
+
+	// Set shader
+	DepthShader* shader = new DepthShader(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+	pRenderMeshScene->SetShader(shader);
+
+	// If any cameras are marked for rendering
+	if (toRender.size() > 0)
+	{
+		// Add configured scene to renderfile
+		X_ConvertToRenderfile(writer, std::vector<RenderMesh*>{pRenderMeshScene}, toRender);
+	}
 }
 
 //---------------------------------------
@@ -445,12 +484,18 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
-		// Load & unpack depth
+		// FIXME iteration bug
+		// Load & unpack object depth
 		objectDepths[curr].LoadTexture(UnpackDepth);
 		objectDepths[curr].ReplacePacked();
 #if !USE_OPENGL
-		sceneDepths[curr].LoadTexture(UnpackDepth);
-		sceneDepths[curr].ReplacePacked();
+		// Load & unpack scene depth if not yet loaded
+		if (sceneDepths[curr].GetTexture().empty())
+		{
+			sceneDepths[curr].LoadTexture(UnpackDepth);
+			sceneDepths[curr].ReplacePacked();
+			sceneDepths[curr].StoreTexture();
+		}
 #endif //!USE_OPENGL
 #if STORE_DEBUG_TEX
 		objectDepths[curr].StoreDepth01(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
@@ -571,7 +616,7 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 					// Only use non-blurry images (= great variance)
 					if (ComputeVariance(entry.path()) > varThreshold)
 					{
-						std::cout << "Using image " << entry.path().filename() << std::endl;
+						std::cout << "Using image\t" << entry.path().filename() << std::endl;
 						// Store path to real RGB image
 						SceneImage currImage;
 						currImage.SetScenePath(entry.path());
@@ -605,9 +650,10 @@ int SceneManager::Run(int imageCount)
 
 	// Control params
 	int newImages = 0;
-	int poseCount = sceneImages.size();
 	int maxIters = pRenderSettings->GetIterationCount();
-	int batchSize = pRenderSettings->GetRenderBatchSize();
+	size_t poseCount = sceneImages.size();
+	size_t batchSize = pRenderSettings->GetRenderBatchSize();
+	size_t batchMax = ceil(static_cast<float>(poseCount) / static_cast<float>(batchSize));
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
@@ -615,6 +661,13 @@ int SceneManager::Run(int imageCount)
 	{
 		// Create / open annotation file
 		pAnnotations->Begin(*pRenderSettings);
+
+		// Create scene render mesh
+		float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
+		ModifiablePath meshPath(pRenderSettings->GetScenePath());
+		meshPath.append("mesh.refined.obj");
+		pRenderMeshScene = new RenderMesh(meshPath, 0);
+		pRenderMeshScene->SetScale(Eigen::Vector3f().setConstant(toMeters));
 
 		// Create physx representation of scan scene
 		X_PxCreateScene();
@@ -626,27 +679,26 @@ int SceneManager::Run(int imageCount)
 		X_PxSaveSimResults();
 
 		// For every batch
-		int batchMax = ceil(static_cast<float>(poseCount) / static_cast<float>(batchSize));
-		for (int batch = 0; batch < batchMax && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++batch)
+		for (size_t batch = 0; batch < batchMax && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++batch)
 		{
 			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
-			std::cout << "Scene " << scenePath << ": Iteration " << iter + 1 << "/" << maxIters
-				<< ", Batch " << batch + 1 << "/" << batchMax << " ("<< batchSize << " images)" << std::endl;
+			std::cout << "Scene\t" << scenePath << ":\tIteration\t" << iter + 1 << "/" << maxIters
+				<< ":\tBatch\t" << batch + 1 << "/" << batchMax << "\t(" << batchSize << " each)" << std::endl;
 
 			// Create batch
-			unsigned int start = batch * batchSize;
-			unsigned int end = start + batchSize >= poseCount ? poseCount : start + batchSize;
+			size_t start = batch * batchSize;
+			size_t end = start + batchSize >= poseCount ? poseCount : start + batchSize;
 
 			// Copy corresponding images
 			std::vector<SceneImage> currImages;
-			for (int i = start; i < end; ++i)
+			for (size_t i = start; i < end; ++i)
 			{
 				currImages.push_back(sceneImages[i]);
 			}
 
 			// Load poses
 			std::vector<Camera> currCams(currImages.size(), Camera(camBlueprint));
-			for (int batchPose = 0; batchPose < currImages.size(); ++batchPose)
+			for (size_t batchPose = 0; batchPose < currImages.size(); ++batchPose)
 			{
 				currCams[batchPose].LoadExtrinsics(currImages[batchPose].GetPosePath());
 			}
@@ -661,7 +713,7 @@ int SceneManager::Run(int imageCount)
 			std::vector<Mask> unoccludedMasks;
 			std::vector<Camera> unoccludedCams;
 			std::vector<SceneImage> unoccludedImages;
-			for (int i = 0; i < masks.size(); ++i)
+			for (size_t i = 0; i < masks.size(); ++i)
 			{
 				// Only process unoccluded images
 				if (!masks[i].Occluded())
@@ -676,13 +728,13 @@ int SceneManager::Run(int imageCount)
 					// Move corresponding poses, masks & real images
 					unoccludedCams.push_back(std::move(currCams[i]));
 					unoccludedMasks.push_back(std::move(masks[i]));
-					unoccludedImages.push_back(std::move(sceneImages[start + i]));
+					unoccludedImages.push_back(std::move(currImages[start + i]));
 					++unoccludedCount;
 				}
 			}
 
 			// If batch contains useful images
-			if(unoccludedCount > 0)
+			if (unoccludedCount > 0)
 			{
 				// Render labels & create annotations
 				pBlender->LogPerformance("Labels & Annotating");
@@ -719,10 +771,13 @@ SceneManager::SceneManager(
 	vecpPxMeshObjs(vecPhysxObjs),
 	vecpRenderMeshObjs(vecArnoldObjs),
 	pRenderSettings(settings),
-	pAnnotations(NULL),
-	pPxScene(NULL),
+	vecpPxMeshCurrObjs(),
+	vecpRenderMeshCurrObjs(),
 	pRenderMeshScene(NULL),
-	pPxMeshScene(NULL)
+	pPxMeshScene(NULL),
+	pAnnotations(NULL),
+	vecpLights(),
+	pPxScene(NULL)
 {
 	// Create annotations manager
 	pAnnotations = new AnnotationsManager();
@@ -737,7 +792,7 @@ SceneManager::SceneManager(
 	for (int i = 0; i < 8; i++)
 	{
 		PointLightParams* params = new PointLightParams();
-		Light* addLight = new Light(params, Eigen::Vector3f(1.0f, 1.0f, 1.0f), 75.0f, 1.0f);
+		Light* addLight = new Light(params, Eigen::Vector3f().setOnes(), 75.0f, 1.0f);
 		// Add 8 lights in a box pattern
 		addLight->SetPosition(Eigen::Vector3f(
 			i % 2 == 0 ? 5.0f : -5.0f,
@@ -747,6 +802,7 @@ SceneManager::SceneManager(
 		vecpLights.push_back(addLight);
 	}
 
+#if USE_OPENGL
 	// Create OpenGL renderer
 	ModifiablePath shadersPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "shaders_gl"));
 	pRenderer = new Renderer::Render(
@@ -756,6 +812,7 @@ SceneManager::SceneManager(
 		camBlueprint.GetClipping().x(),
 		camBlueprint.GetClipping().y()
 	);
+#endif //USE_OPENGL
 
 	// Create Blender render interface
 	pBlender = new Blender::BlenderRenderer();
@@ -766,10 +823,15 @@ SceneManager::SceneManager(
 //---------------------------------------
 SceneManager::~SceneManager()
 {
+	// Meshes & simulation
 	X_CleanupScene();
+
+	// Renderers etc.
 	delete pBlender;
 	delete pRenderer;
 	delete pAnnotations;
+
+	// Lights
 	for (auto currLight : vecpLights)
 	{
 		delete currLight;

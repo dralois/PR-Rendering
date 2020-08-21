@@ -31,6 +31,6 @@
 
     "render_objs": ["obj_01", "obj_02", "obj_03", "obj_04", "obj_05", "obj_06", "obj_07", "obj_08", "obj_09", "obj_10", "obj_11", "obj_12", "obj_13"],
     "mesh_format" : "obj",
-    "scene_scale": 100.0,
-    "obj_scale": 0.1
+    "scene_unit": 1.0,
+    "objs_unit": 0.001
 }

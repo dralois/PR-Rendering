@@ -45,7 +45,7 @@ protected:
 		}
 	}
 
-	virtual void X_ExportMesh() override { /* Does not apply to render mesh */ }
+	virtual void X_ExtractMesh() override { /* Does not apply to render mesh */ }
 
 public:
 	//---------------------------------------
@@ -75,6 +75,7 @@ public:
 		int meshId
 	) :
 		MeshBase(meshFile, textureFile, meshId),
+		RenderfileObject(),
 		oslShader(NULL)
 	{
 	}
@@ -83,19 +84,20 @@ public:
 		ReferencePath meshFile,
 		int meshId
 	) :
-		MeshBase(meshFile, meshId),
-		oslShader(NULL)
+		RenderMesh(meshFile, "", meshId)
 	{
 	}
 
 	RenderMesh(const RenderMesh& copy) :
 		MeshBase(copy),
+		RenderfileObject(copy),
 		oslShader(NULL)
 	{
 	}
 
 	RenderMesh(RenderMesh&& other) :
-		MeshBase(std::move(other))
+		MeshBase(std::move(other)),
+		RenderfileObject(std::move(other))
 	{
 		oslShader = std::exchange(other.oslShader, nullptr);
 	}

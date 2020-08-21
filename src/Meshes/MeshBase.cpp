@@ -13,26 +13,31 @@
 bool MeshBase::X_LoadFile()
 {
 	Assimp::Importer importer;
+	// Removes degenerate faces, lines & points from mesh
+	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 
-	// File must be readable
-	boost::filesystem::fstream meshFile(meshPath);
-	if (!meshFile.good())
+	// Mesh file must exist
+	if (!boost::filesystem::exists(meshPath))
 		return false;
 
-	// Read and load with assimp
-	const aiScene* scene = importer.ReadFile(meshPath.string(), aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
-	std::cout << "Mesh has identity transform: " << scene->mRootNode->mTransformation.IsIdentity() << std::endl;
+	// Read and load mesh with assimp, improve mesh
+	const aiScene* scene = importer.ReadFile(meshPath.string(),
+		aiProcessPreset_TargetRealtime_MaxQuality & ~aiProcess_SplitLargeMeshes);
 
 	// Error handling
 	if (!scene)
 	{
-		std::cout << "Mesh load error:" << importer.GetErrorString() << std::endl;
+		std::cout << "\r\33[2K" << "Mesh load error:\t" << importer.GetErrorString() << std::endl;
 		return false;
 	}
 	else if (!scene->HasMeshes())
 	{
-		std::cout << "Mesh load error:" << meshPath.filename() << " has no mesh" << std::endl;
+		std::cout << "\r\33[2K" << "Mesh load error:\t" << boost::filesystem::relative(meshPath) << " has no mesh" << std::endl;
 		return false;
+	}
+	else
+	{
+		std::cout << "\r\33[2K" << "Imported mesh:\t" << boost::filesystem::relative(meshPath) << std::flush;
 	}
 
 	const aiMesh* mesh = scene->mMeshes[0];
@@ -42,10 +47,10 @@ bool MeshBase::X_LoadFile()
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
 		aiVector3D pos = mesh->mVertices[i];
-		// Scale
+		// Make Y forward & Z up
 		vecVertices.push_back(pos.x);
-		vecVertices.push_back(pos.y);
 		vecVertices.push_back(pos.z);
+		vecVertices.push_back(-pos.y);
 	}
 
 	// Load UVs
@@ -67,9 +72,10 @@ bool MeshBase::X_LoadFile()
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		{
 			aiVector3D n = mesh->mNormals[i];
+			// Make Y forward & Z up
 			vecNormals.push_back(n.x);
-			vecNormals.push_back(n.y);
 			vecNormals.push_back(n.z);
+			vecNormals.push_back(-n.y);
 		}
 	}
 
@@ -168,12 +174,12 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 
 	// Build path
 	ModifiablePath savePath(meshPath.parent_path());
-	savePath.append(meshPath.filename().string());
-	savePath.concat(".obj");
+	savePath.append(meshPath.stem().string());
+	savePath.concat(ext + ".obj");
 
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath.string());
-	std::cout << "Exported mesh:" << savePath << std::endl;
+	std::cout << "\r\33[2K" << "Exported mesh:\t" << boost::filesystem::relative(savePath) << std::flush;
 	exporter.FreeBlob();
 }
 
@@ -201,7 +207,7 @@ MeshBase::MeshBase(ReferencePath meshPath, int meshId) :
 //---------------------------------------
 MeshBase::MeshBase(const MeshBase& copy) :
 	meshId(copy.meshId),
-	objId(-1),
+	objId(copy.objId),
 	meshPath(copy.meshPath),
 	texturePath(copy.texturePath)
 {

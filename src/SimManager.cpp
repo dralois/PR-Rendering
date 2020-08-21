@@ -5,7 +5,7 @@
 //---------------------------------------
 void SimManager::X_LoadConfig(ReferencePath configPath)
 {
-	std::cout << "Reading config file:\t" << configPath << std::endl;
+	std::cout << "Reading config file:\t" << boost::filesystem::relative(configPath) << std::endl;
 	// Open file in binary mode
 	FILE* pFile = fopen(configPath.string().c_str(), "rb");
 	// Determine size
@@ -33,6 +33,7 @@ void SimManager::X_LoadMeshes()
 	// Initialize
 	JSONArray objects = jsonConfig["render_objs"].GetArray();
 	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
+	float toMeters = SafeGet<float>(jsonConfig, "objs_unit");
 	vecpPxMesh.reserve(objects.Size());
 	vecpRenderMesh.reserve(objects.Size());
 
@@ -42,7 +43,7 @@ void SimManager::X_LoadMeshes()
 		if (boost::filesystem::is_directory(pRenderSettings->GetMeshesPath()))
 		{
 			// For each object
-			for (int i = 0; i < objects.Size(); i++)
+			for (int i = 0; i < static_cast<int>(objects.Size()); i++)
 			{
 				// Build paths
 				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
@@ -53,29 +54,25 @@ void SimManager::X_LoadMeshes()
 				texturePath.append(SafeGet<const char*>(objects[i]));
 				texturePath.concat("_color.png");
 
-				// File must exist
-				boost::filesystem::ifstream meshFile(meshPath);
-				if (!meshFile.good())
+				// Mesh file must exist
+				if (!boost::filesystem::exists(meshPath))
 				{
-					std::cout << "Mesh missing: " << meshPath << "... Skipping." << std::endl;
+					std::cout << "\r\33[2K" << "Mesh missing:\t" << meshPath.relative_path() << ", skipping" << std::endl;
 					continue;
-				}
-				else
-				{
-					std::cout << '\r' << "Loading mesh: " << meshPath << std::flush;
 				}
 
 				// Create and save physx mesh
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i);
-				pxCurr->SetScale(physx::PxVec3(SafeGet<float>(jsonConfig, "obj_scale")));
 				pxCurr->CreateMesh();
+				pxCurr->SetScale(physx::PxVec3(toMeters));
 				vecpPxMesh.push_back(std::move(pxCurr));
 
-				// Create and save arnold mesh
+				// Create and save render mesh
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
+				renderCurr->SetScale(Eigen::Vector3f().setConstant(toMeters));
 				vecpRenderMesh.push_back(std::move(renderCurr));
+				std::cout << std::endl;
 			}
-			std::cout << std::endl;
 		}
 	}
 }

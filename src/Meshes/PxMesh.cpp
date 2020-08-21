@@ -21,7 +21,7 @@ void PxMesh::AddRigidActor(PxScene* scene)
 		pPxActor = PxGetPhysics().createRigidDynamic(meshTrans);
 		pPxActor->setName(GetName().c_str());
 		// Setup mass & enabled continuous collision detection
-		PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)pPxActor), 10.f);
+		PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)pPxActor), 10.0f);
 		((PxRigidDynamic*)pPxActor)->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
 	}
 
@@ -121,7 +121,9 @@ const PxVec3 PxMesh::GetScale()
 //---------------------------------------
 void PxMesh::SetScale(PxVec3 scale)
 {
-	// Save
+	// Update bounds & scale
+	bounds.scaleFast(1.0f / meshScale.magnitude());
+	bounds.scaleFast(scale.magnitude());
 	meshScale = scale;
 
 	// Shape has to exist
@@ -215,8 +217,7 @@ PxMesh::PxMesh(const PxMesh& copy) :
 	pPxShape(copy.pPxShape),
 	pPxActor(copy.pPxActor),
 	firstInstance(false),
-	minimum(copy.minimum),
-	maximum(copy.maximum),
+	bounds(copy.bounds),
 	MeshBase(copy),
 	Transformable(
 		copy.meshTrans,
@@ -237,8 +238,7 @@ PxMesh::PxMesh(PxMesh&& other) :
 	pPxShape = std::exchange(other.pPxShape, nullptr);
 	pPxActor = std::exchange(other.pPxActor, nullptr);
 	std::swap(firstInstance, other.firstInstance);
-	std::swap(minimum, other.minimum);
-	std::swap(maximum, other.maximum);
+	std::swap(bounds, other.bounds);
 }
 
 //---------------------------------------

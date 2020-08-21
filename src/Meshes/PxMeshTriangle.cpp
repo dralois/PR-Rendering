@@ -21,9 +21,8 @@ void PxMeshTriangle::X_CookMesh()
 
 	// Path to cooked mesh
 	ModifiablePath cookPath(meshPath); cookPath.concat("px");
-	boost::filesystem::ifstream cookedMesh(cookPath);
 	// If cooked mesh not on disk
-	if (!cookedMesh.good())
+	if (!boost::filesystem::exists(cookPath))
 	{
 		// Load mesh file
 		X_LoadFile();
@@ -42,12 +41,16 @@ void PxMeshTriangle::X_CookMesh()
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!PxManager::GetInstance().GetCooker()->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
 		{
-			std::cout << GetName() << " cooking error:" << result << std::endl;
+			std::cout << "\r\33[2K" << GetName() << " cooking error:\t" << result << std::endl;
 		}
 		else
 		{
-			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << cookPath << std::endl;
+			std::cout << "\r\33[2K" << GetName() << " cooked to:\t" << boost::filesystem::relative(cookPath) << std::flush;
 		}
+	}
+	else
+	{
+		std::cout << "\r\33[2K" << GetName() << " loaded from:\t" << boost::filesystem::relative(cookPath) << std::flush;
 	}
 
 	// Create buffer
@@ -61,11 +64,17 @@ void PxMeshTriangle::X_CookMesh()
 //---------------------------------------
 // Exports the cooked mesh to a obj file
 //---------------------------------------
-void PxMeshTriangle::X_ExportMesh()
+void PxMeshTriangle::X_ExtractMesh()
 {
 	// Mesh needs to exist
 	if (!pPxMesh)
 		return;
+
+	// Delete potentially loaded mesh
+	vecVertices.clear();
+	vecIndices.clear();
+	vecNormals.clear();
+	vecUVs.clear();
 
 	// Save pointers to vertices and triangles
 	int* trisBuff = (int*)pPxMesh->getTriangles();
@@ -88,11 +97,6 @@ void PxMeshTriangle::X_ExportMesh()
 		vecIndices.push_back(trisBuff[(i * 3) + 1]);
 		vecIndices.push_back(trisBuff[(i * 3) + 2]);
 	}
-
-#if EXPORT_TO_FILE
-	// Store to obj file
-	X_StoreFile("_px");
-#endif // EXPORT_TO_FILE
 }
 
 //---------------------------------------
@@ -100,17 +104,27 @@ void PxMeshTriangle::X_ExportMesh()
 //---------------------------------------
 void PxMeshTriangle::X_CreateMesh()
 {
-	// Cook / load mesh
+	// Cook / load mesh (only first instance)
 	X_CookMesh();
 
 #if PX_EXTRACT_INTERNAL
-	// Export cooked mesh to file
-	X_ExportMesh();
+	// Export cooked mesh to file (if first instance)
+	if (firstInstance)
+	{
+		X_ExtractMesh();
+	}
 #endif // PX_EXTRACT_INTERNAL
 
+#if EXPORT_TO_FILE
+	// Store to obj file (if first instance)
+	if (firstInstance)
+	{
+		X_StoreFile("_px");
+	}
+#endif // EXPORT_TO_FILE
+
 	// Save extends
-	maximum = pPxMesh->getLocalBounds().maximum;
-	minimum = pPxMesh->getLocalBounds().minimum;
+	bounds = pPxMesh->getLocalBounds();
 }
 
 //---------------------------------------
@@ -129,7 +143,7 @@ void PxMeshTriangle::X_CreateShape()
 	meshGeom.scale = PxMeshScale(GetScale());
 
 	// Create shape from the descriptor
-	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, PxManager::GetInstance().GetMaterial());
+	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *PxManager::GetInstance().GetMaterial());
 	pPxShape->setName(GetName().c_str());
 }
 

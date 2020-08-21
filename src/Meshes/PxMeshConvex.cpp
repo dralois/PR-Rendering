@@ -21,9 +21,8 @@ void PxMeshConvex::X_CookMesh()
 
 	// Path to cooked mesh
 	ModifiablePath cookPath(meshPath); cookPath.concat("px");
-	boost::filesystem::ifstream cookedMesh(cookPath);
 	// If cooked mesh not on disk
-	if (!cookedMesh.good())
+	if (!boost::filesystem::exists(cookPath))
 	{
 		// Load mesh file
 		X_LoadFile();
@@ -31,21 +30,30 @@ void PxMeshConvex::X_CookMesh()
 		// Create convex mesh
 		PxConvexMeshDesc convDesc;
 		convDesc.points.count = vecVertices.size() / 3;
-		convDesc.points.stride = sizeof(PxVec3);
+		convDesc.points.stride = sizeof(float) * 3;
 		convDesc.points.data = X_GetVertices();
+		convDesc.indices.count = vecIndices.size();
+		convDesc.indices.stride = sizeof(int);
+		convDesc.indices.data = X_GetIndices();
 		convDesc.flags |= PxConvexFlag::eCOMPUTE_CONVEX;
+		convDesc.flags |= PxConvexFlag::eSHIFT_VERTICES;
+		convDesc.flags |= PxConvexFlag::eGPU_COMPATIBLE;
 
 		// Cook the mesh
 		PxConvexMeshCookingResult::Enum result;
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!PxManager::GetInstance().GetCooker()->cookConvexMesh(convDesc, writeOutBuffer, &result))
 		{
-			std::cout << GetName() << " cooking error:" << result << std::endl;
+			std::cout << "\r\33[2K" << GetName() << " cooking error:\t" << result << std::endl;
 		}
 		else
 		{
-			std::cout << GetName() << " mesh cook result:" << result << ", saved at:" << cookPath << std::endl;
+			std::cout << "\r\33[2K" << GetName() << " cooked to:\t" << boost::filesystem::relative(cookPath) << std::flush;
 		}
+	}
+	else
+	{
+		std::cout << "\r\33[2K" << GetName() << " loaded from:\t" << boost::filesystem::relative(cookPath) << std::flush;
 	}
 
 	// Create buffer
@@ -59,11 +67,17 @@ void PxMeshConvex::X_CookMesh()
 //---------------------------------------
 // Exports the cooked mesh to a obj file
 //---------------------------------------
-void PxMeshConvex::X_ExportMesh()
+void PxMeshConvex::X_ExtractMesh()
 {
 	// Mesh needs to exist
 	if (!pPxMesh)
 		return;
+
+	// Delete potentially loaded mesh
+	vecVertices.clear();
+	vecIndices.clear();
+	vecNormals.clear();
+	vecUVs.clear();
 
 	// Get polygons and buffers
 	PxU32 polyNum = pPxMesh->getNbPolygons();
@@ -96,11 +110,6 @@ void PxMeshConvex::X_ExportMesh()
 		// Update counter
 		offset += face.mNbVerts;
 	}
-
-#if EXPORT_TO_FILE
-	// Store to obj file
-	X_StoreFile("_px");
-#endif // EXPORT_TO_FILE
 }
 
 //---------------------------------------
@@ -119,7 +128,7 @@ void PxMeshConvex::X_CreateShape()
 	meshGeom.scale = PxMeshScale(GetScale());
 
 	// Create shape from the descriptor
-	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, PxManager::GetInstance().GetMaterial());
+	pPxShape = PxRigidActorExt::createExclusiveShape(*pPxActor, meshGeom, *PxManager::GetInstance().GetMaterial());
 	pPxShape->setName(GetName().c_str());
 }
 
@@ -128,17 +137,27 @@ void PxMeshConvex::X_CreateShape()
 //---------------------------------------
 void PxMeshConvex::X_CreateMesh()
 {
-	// Cook / load mesh
+	// Cook / load mesh (only first instance)
 	X_CookMesh();
 
 #if PX_EXTRACT_INTERNAL
-	// Export cooked mesh to file
-	X_ExportMesh();
+	// Export cooked mesh to file (if first instance)
+	if (firstInstance)
+	{
+		X_ExtractMesh();
+	}
 #endif // PX_EXTRACT_INTERNAL
 
+#if EXPORT_TO_FILE
+	// Store to obj file (if first instance)
+	if (firstInstance)
+	{
+		X_StoreFile("_px");
+	}
+#endif // EXPORT_TO_FILE
+
 	// Save extends
-	maximum = pPxMesh->getLocalBounds().maximum;
-	minimum = pPxMesh->getLocalBounds().minimum;
+	bounds = pPxMesh->getLocalBounds();
 }
 
 //---------------------------------------
@@ -153,7 +172,7 @@ PxMeshConvex::PxMeshConvex(ReferencePath meshPath, int meshId) :
 //---------------------------------------
 // Copy constructor
 //---------------------------------------
-PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy):
+PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy) :
 	PxMesh(copy),
 	pPxMesh(copy.pPxMesh)
 {
@@ -162,7 +181,7 @@ PxMeshConvex::PxMeshConvex(const PxMeshConvex& copy):
 //---------------------------------------
 // Move constructor
 //---------------------------------------
-PxMeshConvex::PxMeshConvex(PxMeshConvex&& other):
+PxMeshConvex::PxMeshConvex(PxMeshConvex&& other) :
 	PxMesh(std::move(other))
 {
 	pPxMesh = std::exchange(other.pPxMesh, nullptr);

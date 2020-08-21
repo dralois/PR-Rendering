@@ -1,9 +1,6 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
 #include <PxPhysicsAPI.h>
 #pragma warning(pop)
 
@@ -21,11 +18,12 @@ private:
 
 #ifdef _DEBUG || DEBUG
 	physx::PxPvd* pPxPvd;
-#endif // _DEBUG || DEBUG
+#endif //_DEBUG || DEBUG
 	physx::PxPhysics* pPxPhysics;
 	physx::PxCooking* pPxCooking;
 	physx::PxMaterial* pPxMaterial;
 	physx::PxFoundation* pPxFoundation;
+	physx::PxCudaContextManager* pPxCuda;
 	physx::PxDefaultAllocator pxAllocator;
 	physx::PxDefaultErrorCallback pxErrorCallback;
 
@@ -33,11 +31,15 @@ private:
 	// Constructors
 	//---------------------------------------
 
-	PxManager():
+	PxManager() :
+#ifdef _DEBUG || DEBUG
+		pPxPvd(NULL),
+#endif //_DEBUG || DEBUG
 		pPxPhysics(NULL),
 		pPxCooking(NULL),
 		pPxMaterial(NULL),
 		pPxFoundation(NULL),
+		pPxCuda(NULL),
 		pxAllocator(),
 		pxErrorCallback()
 	{
@@ -56,7 +58,8 @@ public:
 	}
 
 	inline const physx::PxCooking* GetCooker() { return pPxCooking; }
-	inline const physx::PxMaterial& GetMaterial() { return *pPxMaterial; }
+	inline const physx::PxMaterial* GetMaterial() { return pPxMaterial; }
+	inline physx::PxCudaContextManager* GetCudaManager() { return pPxCuda; }
 
 	//---------------------------------------
 	// Methods
@@ -74,7 +77,7 @@ public:
 		// Setup Physx Visual Debugger
 		pPxPvd = PxCreatePvd(*pPxFoundation);
 		PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
-		pPxPvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
+		pPxPvd->connect(*transport, PxPvdInstrumentationFlag::eDEBUG);
 #endif // DEBUG || _DEBUG
 
 		// Create API
@@ -84,12 +87,26 @@ public:
 		pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, NULL);
 #endif // DEBUG || _DEBUG
 
+		// Create cuda manager for GPU rigidbodies
+		PxCudaContextManagerDesc cuda;
+		cuda.interopMode = PxCudaInteropMode::NO_INTEROP;
+		pPxCuda = PxCreateCudaContextManager(*pPxFoundation, cuda);
+		// Make sure it worked
+		if(pPxCuda)
+		{
+			if(!pPxCuda->contextIsValid())
+			{
+				PX_RELEASE(pPxCuda);
+			}
+		}
+
 		// Create mesh cooking module
 		PxCookingParams params(pPxPhysics->getTolerancesScale());
 		params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
 		params.meshPreprocessParams |= PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES;
-		params.meshWeldTolerance = 0.01f;
 		params.midphaseDesc = PxMeshMidPhase::eBVH34;
+		params.meshWeldTolerance = 0.01f;
+		params.buildGPUData = true;
 		pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, *pPxFoundation, params);
 
 		// Enable extensions
@@ -100,7 +117,24 @@ public:
 #endif // DEBUG || _DEBUG
 
 		// Create default material
-		pPxMaterial = pPxPhysics->createMaterial(0.6f, 0.6f, 0.0f);
+		pPxMaterial = pPxPhysics->createMaterial(0.5f, 0.5f, 0.6f);
+	}
+
+	inline static physx::PxFilterFlags CCDFilterShader(
+		physx::PxFilterObjectAttributes attributes0,
+		physx::PxFilterData filterData0,
+		physx::PxFilterObjectAttributes attributes1,
+		physx::PxFilterData filterData1,
+		physx::PxPairFlags& pairFlags,
+		const void* constantBlock,
+		physx::PxU32 constantBlockSize
+	)
+	{
+		// Enable continuous collision detection (CCD)
+		pairFlags = physx::PxPairFlag::eSOLVE_CONTACT;
+		pairFlags |= physx::PxPairFlag::eDETECT_CCD_CONTACT;
+		pairFlags |= physx::PxPairFlag::eDETECT_DISCRETE_CONTACT;
+		return physx::PxFilterFlags();
 	}
 
 	inline void DeletePhysx()
@@ -115,11 +149,12 @@ public:
 #ifdef _DEBUG || DEBUG
 		if (pPxPvd)
 		{
-			PxPvdTransport* transp = pPxPvd->getTransport();
+			PxPvdTransport* pTransp = pPxPvd->getTransport();
 			PX_RELEASE(pPxPvd);
-			PX_RELEASE(transp);
+			PX_RELEASE(pTransp);
 		}
 #endif // DEBUG || _DEBUG
+		PX_RELEASE(pPxCuda);
 		PX_RELEASE(pPxFoundation);
 	}
 };

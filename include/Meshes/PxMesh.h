@@ -23,8 +23,7 @@ protected:
 	physx::PxRigidActor* pPxActor;
 
 	bool firstInstance = false;
-	physx::PxVec3 maximum = physx::PxVec3(1e8);
-	physx::PxVec3 minimum = physx::PxVec3(-1e8);
+	physx::PxBounds3 bounds = physx::PxBounds3(physx::PxVec3(-1e8), physx::PxVec3(1e8));
 
 	//---------------------------------------
 	// Methods
@@ -32,7 +31,7 @@ protected:
 
 	virtual bool X_IsStatic() = 0;
 	virtual void X_CookMesh() = 0;
-	virtual void X_ExportMesh() = 0;
+	virtual void X_ExtractMesh() = 0;
 	virtual void X_CreateMesh() = 0;
 	virtual void X_CreateShape() = 0;
 
@@ -40,8 +39,8 @@ protected:
 	// Properties
 	//---------------------------------------
 
-	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) & vecVertices[0]; };
-	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) & vecIndices[0]; };
+	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) & vecVertices[0]; }
+	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) & vecIndices[0]; }
 
 public:
 	//---------------------------------------
@@ -56,8 +55,11 @@ public:
 	// Properties
 	//---------------------------------------
 
-	inline const physx::PxVec3 GetMinimum() const { return minimum.multiply(meshScale); }
-	inline const physx::PxVec3 GetMaximum() const { return maximum.multiply(meshScale); }
+	inline const physx::PxBounds3 GetGlobalBounds() const
+	{
+		return physx::PxBounds3::transformFast(meshTrans, bounds);
+	}
+
 	virtual const physx::PxTransform GetTransform() override;
 	virtual void SetTransform(physx::PxTransform trans) override;
 	virtual const physx::PxVec3 GetPosition() override;
