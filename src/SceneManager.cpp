@@ -61,37 +61,67 @@ void SceneManager::X_PxCreateScene()
 //---------------------------------------
 void SceneManager::X_PxCreateObjs()
 {
-	// Seed & setup
-	srand(time(NULL) % 1000);
+	// Setup & fetch params
 	vecpPxMeshCurrObjs.reserve(pRenderSettings->GetObjectsPerSimulation());
 	const PxVec3 sceneCenter = pPxMeshScene->GetGlobalBounds().getCenter();
 	const PxVec3 sceneExtends = pPxMeshScene->GetGlobalBounds().getExtents();
+	const PxVec3 velMax = PxVec3(
+		fabs(pRenderSettings->GetMaxVelocity().x()),
+		fabs(pRenderSettings->GetMaxVelocity().y()),
+		fabs(pRenderSettings->GetMaxVelocity().z())
+	);
+	const PxVec3 trqMax = PxVec3(
+		fabs(pRenderSettings->GetMaxTorque().x()),
+		fabs(pRenderSettings->GetMaxTorque().y()),
+		fabs(pRenderSettings->GetMaxTorque().z())
+	);
 
-	// Helper lambda for random floats
-	auto randf = [](float lower, float upper) -> float
+	// Helper lambdas for random values
+	auto uniformRandInt = [&](int lower, int upper) -> int
 	{
-		float rand01 = static_cast<float>(rand()) / RAND_MAX;
-		return (rand01 * (upper - lower)) + lower;
+		std::uniform_int_distribution<int> distr(lower, upper);
+		return distr(randGen);
+	};
+	auto uniformRandVec = [&](PxVec3 lower, PxVec3 upper) -> PxVec3
+	{
+		std::uniform_real_distribution<float> distX(lower.x, upper.x);
+		std::uniform_real_distribution<float> distY(lower.y, upper.y);
+		std::uniform_real_distribution<float> distZ(lower.z, upper.z);
+		return PxVec3(distX(randGen), distY(randGen), distZ(randGen));
+	};
+	auto applyForce = [&](float likelyhood) -> bool
+	{
+		std::bernoulli_distribution distr(likelyhood);
+		return distr(randGen);
 	};
 
 	// For each object
 	for (int i = 0; i < pRenderSettings->GetObjectsPerSimulation(); ++i)
 	{
-		int randObj = rand() % vecpPxMeshObjs.size();
 		// Fetch random object & create instance with new id
-		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs.at(randObj));
+		int randObj = uniformRandInt(0, vecpPxMeshObjs.size() - 1);
+		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs[randObj]);
 		currObj->SetObjId(i);
 		currObj->CreateMesh();
 
 		// Random position in scene
-		float x = sceneCenter.x + randf(-0.75f, 0.75f) * sceneExtends.x;
-		float y = sceneCenter.y + randf(0.25f, 0.75f) * sceneExtends.y;
-		float z = sceneCenter.z + randf(-0.75f, 0.75f) * sceneExtends.z;
+		PxVec3 randPos = sceneCenter + uniformRandVec(
+			PxVec3(-0.75f, 0.25f, -0.75f),
+			PxVec3(0.75f, 0.75f, 0.75f)).multiply(sceneExtends);
 
-		// Set pose and save mesh in vector
-		PxTransform pose(PxVec3(x, y, z), PxQuat(PxIdentity));
+		// Set pose & actor
+		PxTransform pose(randPos, PxQuat(PxIdentity));
 		currObj->SetTransform(pose);
 		currObj->AddRigidActor(pPxScene);
+
+		// Possibly add random velocity & torque impulses
+		if (applyForce(pRenderSettings->GetApplyProbability()))
+		{
+			currObj->AddVelocity(uniformRandVec(-velMax, velMax));
+			currObj->AddTorque(uniformRandVec(-trqMax, trqMax));
+		}
+
+		// Place in vector
 		vecpPxMeshCurrObjs.push_back(std::move(currObj));
 	}
 }
@@ -382,7 +412,7 @@ void SceneManager::X_BuildObjectsPBR(
 )
 {
 	// Resolution should match real scene images
-	Eigen::Vector2i renderRes(camBlueprint.GetIntrinsics().GetWidth(), camBlueprint.GetIntrinsics().GetHeight());
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
@@ -611,6 +641,8 @@ int SceneManager::ProcessNext(int imageCount)
 	// For each scene iteration
 	for (int iter = 0; iter < maxIters && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++iter)
 	{
+		pBlender->LogPerformance("Iteration " + std::to_string(iter + 1));
+
 		// Create / open annotation file
 		pAnnotations->Begin(*pRenderSettings);
 
@@ -682,8 +714,8 @@ int SceneManager::ProcessNext(int imageCount)
 					unoccludedMasks.push_back(std::move(masks[i]));
 					unoccludedImages.push_back(std::move(currImages[start + i]));
 					++unoccludedCount;
-				}
 			}
+		}
 
 			// If batch contains useful images
 			if (unoccludedCount > 0)
@@ -702,11 +734,12 @@ int SceneManager::ProcessNext(int imageCount)
 			// Update total count & output duration
 			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
 			newImages += unoccludedCount;
-		}
+	}
 
 		// Done with iteration
+		pBlender->LogPerformance("Iteration " + std::to_string(iter + 1));
 		X_CleanupScene();
-	}
+}
 
 	// Return how many images were rendered
 	return newImages;
@@ -735,8 +768,8 @@ SceneManager::SceneManager(
 	pBlender(NULL)
 {
 	// Init random generator
-	std::random_device randGen{};
-	std::default_random_engine{ randGen() };
+	std::random_device randDev;
+	randGen = std::default_random_engine(randDev());
 
 	// Create annotations manager
 	pAnnotations = new AnnotationsManager();

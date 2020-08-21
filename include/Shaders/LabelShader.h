@@ -43,7 +43,7 @@ public:
 		int green,
 		int blue
 	):
-		OSLShader("label_obj", (std::vector<Texture*>)0),
+		OSLShader("label_obj"),
 		maskRed(red),
 		maskGreen(green),
 		maskBlue(blue)

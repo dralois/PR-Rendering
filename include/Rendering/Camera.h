@@ -1,6 +1,8 @@
 #pragma once
 
 #pragma warning(push, 0)
+#include <Eigen/Dense>
+
 #include <Helpers/JSONUtils.h>
 #include <Helpers/PathUtils.h>
 
@@ -8,9 +10,6 @@
 #include <Rendering/Intrinsics.h>
 #include <Renderfile.h>
 #pragma warning(pop)
-
-#define PI (3.1415926535897931f)
-#define PIOVER2 (1.5707963267948966f)
 
 //---------------------------------------
 // Camera object wrapper for rendering
@@ -101,16 +100,14 @@ public:
 		// Load intrinsics (custom or provided ones)
 		if (SafeGet<bool>(settings.GetJSONConfig(), "custom_intrinsics"))
 		{
+			// Store provided ones
 			SetIntrinsics(settings.GetIntrinsics());
 		}
 		else
 		{
 			Intrinsics fromFile;
 			// Load from file
-			fromFile.LoadIntrinsics(
-				settings.GetSceneRGBPath().append("_info.txt"),
-				settings.GetRenderResolution()
-			);
+			fromFile.LoadIntrinsics(settings.GetSceneRGBPath().append("_info.txt"));
 			// Store in camera
 			SetIntrinsics(fromFile);
 		}
@@ -138,31 +135,33 @@ public:
 				extrFileStream >> matTrans(i, j);
 		extrFileStream.close();
 
+		// Transform from scene -> Blender space
+		SetTransform(matTrans);
+		SetScale(Eigen::Vector3f(1.0f, -1.0f, -1.0f));
+
 		// Calculate fov
-		float fovx = 2.0f * atan(cameraIntrinsics.GetWidth() / (2.0f * cameraIntrinsics.GetFocalLenght().x()));
-		float fovy = 2.0f * atan(cameraIntrinsics.GetHeight() / (2.0f * cameraIntrinsics.GetFocalLenght().y()));
+		float fovx = 2.0f * atan(cameraIntrinsics.GetResolution().x() / (2.0f * cameraIntrinsics.GetFocalLenght().x()));
+		float fovy = 2.0f * atan(cameraIntrinsics.GetResolution().y() / (2.0f * cameraIntrinsics.GetFocalLenght().y()));
 
 		// Calculate aspect ratio
 		float aspect = (cameraIntrinsics.GetFocalLenght().y() / cameraIntrinsics.GetFocalLenght().x()) *
-			(static_cast<float>(cameraIntrinsics.GetWidth()) / static_cast<float>(cameraIntrinsics.GetHeight()));
+			(static_cast<float>(cameraIntrinsics.GetResolution().x()) / static_cast<float>(cameraIntrinsics.GetResolution().y()));
 
 		// Find max(width, height) (so shift is equal in x/y)
-		float resMax = static_cast<float>(cameraIntrinsics.GetWidth() > cameraIntrinsics.GetHeight() ?
-			cameraIntrinsics.GetWidth() : cameraIntrinsics.GetHeight());
+		float resMax = static_cast<float>(cameraIntrinsics.GetResolution().x() > cameraIntrinsics.GetResolution().y() ?
+			cameraIntrinsics.GetResolution().x() : cameraIntrinsics.GetResolution().y());
 
 		// Calculate lens shift (Blender specific)
-		float shiftx = (cameraIntrinsics.GetPrincipalPoint().x() - (0.5f * cameraIntrinsics.GetWidth())) / cameraIntrinsics.GetWidth();
-		shiftx *= -0.5f * (static_cast<float>(cameraIntrinsics.GetWidth()) / resMax);
-		float shifty = (cameraIntrinsics.GetPrincipalPoint().y() - (0.5f * cameraIntrinsics.GetHeight())) / cameraIntrinsics.GetHeight();
-		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetHeight()) / resMax);
+		float shiftx = (cameraIntrinsics.GetPrincipalPoint().x() - (0.5f * cameraIntrinsics.GetResolution().x())) /
+			cameraIntrinsics.GetResolution().x();
+		shiftx *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().x()) / resMax);
+		float shifty = (cameraIntrinsics.GetPrincipalPoint().y() - (0.5f * cameraIntrinsics.GetResolution().y())) /
+			cameraIntrinsics.GetResolution().y();
+		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().y()) / resMax);
 
 		// Store in Camera
 		aspectFOV = Eigen::Vector3f(aspect, fovx, fovy);
 		lensShift = Eigen::Vector2f(shiftx, shifty);
-
-		SetTransform(matTrans);
-		// Transform from OpenGL -> Blender coordinate system
-		SetScale(Eigen::Vector3f(1.0f, -1.0f, -1.0f));
 	}
 
 	//---------------------------------------

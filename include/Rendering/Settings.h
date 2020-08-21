@@ -33,11 +33,16 @@ private:
 	int batchSize;
 	int maxImages;
 
+	// Random forces
+	float applyProbability;
+	Eigen::Vector3f maxVelocity;
+	Eigen::Vector3f maxTorque;
+
 	// Paths
 	ModifiablePath meshesPath, tempPath, finalPath, scenePath;
 
 	// Config file
-	const rapidjson::Document& jsonConfig;
+	rapidjson::Document* jsonConfig;
 
 public:
 	//---------------------------------------
@@ -58,6 +63,11 @@ public:
 	inline int GetStepsPerSimulation() const { return stepsPerSim; }
 	inline int GetRenderBatchSize() const { return batchSize; }
 	inline int GetMaxImageCount() const { return maxImages; }
+
+	// Random forces
+	inline float GetApplyProbability() const { return applyProbability; }
+	inline Eigen::Vector3f GetMaxVelocity() const { return maxVelocity; }
+	inline Eigen::Vector3f GetMaxTorque() const { return maxTorque; }
 
 	// Paths
 	inline void SetScenePath(ReferencePath path) { scenePath = path; }
@@ -85,7 +95,7 @@ public:
 	}
 
 	// Config file
-	inline const rapidjson::Document& GetJSONConfig() const { return jsonConfig; }
+	inline const rapidjson::Document& GetJSONConfig() const { return *jsonConfig; }
 
 	//---------------------------------------
 	// Methods
@@ -119,38 +129,53 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	Settings():
-		jsonConfig(NULL),
-		customIntrinsics()
-	{
-	}
-
 	Settings(
-		const rapidjson::Document& jsonConfig
+		rapidjson::Document* jsonConfig
 	) :
 		jsonConfig(jsonConfig),
 		customIntrinsics()
 	{
 		// Init paths
-		meshesPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path")));
-		finalPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path")));
-		tempPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path")));
+		meshesPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "meshes_path")));
+		finalPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "final_path")));
+		tempPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "temp_path")));
+
 		// Init simulation settings
-		iterCount = SafeGet<int>(jsonConfig, "scene_iterations");
-		objPerSim = SafeGet<int>(jsonConfig, "simulation_objects");
-		stepsPerSim = SafeGet<int>(jsonConfig, "simulation_steps");
-		batchSize = SafeGet<int>(jsonConfig, "batch_size");
-		maxImages = SafeGet<int>(jsonConfig, "max_images");
+		iterCount = SafeGet<int>(*jsonConfig, "scene_iterations");
+		objPerSim = SafeGet<int>(*jsonConfig, "simulation_objects");
+		stepsPerSim = SafeGet<int>(*jsonConfig, "simulation_steps");
+		batchSize = SafeGet<int>(*jsonConfig, "batch_size");
+		maxImages = SafeGet<int>(*jsonConfig, "max_images");
+
+		// Init distribution settings
+		applyProbability = SafeGet<float>(*jsonConfig, "apply_probability");
+		rapidjson::Value velocityMax = SafeGetArray<float>(*jsonConfig, "velocity_max");
+		rapidjson::Value torqueMax = SafeGetArray<float>(*jsonConfig, "torque_max");
+		maxVelocity = SafeGetEigenVector<Eigen::Vector3f>(velocityMax);
+		maxTorque = SafeGetEigenVector<Eigen::Vector3f>(torqueMax);
+
 		// Init render settings
-		logLevel = SafeGet<const char*>(jsonConfig, "log_level");
-		storeBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		pluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "plugin_bl")));
-		shaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_bl"))));
-		renderResolution = Eigen::Vector2i(SafeGet<int>(jsonConfig, "render_width"), SafeGet<int>(jsonConfig, "render_height"));
+		logLevel = SafeGet<const char*>(*jsonConfig, "log_level");
+		storeBlend = SafeGet<bool>(*jsonConfig, "store_blend");
+		pluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "blenderseed_path")));
+		shaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "shaders_path"))));
+		rapidjson::Value res = SafeGetArray<int>(*jsonConfig, "render_resolution");
+		renderResolution = SafeGetEigenVector<Eigen::Vector2i>(res);
+
 		// Init custom intrinsics
-		customIntrinsics.SetFocalLenght(Eigen::Vector2f(SafeGet<float>(jsonConfig, "fx"), SafeGet<float>(jsonConfig, "fy")));
-		customIntrinsics.SetPrincipalPoint(Eigen::Vector2f(SafeGet<float>(jsonConfig, "ox"), SafeGet<float>(jsonConfig, "oy")));
-		customIntrinsics.SetWidth(SafeGet<int>(jsonConfig, "width"));
-		customIntrinsics.SetHeight(SafeGet<int>(jsonConfig, "height"));
+		rapidjson::Value intrf = SafeGetArray<float>(*jsonConfig, "intrinsics_f");
+		rapidjson::Value intro = SafeGetArray<float>(*jsonConfig, "intrinsics_o");
+		rapidjson::Value intrr = SafeGetArray<int>(*jsonConfig, "intrinsics_r");
+		customIntrinsics.SetFocalLenght(SafeGetEigenVector<Eigen::Vector2f>(intrf));
+		customIntrinsics.SetPrincipalPoint(SafeGetEigenVector<Eigen::Vector2f>(intro));
+		customIntrinsics.SetResolution(SafeGetEigenVector<Eigen::Vector2i>(intrr));
+
+		// Cleanup
+		SafeDeleteArray(velocityMax);
+		SafeDeleteArray(torqueMax);
+		SafeDeleteArray(intrf);
+		SafeDeleteArray(intro);
+		SafeDeleteArray(intrr);
+		SafeDeleteArray(res);
 	}
 };

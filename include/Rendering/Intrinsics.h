@@ -11,8 +11,6 @@
 #include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
-#define PI (3.1415926535897931f)
-
 //---------------------------------------
 // Camera intrinsics storage
 //---------------------------------------
@@ -38,18 +36,14 @@ public:
 	inline void SetFocalLenght(Eigen::Vector2f f) { focalLength = f; }
 	inline Eigen::Vector2f GetPrincipalPoint() const { return principalPoint; }
 	inline void SetPrincipalPoint(Eigen::Vector2f o) { principalPoint = o; }
-	inline int GetWidth() const { return resolution.x(); }
-	inline void SetWidth(int w) { resolution.x() = w; }
-	inline int GetHeight() const { return resolution.y(); }
-	inline void SetHeight(int h) { resolution.y() = h; }
-
+	inline Eigen::Vector2i GetResolution() const { return resolution; }
+	inline void SetResolution(Eigen::Vector2i r) { resolution = r; }
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
 	inline void LoadIntrinsics(
-		ReferencePath intrFile,
-		Eigen::Vector2i res
+		ReferencePath intrFile
 	)
 	{
 		// File must exist

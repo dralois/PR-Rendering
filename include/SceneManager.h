@@ -61,6 +61,7 @@ private:
 	Settings* pRenderSettings;
 	AnnotationsManager* pAnnotations;
 	Blender::BlenderRenderer* pBlender;
+	std::default_random_engine randGen;
 
 	//---------------------------------------
 	// Methods

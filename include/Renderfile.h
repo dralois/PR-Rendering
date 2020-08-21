@@ -51,7 +51,7 @@ private:
 		trans.fromPositionOrientationScale(
 			pos ? *pos : position,
 			rot ? *rot : Eigen::Quaternionf(rotation),
-			scale ? *scale : static_cast<Eigen::Vector3f>(scaling.diagonal())
+			scale ? *scale : scaling.diagonal()
 		);
 		// Update transform
 		SetTransform(trans.matrix());
@@ -84,16 +84,12 @@ protected:
 
 	RenderfileObject() :
 		Transformable(
-			Eigen::Matrix4f(),
-			Eigen::Vector3f(),
-			Eigen::Quaternionf(),
-			Eigen::Vector3f()
+			Eigen::Matrix4f().setIdentity(),
+			Eigen::Vector3f().setZero(),
+			Eigen::Quaternionf().Identity(),
+			Eigen::Vector3f().setOnes()
 		)
 	{
-		meshTrans.setIdentity();
-		meshPos.setZero();
-		meshRot.setIdentity();
-		meshScale.setOnes();
 	}
 
 	RenderfileObject(const RenderfileObject& copy):
@@ -111,6 +107,7 @@ public:
 	// Properties
 	//---------------------------------------
 
+	// Transform
 	inline const Eigen::Matrix4f GetTransform() const { return meshTrans; }
 	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override
@@ -120,8 +117,7 @@ public:
 		X_GetPosRotScale(meshPos, meshRot, meshScale);
 	}
 
-	//---------------------------------------
-
+	// Position
 	inline const Eigen::Vector3f RenderfileObject::GetPosition() const
 	{
 		Eigen::Vector3f pos, scl;
@@ -139,8 +135,7 @@ public:
 		X_SetPosRotScale(&pos, NULL, NULL);
 	}
 
-	//---------------------------------------
-
+	// Rotation
 	inline const Eigen::Quaternionf RenderfileObject::GetRotation() const
 	{
 		Eigen::Vector3f pos, scl;
@@ -158,8 +153,7 @@ public:
 		X_SetPosRotScale(NULL, &rot, NULL);
 	}
 
-	//---------------------------------------
-
+	// Scale
 	inline const Eigen::Vector3f RenderfileObject::GetScale() const
 	{
 		Eigen::Vector3f pos, scl;
@@ -189,7 +183,7 @@ public:
 		writer.Key("position");
 		AddEigenVector<Eigen::Vector3f>(writer, GetPosition());
 		writer.Key("rotation");
-		AddEigenVector<Eigen::Vector4f>(writer, Eigen::Vector4f(GetRotation().w(), GetRotation().x(), GetRotation().y(), GetRotation().z()));
+		AddEigenVector<Eigen::Vector4f>(writer, (Eigen::Vector4f() << GetRotation().w(), GetRotation().vec()).finished());
 		writer.Key("scale");
 		AddEigenVector<Eigen::Vector3f>(writer, GetScale());
 

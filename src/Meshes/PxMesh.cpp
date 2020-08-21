@@ -7,6 +7,18 @@ using namespace physx;
 //---------------------------------------
 void PxMesh::AddRigidActor(PxScene* scene)
 {
+	// Remove existing actor
+	if (pPxActor)
+	{
+		// Remove from scene
+		RemoveRigidActor(scene);
+		// Remove shape
+		if (pPxShape)
+			pPxActor->detachShape(*pPxShape);
+		// Delete actor
+		PX_RELEASE(pPxActor);
+	}
+
 	// Create either static or dynamic actor
 	if (X_IsStatic())
 	{
@@ -33,11 +45,47 @@ void PxMesh::AddRigidActor(PxScene* scene)
 }
 
 //---------------------------------------
+// Add velocity (impulse) to actor
+//---------------------------------------
+void PxMesh::AddVelocity(physx::PxVec3 velocity)
+{
+	// If actor exists & is rigidbody
+	if (pPxActor)
+	{
+		if(pPxActor->getType() == PxActorType::eRIGID_DYNAMIC)
+		{
+			// Apply velocity (as impulse)
+			((PxRigidDynamic*)pPxActor)->addForce(velocity, PxForceMode::eIMPULSE);
+		}
+	}
+}
+
+//---------------------------------------
+// Add torque (impulse) to actor
+//---------------------------------------
+void PxMesh::AddTorque(physx::PxVec3 torque)
+{
+	// If actor exists & is rigidbody
+	if (pPxActor)
+	{
+		if (pPxActor->getType() == PxActorType::eRIGID_DYNAMIC)
+		{
+			// Apply torque (as impulse)
+			((PxRigidDynamic*)pPxActor)->addTorque(torque, PxForceMode::eIMPULSE);
+		}
+	}
+}
+
+//---------------------------------------
 // Remove actor from scene
 //---------------------------------------
 void PxMesh::RemoveRigidActor(PxScene* scene)
 {
-	scene->removeActor(*pPxActor);
+	// Only possible if actor exists
+	if (pPxActor)
+	{
+		scene->removeActor(*pPxActor);
+	}
 }
 
 //---------------------------------------

@@ -39,7 +39,7 @@ public:
 		float camNear,
 		float camFar
 	) :
-		OSLShader("depth_obj", (std::vector<Texture*>)0),
+		OSLShader("depth_obj"),
 		camNear(camNear),
 		camFar(camFar)
 	{

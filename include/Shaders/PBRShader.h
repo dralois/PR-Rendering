@@ -40,7 +40,7 @@ public:
 		Texture* diffuse,
 		float metalness = 0.0f
 	) :
-		OSLShader("pbr_obj", std::vector<Texture*>{diffuse}),
+		OSLShader("pbr_obj", {diffuse}),
 		diffuse(diffuse),
 		metalness(metalness)
 	{

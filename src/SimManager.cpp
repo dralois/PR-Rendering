@@ -15,7 +15,7 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 	rapidjson::FileReadStream inFile(pFile, buffer, fileSize);
 	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
 	// Create settings
-	pRenderSettings = new Settings(jsonConfig);
+	pRenderSettings = new Settings(&jsonConfig);
 	delete[] buffer;
 }
 
@@ -24,16 +24,10 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 //---------------------------------------
 void SimManager::X_LoadMeshes()
 {
-	// Sanity check
-	if (!jsonConfig.HasMember("render_objs"))
-		return;
-	else if (!jsonConfig["render_objs"].IsArray())
-		return;
-
-	// Initialize
-	JSONArray objects = jsonConfig["render_objs"].GetArray();
-	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
+	// Load values from json & initialize
 	float toMeters = SafeGet<float>(jsonConfig, "objs_unit");
+	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
+	rapidjson::Value objects = SafeGetArray<const char*>(jsonConfig, "render_objs");
 	vecpPxMesh.reserve(objects.Size());
 	vecpRenderMesh.reserve(objects.Size());
 
@@ -43,7 +37,7 @@ void SimManager::X_LoadMeshes()
 		if (boost::filesystem::is_directory(pRenderSettings->GetMeshesPath()))
 		{
 			// For each object
-			for (int i = 0; i < static_cast<int>(objects.Size()); i++)
+			for (int i = 0; i < static_cast<int>(objects.Size()); ++i)
 			{
 				// Build paths
 				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
@@ -75,6 +69,8 @@ void SimManager::X_LoadMeshes()
 			}
 		}
 	}
+	// Cleanup
+	SafeDeleteArray(objects);
 }
 
 //---------------------------------------
@@ -116,7 +112,7 @@ void SimManager::RunSimulation()
 
 	// Render all scenes
 	int currImageCount = 0;
-	for (auto folder : vecSceneFolders)
+	for (const auto& folder : vecSceneFolders)
 	{
 		// Set path
 		pRenderSettings->SetScenePath(folder);

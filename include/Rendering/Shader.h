@@ -70,6 +70,13 @@ public:
 	{
 	}
 
+	OSLShader(
+		const std::string& name
+	) :
+		OSLShader(name, {})
+	{
+	}
+
 	~OSLShader()
 	{
 		// Shader base is responsible for its textures

@@ -117,7 +117,7 @@ public:
 #endif // DEBUG || _DEBUG
 
 		// Create default material
-		pPxMaterial = pPxPhysics->createMaterial(0.5f, 0.5f, 0.6f);
+		pPxMaterial = pPxPhysics->createMaterial(0.5f, 0.5f, 0.2f);
 	}
 
 	inline static physx::PxFilterFlags CCDFilterShader(

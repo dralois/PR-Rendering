@@ -49,6 +49,8 @@ public:
 
 	virtual void CreateMesh() override;
 	void AddRigidActor(physx::PxScene* scene);
+	void AddVelocity(physx::PxVec3 velocity);
+	void AddTorque(physx::PxVec3 torque);
 	void RemoveRigidActor(physx::PxScene* scene);
 
 	//---------------------------------------
