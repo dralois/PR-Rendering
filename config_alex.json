@@ -15,6 +15,8 @@
     "scene_iterations": 3,
     "batch_size": 10,
     "max_images": 100,
+    "render_width": 1920,
+    "render_height": 1080,
 
     "fx": 539.8100,
     "fy": 539.8300,
@@ -23,11 +25,6 @@
     "width": 640,
     "height": 480,
     "custom_intrinsics": false,
-
-    "near_z": 0.1,
-    "far_z": 10.0,
-    "render_width": 1920,
-    "render_height": 1080,
 
     "render_objs": ["obj_01", "obj_02", "obj_03", "obj_04", "obj_05", "obj_06", "obj_07", "obj_08", "obj_09", "obj_10", "obj_11", "obj_12", "obj_13"],
     "mesh_format" : "obj",

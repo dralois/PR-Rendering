@@ -26,7 +26,6 @@ private:
 	ModifiablePath sourceFile;
 	Eigen::Vector3f aspectFOV;
 	Eigen::Vector2f lensShift;
-	Eigen::Vector2f clipPlanes;
 	ModifiablePath resultFile;
 	Eigen::Vector2i resolution;
 	bool dataOnly;
@@ -45,9 +44,6 @@ private:
 
 		writer.Key("shift");
 		AddEigenVector<Eigen::Vector2f>(writer, lensShift);
-
-		writer.Key("nearZ");
-		AddFloat(writer, clipPlanes.x());
 
 		writer.Key("resultFile");
 		AddString(writer, resultFile.string());
@@ -78,8 +74,6 @@ public:
 	inline ReferencePath GetSourceFile() const { return sourceFile; }
 	inline Eigen::Vector2f GetFOV() const { return Eigen::Vector2f(aspectFOV.y(), aspectFOV.z()); }
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return lensShift; }
-	inline Eigen::Vector2f GetClipping() const { return clipPlanes; }
-	inline void SetClipping(float near, float far) { clipPlanes = Eigen::Vector2f(abs(near), abs(far)); }
 
 	//---------------------------------------
 	// Methods
@@ -180,7 +174,6 @@ public:
 		sourceFile("None"),
 		aspectFOV(Eigen::Vector3f(1.5f, 0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
-		clipPlanes(Eigen::Vector2f(0.1f, 10.0f)),
 		resultFile(""),
 		resolution(Eigen::Vector2i(1920, 1080)),
 		dataOnly(false),
@@ -196,7 +189,6 @@ public:
 		sourceFile(copy.sourceFile),
 		aspectFOV(copy.aspectFOV),
 		lensShift(copy.lensShift),
-		clipPlanes(copy.clipPlanes),
 		resultFile(copy.resultFile),
 		resolution(copy.resolution),
 		dataOnly(copy.dataOnly),
@@ -213,7 +205,6 @@ public:
 		sourceFile = std::exchange(other.sourceFile, "");
 		aspectFOV = std::exchange(other.aspectFOV, Eigen::Vector3f());
 		lensShift = std::exchange(other.lensShift, Eigen::Vector2f());
-		clipPlanes = std::exchange(other.clipPlanes, Eigen::Vector2f());
 		resultFile = std::exchange(other.resultFile, ModifiablePath());
 		resolution = std::exchange(other.resolution, Eigen::Vector2i());
 		dataOnly = std::exchange(other.dataOnly, false);

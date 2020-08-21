@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <random>
 
 #pragma warning(push, 0)
 #include <boost/algorithm/string.hpp>
@@ -42,6 +43,7 @@ private:
 	physx::PxScene* pPxScene;
 
 	// Rendering
+	float maxDist;
 	Camera camBlueprint;
 	std::vector<Light*> vecpLights;
 

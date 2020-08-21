@@ -34,6 +34,9 @@ void SceneManager::X_PxCreateScene()
 	pPxMeshScene->SetScale(PxVec3(toMeters));
 	std::cout << std::endl;
 
+	// For human readable depth: Maximal possible distance
+	maxDist = pPxMeshScene->GetGlobalBounds().getDimensions().magnitude();
+
 	bool cudaAvailable = PxManager::GetInstance().GetCudaManager() != nullptr;
 	// Standart gravity & continuous collision detection & GPU rigidbodies
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
@@ -275,7 +278,7 @@ void SceneManager::X_BuildSceneDepth(
 	}
 
 	// Set shader
-	DepthShader* shader = new DepthShader(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+	DepthShader* shader = new DepthShader(FLT_EPSILON, maxDist);
 	pRenderMeshScene->SetShader(shader);
 
 	// If any cameras are marked for rendering
@@ -318,7 +321,7 @@ void SceneManager::X_BuildObjectsDepth(
 	// Set shaders
 	for (auto currMesh : vecpRenderMeshCurrObjs)
 	{
-		DepthShader* currShader = new DepthShader(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+		DepthShader* currShader = new DepthShader(FLT_EPSILON, maxDist);
 		currMesh->SetShader(currShader);
 	}
 
@@ -449,8 +452,8 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 		}
 #if STORE_DEBUG_TEX
 		// Store human readable
-		objectDepths[curr].StoreDepth01(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
-		sceneDepths[curr].StoreDepth01(camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+		objectDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
+		sceneDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
 #endif //STORE_DEBUG_TEX
 
 		// Create blended depth texture & coverage mask
@@ -668,11 +671,11 @@ int SceneManager::ProcessNext(int imageCount)
 				if (!masks[i].Occluded())
 				{
 					// Store the blended depth
+					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true);
 #if STORE_DEBUG_TEX
-					masks[i].StoreBlendedDepth01(pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true),
-						camBlueprint.GetClipping().x(), camBlueprint.GetClipping().y());
+					masks[i].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
 #else
-					masks[i].StoreBlendedDepth(pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true));
+					masks[i].StoreBlendedDepth(depthPath);
 #endif
 					// Move corresponding poses, masks & real images
 					unoccludedCams.push_back(std::move(currCams[i]));
@@ -725,18 +728,18 @@ SceneManager::SceneManager(
 	pRenderMeshScene(NULL),
 	pPxMeshScene(NULL),
 	pAnnotations(NULL),
+	camBlueprint(),
 	vecpLights(),
+	maxDist(10.0f),
 	pPxScene(NULL),
 	pBlender(NULL)
 {
+	// Init random generator
+	std::random_device randGen{};
+	std::default_random_engine{ randGen() };
+
 	// Create annotations manager
 	pAnnotations = new AnnotationsManager();
-
-	// Load clipping planes
-	camBlueprint.SetClipping(
-		SafeGet<float>(pRenderSettings->GetJSONConfig(), "near_z"),
-		SafeGet<float>(pRenderSettings->GetJSONConfig(), "far_z")
-	);
 
 	// Create lights
 	for (int i = 0; i < 8; i++)

@@ -57,23 +57,11 @@ class CameraData(DataWrapper):
         self.__camera.shift_x = value[0]
         self.__camera.shift_y = value[1]
 
-    # Get near z plane distance
-    @property
-    def CameraNearZ(self):
-        return self.__camera.appleseed.near_z
-
-    # Set near z plane distance
-    @CameraNearZ.setter
-    def CameraNearZ(self, value):
-        nearZ = (-1.0 * value, value)[value < 0.0]
-        self.__camera.appleseed.near_z = nearZ
-
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
         self.CameraFOV = data.get("fov", (1.5, 0.6911, 0.4711))
         self.CameraShift = data.get("shift", (0.0, 0.0))
-        self.CameraNearZ = data.get("nearZ", 0.001)
 
 # Camera object in scene
 class CameraInstance(ObjectWrapper):

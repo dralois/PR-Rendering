@@ -15,6 +15,8 @@
     "scene_iterations": 0,
     "batch_size": 0,
     "max_images": 0,
+    "render_width": 0,
+    "render_height": 0,
 
     "fx": 0.0,
     "fy": 0.0,
@@ -23,11 +25,6 @@
     "width": 0,
     "height": 0,
     "custom_intrinsics": false,
-
-    "near_z": 0.0,
-    "far_z": 0.0,
-    "render_width": 0,
-    "render_height": 0,
 
     "render_objs": [""],
     "mesh_format" : "",
