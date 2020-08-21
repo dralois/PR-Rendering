@@ -484,7 +484,6 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
-		// FIXME iteration bug
 		// Load & unpack object depth
 		objectDepths[curr].LoadTexture(UnpackDepth);
 		objectDepths[curr].ReplacePacked();
@@ -777,7 +776,9 @@ SceneManager::SceneManager(
 	pPxMeshScene(NULL),
 	pAnnotations(NULL),
 	vecpLights(),
-	pPxScene(NULL)
+	pPxScene(NULL),
+	pRenderer(NULL),
+	pBlender(NULL)
 {
 	// Create annotations manager
 	pAnnotations = new AnnotationsManager();

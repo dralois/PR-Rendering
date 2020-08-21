@@ -27,7 +27,7 @@ namespace Renderer
 		// Fields
 		//---------------------------------------
 		class Render_impl;
-		std::unique_ptr<Render_impl> renderImpl;
+		std::unique_ptr<Render_impl> renderImpl = nullptr;
 
 	public:
 		//---------------------------------------
