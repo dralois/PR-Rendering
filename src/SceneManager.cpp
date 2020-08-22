@@ -144,12 +144,13 @@ void SceneManager::X_CleanupScene()
 	vecpRenderMeshCurrObjs.clear();
 
 	// Cleanup scene mesh & physx mesh & physx
-	if (pPxMeshScene != NULL)
+	delete pRenderMeshScene;
+	if (pPxMeshScene)
 	{
 		delete pPxMeshScene;
 		pPxMeshScene = NULL;
 	}
-	if (pPxScene != NULL)
+	if (pPxScene)
 	{
 		pPxScene->flushSimulation();
 		auto dispatcher = (PxDefaultCpuDispatcher*)pPxScene->getCpuDispatcher();
@@ -623,7 +624,12 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 int SceneManager::ProcessNext(int imageCount)
 {
 	// Get non blurry images
-	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(pRenderSettings->GetSceneRGBPath(), 400.0f);
+	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(
+		pRenderSettings->GetSceneRGBPath(),
+		SafeGet<float>(pRenderSettings->GetJSONConfig(), "blurry_threshold")
+	);
+
+	// Make sure there are images
 	if (sceneImages.empty())
 		return 0;
 

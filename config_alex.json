@@ -9,9 +9,10 @@
     "final_path": "../../Output/final",
     "temp_path": "../../Output/temp",
 
+    "blurry_threshold": 400.0,
     "simulation_objects": 50,
     "simulation_steps": 2000,
-    "scene_iterations": 3,
+    "scene_iterations": 1,
     "batch_size": 10,
     "max_images": 100,
     "render_resolution": [1920, 1080],

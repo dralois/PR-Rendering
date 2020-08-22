@@ -9,6 +9,7 @@
     "final_path": "",
     "temp_path": "",
 
+    "blurry_threshold": 0.0,
     "simulation_objects": 0,
     "simulation_steps": 0,
     "scene_iterations": 0,
