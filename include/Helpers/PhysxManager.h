@@ -47,14 +47,23 @@ private:
 
 public:
 	//---------------------------------------
+	// Singleton specifics
+	//---------------------------------------
+
+	PxManager(const PxManager&) = delete;
+	PxManager(PxManager&&) = delete;
+	PxManager& operator=(const PxManager&) = delete;
+	PxManager& operator=(PxManager&&) = delete;
+
+	//---------------------------------------
 	// Properties
 	//---------------------------------------
 
 	// Singleton instance
 	inline static PxManager& GetInstance()
 	{
-		static PxManager* instance = new PxManager();
-		return *instance;
+		static PxManager instance;
+		return instance;
 	}
 
 	inline const physx::PxCooking* GetCooker() { return pPxCooking; }

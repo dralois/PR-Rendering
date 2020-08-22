@@ -106,5 +106,6 @@ public:
 	{
 		// Mesh is responsible for shader
 		delete oslShader;
+		oslShader = NULL;
 	}
 };

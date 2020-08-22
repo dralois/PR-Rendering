@@ -120,6 +120,7 @@ public:
 	{
 		// Light cleans up internals
 		delete params;
+		params = NULL;
 	}
 };
 

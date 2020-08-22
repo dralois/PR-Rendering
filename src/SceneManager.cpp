@@ -145,6 +145,7 @@ void SceneManager::X_CleanupScene()
 
 	// Cleanup scene mesh & physx mesh & physx
 	delete pRenderMeshScene;
+	pRenderMeshScene = NULL;
 	if (pPxMeshScene)
 	{
 		delete pPxMeshScene;
@@ -808,7 +809,9 @@ SceneManager::~SceneManager()
 
 	// Renderer etc.
 	delete pBlender;
+	pBlender = NULL;
 	delete pAnnotations;
+	pAnnotations = NULL;
 
 	// Lights
 	for (auto currLight : vecpLights)
