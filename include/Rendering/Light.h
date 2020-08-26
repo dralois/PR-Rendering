@@ -3,8 +3,6 @@
 #include <string>
 
 #pragma warning(push, 0)
-#include <Eigen/Dense>
-
 #include <Helpers/PathUtils.h>
 #include <Helpers/JSONUtils.h>
 
@@ -54,6 +52,10 @@ public:
 		const std::string& type
 	) :
 		type(type)
+	{
+	}
+
+	virtual ~LightParamsBase()
 	{
 	}
 };

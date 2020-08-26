@@ -45,6 +45,10 @@ protected:
 		std::swap(meshScale, other.meshScale);
 	}
 
+	virtual ~Transformable()
+	{
+	}
+
 public:
 	//---------------------------------------
 	// Properties

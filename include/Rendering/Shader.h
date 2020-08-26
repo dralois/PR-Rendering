@@ -77,7 +77,7 @@ public:
 	{
 	}
 
-	~OSLShader()
+	virtual ~OSLShader()
 	{
 		// Shader base is responsible for its textures
 		for(auto tex : textures)

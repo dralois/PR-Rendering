@@ -58,5 +58,5 @@ public:
 	MeshBase(ReferencePath meshPath, int meshId);
 	MeshBase(const MeshBase& copy);
 	MeshBase(MeshBase&& other);
-	~MeshBase();
+	virtual ~MeshBase();
 };

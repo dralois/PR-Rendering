@@ -1,8 +1,6 @@
 #pragma once
 
 #pragma warning(push, 0)
-#include <Eigen/Dense>
-
 #include <Helpers/JSONUtils.h>
 #include <Helpers/PathUtils.h>
 

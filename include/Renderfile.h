@@ -5,9 +5,6 @@
 #pragma warning(push, 0)
 #include <Eigen/Dense>
 
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stream.h>
-
 #include <Helpers/JSONUtils.h>
 
 #include <Transformable.h>
@@ -99,6 +96,10 @@ protected:
 
 	RenderfileObject(RenderfileObject&& other) :
 		Transformable(std::move(other))
+	{
+	}
+
+	virtual ~RenderfileObject()
 	{
 	}
 

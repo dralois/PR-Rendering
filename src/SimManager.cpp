@@ -59,12 +59,12 @@ void SimManager::X_LoadMeshes()
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i);
 				pxCurr->CreateMesh();
 				pxCurr->SetScale(physx::PxVec3(toMeters));
-				vecpPxMesh.push_back(std::move(pxCurr));
+				vecpPxMesh.push_back(pxCurr);
 
 				// Create and save render mesh
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
 				renderCurr->SetScale(Eigen::Vector3f().setConstant(toMeters));
-				vecpRenderMesh.push_back(std::move(renderCurr));
+				vecpRenderMesh.push_back(renderCurr);
 				std::cout << std::endl;
 			}
 		}
@@ -164,6 +164,7 @@ SimManager::~SimManager()
 	vecpRenderMesh.clear();
 
 	// Other
-	PxManager::GetInstance().DeletePhysx();
 	delete pRenderSettings;
+	jsonConfig.GetAllocator().Clear();
+	PxManager::GetInstance().DeletePhysx();
 }

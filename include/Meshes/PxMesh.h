@@ -78,5 +78,5 @@ public:
 	PxMesh(ReferencePath meshPath, int meshId);
 	PxMesh(const PxMesh& copy);
 	PxMesh(PxMesh&& other);
-	~PxMesh();
+	virtual ~PxMesh();
 };
