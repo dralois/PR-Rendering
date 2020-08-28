@@ -106,6 +106,12 @@ private:
 		std::vector<Texture>& results,
 		int start
 	);
+	void X_BuildObjectsAO(
+		JSONWriterRef writer,
+		std::vector<Camera>& cams,
+		std::vector<Texture>& results,
+		int start
+	);
 
 	// Blender rendering
 	std::vector<Mask> X_RenderDepthMasks(
@@ -126,6 +132,10 @@ private:
 
 	// Other
 	void X_CleanupScene();
+	void X_PlaceLights(
+		Eigen::Vector3f min,
+		Eigen::Vector3f max
+	);
 	std::vector<SceneImage> X_GetImagesToProcess(
 		ReferencePath dir,
 		float varThreshold

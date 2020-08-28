@@ -16,7 +16,7 @@ private:
 	// Fields
 	//---------------------------------------
 
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 	physx::PxPvd* pPxPvd;
 #endif //_DEBUG || DEBUG
 	physx::PxPhysics* pPxPhysics;
@@ -32,7 +32,7 @@ private:
 	//---------------------------------------
 
 	PxManager() :
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 		pPxPvd(NULL),
 #endif //_DEBUG || DEBUG
 		pPxPhysics(NULL),
@@ -82,7 +82,7 @@ public:
 		pPxFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback);
 		pPxFoundation->setErrorLevel(PxErrorCode::eMASK_ALL);
 
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 		// Setup Physx Visual Debugger
 		pPxPvd = PxCreatePvd(*pPxFoundation);
 		PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 100);
@@ -90,7 +90,7 @@ public:
 #endif // DEBUG || _DEBUG
 
 		// Create API
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 		pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, pPxPvd);
 #else
 		pPxPhysics = PxCreateBasePhysics(PX_PHYSICS_VERSION, *pPxFoundation, PxTolerancesScale(), true, NULL);
@@ -119,7 +119,7 @@ public:
 		pPxCooking = PxCreateCooking(PX_PHYSICS_VERSION, *pPxFoundation, params);
 
 		// Enable extensions
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 		PxInitExtensions(*pPxPhysics, pPxPvd);
 #else
 		PxInitExtensions(*pPxPhysics, NULL);
@@ -155,7 +155,7 @@ public:
 		PxCloseExtensions();
 		PX_RELEASE(pPxPhysics);
 		PX_RELEASE(pPxCooking);
-#ifdef _DEBUG || DEBUG
+#if _DEBUG || DEBUG
 		if (pPxPvd)
 		{
 			PxPvdTransport* pTransp = pPxPvd->getTransport();

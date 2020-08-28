@@ -32,6 +32,15 @@ protected:
 
 public:
 	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual OSLShader* MakeCopy() const override
+	{
+		return new DepthShader(*this);
+	}
+
+	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 

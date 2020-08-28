@@ -35,6 +35,15 @@ protected:
 
 public:
 	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual OSLShader* MakeCopy() const override
+	{
+		return new LabelShader(*this);
+	}
+
+	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 

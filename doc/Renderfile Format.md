@@ -35,6 +35,7 @@ The renderfile format specifies scenes to be rendered. These scenes are organize
                 "scale" : [ float, float, float ],
                 "objectID" : int,
                 "file" : string,
+                "indirect" : bool,
                 "shader" :
                 {
                     "name" : string,

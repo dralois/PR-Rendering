@@ -10,8 +10,6 @@ bpy = ImportBpy()
 logger = GetLogger()
 
 from typing import List
-import mathutils
-import sys
 import os
 
 # Actual blender data storage & rendering class
@@ -91,10 +89,21 @@ class Scene(object):
     # Sets up raytracing from camera
     def __SetRaytracingSettings(self, camera : Camera.CameraInstance):
         ctx = bpy.context.scene
-        # Sampling quality (If data: Rays through center of pixel)
+        # General appleseed settings
         ctx.appleseed.use_embree = True
-        ctx.appleseed.force_aa = (camera.CameraAASamples > 1, False)[camera.CameraDataOnly]
-        ctx.appleseed.samples = (camera.CameraAASamples, 1)[camera.CameraDataOnly]
+        # Sampling method & quality (If data: Trace rays through center of pixel)
+        if camera.CameraDataOnly:
+            ctx.appleseed.pixel_sampler = "uniform"
+            ctx.appleseed.denoise_mode = "off"
+            ctx.appleseed.force_aa = False
+            ctx.appleseed.samples = 1
+        else:
+            ctx.appleseed.pixel_sampler = "adaptive"
+            ctx.appleseed.denoise_mode = "on"
+            ctx.appleseed.adaptive_min_samples = max(camera.CameraAASamples, 1)
+            ctx.appleseed.adaptive_max_samples = min(max(pow(camera.CameraAASamples, 2), 1), 256)
+            ctx.appleseed.adaptive_batch_size = max(camera.CameraAASamples / 2, 1)
+            ctx.appleseed.force_aa = True
         # Pathtracing quality
         ctx.appleseed.max_bounces_unlimited = camera.CameraRayBounces < 0
         ctx.appleseed.max_bounces = camera.CameraRayBounces
@@ -164,28 +173,33 @@ def CreateFromJSON(data : dict) -> Scene:
     for camData in data.get("cameras", []):
         cam = build.RenderQueueAdd(build.CameraManager.GetInstance(camData))
         logger.info(f"{build}: Added {cam.Name}")
+    build.CameraManager.RemoveStaleInstances()
 
     # Build meshes
     for meshData in data.get("meshes", []):
         mesh = build.MeshManager.GetInstance(meshData)
         logger.info(f"{build}: Added {mesh.Name}")
+    build.MeshManager.RemoveStaleInstances()
 
     # Build lights
     for lightData in data.get("lights", []):
         light = build.LightManager.GetInstance(lightData)
         logger.info(f"{build}: Added {light.Name}")
+    build.LightManager.RemoveStaleInstances()
 
     # Return scene
     return build
 
 # Update and return scene from json
 def UpdateFromJSON(data : dict, scene : Scene) -> Scene:
-    # Remove & rebuild cameras
+    # Remove remaining queue
     scene.RenderQueueClear()
-    scene.CameraManager.ClearInstances()
+
+    # Remove & rebuild cameras
     for camData in data.get("cameras", []):
         cam = scene.RenderQueueAdd(scene.CameraManager.GetInstance(camData))
         logger.info(f"{scene}: Added {cam.Name}")
+    scene.CameraManager.RemoveStaleInstances()
 
     # Update / create meshes
     for meshData in data.get("meshes", []):
@@ -195,15 +209,13 @@ def UpdateFromJSON(data : dict, scene : Scene) -> Scene:
         else:
             mesh = scene.MeshManager.GetInstance(meshData)
             logger.info(f"{scene}: Added {mesh.Name}")
-
-    # Remove meshes that weren't updated / created
-    scene.MeshManager.ClearInstances()
+    scene.MeshManager.RemoveStaleInstances()
 
     # Remove & rebuild lights
-    scene.LightManager.ClearInstances()
     for lightData in data.get("lights", []):
         light = scene.LightManager.GetInstance(lightData)
         logger.info(f"{scene}: Added {light.Name}")
+    scene.LightManager.RemoveStaleInstances()
 
     # Return updated scene
     return scene

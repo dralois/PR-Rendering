@@ -16,6 +16,7 @@
     "batch_size": 0,
     "max_images": 0,
     "render_resolution": [0, 0],
+    "anti_aliasing": 0,
 
     "velocity_max" : [0.0, 0.0, 0.0],
     "torque_max" : [0.0, 0.0, 0.0],

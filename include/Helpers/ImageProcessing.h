@@ -118,14 +118,23 @@ static cv::Mat ComputeDepthBlend(
 //---------------------------------------
 static cv::Mat ComputeRGBBlend(
 	const cv::Mat& bodiesRGB,
+	const cv::Mat& bodiesAO,
 	const cv::Mat& sceneRGB,
-	const cv::Mat& bodiesMask
+	const cv::Mat& bodiesMask,
+	cv::Size targetSize
 )
 {
-	cv::Mat blendResult, maskResized;
-	sceneRGB.copyTo(blendResult);
-	cv::resize(bodiesMask, maskResized, cv::Size(bodiesRGB.cols, bodiesRGB.rows));
-	bodiesRGB.copyTo(blendResult, maskResized);
+	cv::Mat blendResult;
+	// Add PBR object image to blend
+	bodiesRGB.copyTo(blendResult, bodiesMask);
+	// Add ambient occlusion
+	blendResult.forEach<cv::Vec3b>([&](cv::Vec3b& val, const int pixel[]) -> void {
+		val *= bodiesAO.at<float>(pixel[0], pixel[1]);
+	});
+	// Add scene RGB image to blend
+	sceneRGB.copyTo(blendResult, 255 - bodiesMask);
+	// Resize & return blended image
+	cv::resize(blendResult, blendResult, targetSize);
 	return blendResult;
 }
 
@@ -182,6 +191,19 @@ static auto UnpackLabel = [&](cv::Mat& packed) -> cv::Mat
 	unpacked.forEach<cv::Vec3b>([&](cv::Vec3b& val, const int pixel[]) -> void {
 		cv::Vec3f labelPacked = packed.at<cv::Vec3f>(pixel[0], pixel[1]) * 255.0f;
 		val = cv::Vec3b((uchar)labelPacked[0], (uchar)labelPacked[1], (uchar)labelPacked[2]);
+	});
+	return unpacked;
+};
+
+//---------------------------------------
+// Converts packed ao to [0-1]
+//---------------------------------------
+static auto UnpackAO = [&](cv::Mat& packed) -> cv::Mat
+{
+	cv::Mat unpacked = cv::Mat::ones(packed.rows, packed.cols, CV_32FC1);
+	// Load rgb and convert to float [0-1]
+	unpacked.forEach<float>([&](float& val, const int pixel[]) -> void {
+		val = cv::norm(packed.at<cv::Vec3b>(pixel[0], pixel[1]), cv::NormTypes::NORM_L1) / 765.0f;
 	});
 	return unpacked;
 };

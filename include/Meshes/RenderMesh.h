@@ -19,6 +19,7 @@ protected:
 	// Fields
 	//---------------------------------------
 
+	bool indirect;
 	OSLShader* oslShader;
 
 	//---------------------------------------
@@ -32,6 +33,9 @@ protected:
 
 		writer.Key("file");
 		AddString(writer, GetMeshPath().string());
+
+		writer.Key("indirect");
+		writer.Bool(indirect);
 
 		// Mesh should always have a shader
 		if (oslShader)
@@ -72,33 +76,42 @@ public:
 	RenderMesh(
 		ReferencePath meshFile,
 		ReferencePath textureFile,
-		int meshId
+		int meshId,
+		bool indirect = false
 	) :
 		MeshBase(meshFile, textureFile, meshId),
 		RenderfileObject(),
+		indirect(indirect),
 		oslShader(NULL)
 	{
 	}
 
 	RenderMesh(
 		ReferencePath meshFile,
-		int meshId
+		int meshId,
+		bool indirect = false
 	) :
-		RenderMesh(meshFile, "", meshId)
+		RenderMesh(meshFile, "", meshId, indirect)
 	{
 	}
 
 	RenderMesh(const RenderMesh& copy) :
 		MeshBase(copy),
 		RenderfileObject(copy),
+		indirect(copy.indirect),
 		oslShader(NULL)
 	{
+		if(copy.oslShader)
+		{
+			oslShader = copy.oslShader->MakeCopy();
+		}
 	}
 
 	RenderMesh(RenderMesh&& other) :
 		MeshBase(std::move(other)),
 		RenderfileObject(std::move(other))
 	{
+		indirect = std::exchange(other.indirect, false);
 		oslShader = std::exchange(other.oslShader, nullptr);
 	}
 

@@ -22,6 +22,7 @@ private:
 	bool storeBlend;
 	std::string logLevel;
 	Eigen::Vector2i renderResolution;
+	int antiAliasingFactor;
 	ModifiablePath pluginPath;
 	std::vector<ModifiablePath> shaderDirs;
 	Intrinsics customIntrinsics;
@@ -52,6 +53,7 @@ public:
 	// Blender rendering
 	inline bool GetStoreBlend() const { return storeBlend; }
 	inline Eigen::Vector2i GetRenderResolution() const { return renderResolution; }
+	inline int GetAntiAliasingFactor() const { return antiAliasingFactor; }
 	inline ReferencePath GetLogLevel() const { return logLevel; }
 	inline ReferencePath GetPluginDir() const { return pluginPath; }
 	inline const std::vector<ModifiablePath>& GetShaderDirs() const { return shaderDirs; }
@@ -161,6 +163,7 @@ public:
 		shaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(*jsonConfig, "shaders_path"))));
 		rapidjson::Value res = SafeGetArray<int>(*jsonConfig, "render_resolution");
 		renderResolution = SafeGetEigenVector<Eigen::Vector2i>(res);
+		antiAliasingFactor = MAX(SafeGet<int>(*jsonConfig, "anti_aliasing"), 1);
 
 		// Init custom intrinsics
 		rapidjson::Value intrf = SafeGetArray<float>(*jsonConfig, "intrinsics_f");

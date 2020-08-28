@@ -11,7 +11,7 @@ import json
 class RenderManager(object):
 
     def __init__(self):
-        self.__maxWorkers = mp.cpu_count()
+        self.__maxWorkers = int(max(mp.cpu_count() / 2, 2))
         self.__workers : List[(RenderProcess, mp.JoinableQueue, mp.Event)]
         self.__workers = [None for i in range(self.__maxWorkers)]
         for i in range(self.__maxWorkers):
@@ -31,7 +31,7 @@ class RenderManager(object):
             # If no fast worker for scene available
             if i >= (self.__maxWorkers - 1):
                 # Get slower, general purpose worker
-                _,queue,_ = self.__workers[len(self.__workers)]
+                _,queue,_ = self.__workers[self.__maxWorkers - 1]
                 # Enqueue renderfile and block until completed
                 queue.put(scenes[i], True)
                 queue.join()

@@ -33,6 +33,8 @@ public:
 	// Methods
 	//---------------------------------------
 
+	virtual OSLShader* MakeCopy() const = 0;
+
 	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.StartObject();

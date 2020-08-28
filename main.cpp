@@ -53,16 +53,19 @@ int main(int argc, char** argv)
 		boost::filesystem::create_directories(tempDir / "body_label");
 		boost::filesystem::create_directories(tempDir / "body_mask");
 		boost::filesystem::create_directories(tempDir / "body_rgb");
+		boost::filesystem::create_directories(tempDir / "body_ao");
 	}
 
 	// Run the simulation
 	simulation.RunSimulation();
 
 	// Delete temporary output
+#if !_DEBUG && !DEBUG
 	if (boost::filesystem::exists(tempDir))
 	{
 		boost::filesystem::remove_all(tempDir);
 	}
+#endif //!_DEBUG && !DEBUG
 
 	return 0;
 }

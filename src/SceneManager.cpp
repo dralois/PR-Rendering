@@ -1,11 +1,16 @@
 #include <SceneManager.h>
 
+#if _DEBUG || DEBUG
 #define STORE_DEBUG_TEX 1
+#endif //_DEBUG || DEBUG
+
+#define USE_AO 1
 
 #define PI (3.1415926535897931f)
 #define PIOVER2 (1.5707963267948966f)
 
 #define RENDERFILE_BEGIN \
+{\
 	rapidjson::StringBuffer renderstring;\
 	JSONWriter writer(renderstring);\
 	writer.StartArray();
@@ -15,7 +20,13 @@
 #define RENDERFILE_PROCESS \
 	writer.EndArray();\
 	std::string renderfile(renderstring.GetString());\
-	pBlender->ProcessRenderfile(renderfile);
+	pBlender->ProcessRenderfile(renderfile);\
+}
+
+#define RENDERFILE_SINGLE(builder, cams, out, start) \
+	RENDERFILE_BEGIN\
+	builder(RENDERFILE_WRITER, cams, out, start);\
+	RENDERFILE_PROCESS
 
 using namespace physx;
 
@@ -36,6 +47,20 @@ void SceneManager::X_PxCreateScene()
 
 	// For human readable depth: Maximal possible distance
 	maxDist = pPxMeshScene->GetGlobalBounds().getDimensions().magnitude();
+
+	// Create lights according to scene size
+	X_PlaceLights(
+		Eigen::Vector3f(
+			pPxMeshScene->GetGlobalBounds().minimum.x,
+			pPxMeshScene->GetGlobalBounds().minimum.y,
+			pPxMeshScene->GetGlobalBounds().minimum.z
+		),
+		Eigen::Vector3f(
+			pPxMeshScene->GetGlobalBounds().maximum.x,
+			pPxMeshScene->GetGlobalBounds().maximum.y,
+			pPxMeshScene->GetGlobalBounds().maximum.z
+		)
+	);
 
 	bool cudaAvailable = PxManager::GetInstance().GetCudaManager() != nullptr;
 	// Standart gravity & continuous collision detection & GPU rigidbodies
@@ -362,7 +387,7 @@ void SceneManager::X_BuildObjectsDepth(
 }
 
 //---------------------------------------
-// Build object label renderfile
+// Build object labels renderfile
 //---------------------------------------
 void SceneManager::X_BuildObjectsLabel(
 	JSONWriterRef writer,
@@ -413,8 +438,9 @@ void SceneManager::X_BuildObjectsPBR(
 	int start
 )
 {
-	// Resolution should match real scene images
-	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	// Resolution should match real image (with factor if aa is used)
+	Eigen::Vector2i renderRes =
+		camBlueprint.GetIntrinsics().GetResolution() * pRenderSettings->GetAntiAliasingFactor();
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
@@ -426,7 +452,7 @@ void SceneManager::X_BuildObjectsPBR(
 			currPBR.GetPath(),
 			renderRes,
 			false,
-			16,
+			4,
 			-1,
 			""
 		);
@@ -445,8 +471,53 @@ void SceneManager::X_BuildObjectsPBR(
 		currMesh->SetShader(currShader);
 	}
 
+	// Setup scene for indirect light & shadows
+	Texture* diffuseScene = new Texture();
+	diffuseScene->SetPath(pRenderSettings->GetScenePath() / "mesh.refined_0.png", false);
+	PBRShader* scenePBR = new PBRShader(diffuseScene);
+	pRenderMeshScene->SetShader(scenePBR);
+
 	// Add configured scene to renderfile
+	vecpRenderMeshCurrObjs.push_back(pRenderMeshScene);
 	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
+	vecpRenderMeshCurrObjs.pop_back();
+}
+
+//---------------------------------------
+// Build objects ambient occlusion renderfile
+//---------------------------------------
+void SceneManager::X_BuildObjectsAO(
+	JSONWriterRef writer,
+	std::vector<Camera>& cams,
+	std::vector<Texture>& results,
+	int start
+)
+{
+	// Resolution should match real scene images
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	// For every pose
+	for (int curr = 0; curr < cams.size(); ++curr)
+	{
+		// Create ambient occlusion output texture
+		Texture currAO(false, false);
+		currAO.SetPath(pRenderSettings->GetImagePath("body_ao", start + curr), false);
+		// Setup rendering params
+		cams[curr].SetupRendering(
+			currAO.GetPath(),
+			renderRes,
+			false,
+			1,
+			-1,
+			"ambient_occlusion"
+		);
+		// Place in output vector
+		results.emplace_back(std::move(currAO));
+	}
+
+	// Add configured scene to renderfile
+	vecpRenderMeshCurrObjs.push_back(pRenderMeshScene);
+	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
+	vecpRenderMeshCurrObjs.pop_back();
 }
 
 //---------------------------------------
@@ -517,9 +588,7 @@ void SceneManager::X_RenderSegments(
 	objectLabels.reserve(cams.size());
 
 	// Create & process renderfile
-	RENDERFILE_BEGIN;
-	X_BuildObjectsLabel(RENDERFILE_WRITER, cams, objectLabels, start);
-	RENDERFILE_PROCESS;
+	RENDERFILE_SINGLE(X_BuildObjectsLabel, cams, objectLabels, start);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -555,25 +624,88 @@ void SceneManager::X_RenderPBRBlend(
 )
 {
 	// Initialize output vector
-	std::vector<Texture> objectPBRs;
+	std::vector<Texture> objectPBRs, objectsAO;
 	objectPBRs.reserve(cams.size());
+	objectsAO.reserve(cams.size());
 
-	// Create & process renderfile
-	RENDERFILE_BEGIN;
-	X_BuildObjectsPBR(RENDERFILE_WRITER, cams, objectPBRs, start);
-	RENDERFILE_PROCESS;
+	// Create & process ambient occlusion renderfile
+#if USE_AO
+	RENDERFILE_SINGLE(X_BuildObjectsAO, cams, objectsAO, start);
+#endif
+	// Create & process PBR renderfile
+	RENDERFILE_SINGLE(X_BuildObjectsPBR, cams, objectPBRs, start);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
-		// Load PBR object texture
+		// Load PBR & AO object texture
 		objectPBRs[curr].LoadTexture();
+#if USE_AO
+		objectsAO[curr].LoadTexture(UnpackAO);
+#else
+		objectsAO[curr] = Texture(false, false);
+		objectsAO[curr].SetTexture(cv::Mat::ones(
+			objectPBRs[curr].GetTexture().rows,
+			objectPBRs[curr].GetTexture().cols,
+			CV_32FC1
+		));
+#endif
+
+		// Potentially resize images
+		objectsAO[curr].ResizeTexture(objectPBRs[curr].GetTexture());
+		sceneRGBs[curr].ResizeSceneTexture(objectPBRs[curr].GetTexture());
+		masks[curr].ResizeTexture(objectPBRs[curr].GetTexture());
+
+		// Determine original image size
+		cv::Size targetSize(
+			camBlueprint.GetIntrinsics().GetResolution().x(),
+			camBlueprint.GetIntrinsics().GetResolution().y()
+		);
 
 		// Blend & store result
 		Texture blendResult(false, false);
 		blendResult.SetPath(pRenderSettings->GetImagePath("rgb", start + curr, true), false);
-		blendResult.SetTexture(ComputeRGBBlend(objectPBRs[curr].GetTexture(), sceneRGBs[curr].GetSceneTexture(), masks[curr].GetTexture()));
+		blendResult.SetTexture(ComputeRGBBlend(
+			objectPBRs[curr].GetTexture(),
+			objectsAO[curr].GetTexture(),
+			sceneRGBs[curr].GetSceneTexture(),
+			masks[curr].GetTexture(),
+			targetSize)
+		);
 		blendResult.StoreTexture();
+	}
+}
+
+//---------------------------------------
+// Places lights according to scene dims
+//---------------------------------------
+void SceneManager::X_PlaceLights(
+	Eigen::Vector3f min,
+	Eigen::Vector3f max
+)
+{
+	// Clean up existing lights
+	for (auto curr : vecpLights)
+	{
+		delete curr;
+	}
+	vecpLights.clear();
+
+	// Adjust light intensity to scene dims
+	float intensity = 5.0f * (max - min).norm();
+
+	// Create lights in rectangle pattern
+	for (int i = 0; i < 4; i++)
+	{
+		PointLightParams* params = new PointLightParams();
+		Light* addLight = new Light(params, Eigen::Vector3f().setOnes(), intensity, 1.0f);
+		// Add 8 lights in a box pattern
+		addLight->SetPosition(Eigen::Vector3f(
+			(i >> 0) % 2 == 0 ? max.x() : min.x(),
+			(i >> 1) % 2 == 0 ? max.z() : min.z(),
+			(i >> 2) % 2 == 0 ? max.y() : max.y())
+		);
+		vecpLights.push_back(addLight);
 	}
 }
 
@@ -657,7 +789,7 @@ int SceneManager::ProcessNext(int imageCount)
 		float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
 		ModifiablePath meshPath(pRenderSettings->GetScenePath());
 		meshPath.append("mesh.refined.obj");
-		pRenderMeshScene = new RenderMesh(meshPath, 0);
+		pRenderMeshScene = new RenderMesh(meshPath, 0, true);
 		pRenderMeshScene->SetScale(Eigen::Vector3f().setConstant(toMeters));
 
 		// Create physx representation of scan scene
@@ -780,20 +912,6 @@ SceneManager::SceneManager(
 
 	// Create annotations manager
 	pAnnotations = new AnnotationsManager();
-
-	// Create lights
-	for (int i = 0; i < 8; i++)
-	{
-		PointLightParams* params = new PointLightParams();
-		Light* addLight = new Light(params, Eigen::Vector3f().setOnes(), 75.0f, 1.0f);
-		// Add 8 lights in a box pattern
-		addLight->SetPosition(Eigen::Vector3f(
-			i % 2 == 0 ? 5.0f : -5.0f,
-			(i >> 1) % 2 == 0 ? 5.0f : -5.0f,
-			(i >> 2) % 2 == 0 ? 5.0f : -5.0f)
-		);
-		vecpLights.push_back(addLight);
-	}
 
 	// Create Blender render interface
 	pBlender = new Blender::BlenderRenderer();

@@ -133,3 +133,13 @@ class MeshInstance(ObjectWrapper):
             # Bind material to object
             self.ObjectInstance.material_slots[0].link = "OBJECT"
             self.ObjectInstance.material_slots[0].material = value.Material
+
+    # Override: Create from json data
+    def CreateFromJSON(self, data : dict):
+        assert data is not None
+        super().CreateFromJSON(data)
+        # Mesh unique name
+        self.ObjectInstance.name = f'obj_{data.get("objectID", "?")}_{self.Blueprint.Name}'
+        # Mesh visibility settings
+        self.ObjectInstance.appleseed.camera_visible = not data.get("indirect", False)
+        self.ObjectInstance.appleseed.shadow_visible = not data.get("indirect", False)

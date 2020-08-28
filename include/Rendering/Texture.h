@@ -134,6 +134,16 @@ public:
 		}
 	}
 
+	void ResizeTexture(const cv::Mat& target)
+	{
+		// Only resize if necessary
+		if(loadedImage.cols != target.cols || loadedImage.rows != target.rows)
+		{
+			cv::Size targetSize(target.cols, target.rows);
+			cv::resize(loadedImage, loadedImage, targetSize);
+		}
+	}
+
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
@@ -233,6 +243,17 @@ public:
 			sceneLoaded = true;
 		}
 		return GetTexture();
+	}
+
+	inline void ResizeSceneTexture(const cv::Mat& target)
+	{
+		// May require loading
+		if(!sceneLoaded)
+		{
+			LoadTexture();
+			sceneLoaded = true;
+		}
+		ResizeTexture(target);
 	}
 
 	//---------------------------------------
