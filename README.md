@@ -19,13 +19,13 @@ Most of the required libraries are automatically downloaded, compiled and instal
 ### [Blender 2.82 as Python Module](https://wiki.blender.org/wiki/Building_Blender)
 - Setup the build pipeline accordingly for [Windows](https://wiki.blender.org/wiki/Building_Blender/Windows) or [Linux](https://wiki.blender.org/wiki/Building_Blender/Linux)
 - Blender has to be built as described [here](https://wiki.blender.org/wiki/Building_Blender/Other/BlenderAsPyModule), since there is no official release for the python module version
-- This will be done automatically in the future
+- An unofficial prebuilt version is provided & installed automatically
 
 ### [Blenderseed 2.0](https://github.com/appleseedhq/blenderseed/releases)
 - Blenderseed just needs to be downloaded, as it is a Blender plugin 
 - Linux is currently not offically supported and needs to be built manually
 - Appleseed is included in the Blenderseed plugin
-- This will be done automatically in the future
+- An unofficial prebuilt version is provided & installed automatically
 
 ### [Boost 1.73](https://www.boost.org/)
 - Most Linux distributions include boost
@@ -39,4 +39,4 @@ Most of the required libraries are automatically downloaded, compiled and instal
 - Set path of 3RScan in the config.json
 
 ### [3D Objects]()
-- The 3D objects will be provided at a later date
+- The 3D objects may be provided at a later date

@@ -1,14 +1,8 @@
 # Overview
-The annotation output file (_cvs format_) contains one annotation each line. The information contained is seperated by semicolons.
+The annotation output files (_cvs format_) contains one annotation each line. Every image has its own annotation file named _labels\_xxxxxx.csv_. Each file has a header line with a description of each column. The information contained is seperated by semicolons.
 
 # Format
-**All content is concatenated by semicolons.**
 
-Information | Content
---- | ---
-Image Number | xxxxxx
-Bounding Box | x; y; w; h
-Object | name; meshID; objectID
-Position | x; y; z
-Rotation | w; x; y; z
-Intrinsics | fx; fy; ox; oy
+Information | *Bounding Box* | *Object* | *Position* | *Rotation* | *Intrinsics*
+:--------- | :----------: | :----: | :------: | :------: | :--------:
+**Content** | x; y; w; h | objectName; meshID; objectID | x; y; z | w; x; y; z | fx; fy; ox; oy

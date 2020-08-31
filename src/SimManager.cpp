@@ -1,5 +1,8 @@
 #include <SimManager.h>
 
+#define PTR_RELEASE(x) if(x != NULL) { delete x; x = NULL; }
+#define VEC_RELEASE(x) for(auto curr : x) { delete curr; } x.clear();
+
 //---------------------------------------
 // Load and parse json config file
 //---------------------------------------
@@ -24,6 +27,10 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 //---------------------------------------
 void SimManager::X_LoadMeshes()
 {
+	// Cleanup old meshes
+	VEC_RELEASE(vecpRenderMesh);
+	VEC_RELEASE(vecpPxMesh);
+
 	// Load values from json & initialize
 	float toMeters = SafeGet<float>(jsonConfig, "objs_unit");
 	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
@@ -149,22 +156,12 @@ SimManager::SimManager(
 //---------------------------------------
 SimManager::~SimManager()
 {
-	// Cleanup physx meshes
-	for (auto curr : vecpPxMesh)
-	{
-		delete curr;
-	}
-	vecpPxMesh.clear();
+	// Cleanup render & physx meshes
+	VEC_RELEASE(vecpRenderMesh);
+	VEC_RELEASE(vecpPxMesh);
 
-	// Cleanup render meshes
-	for (auto curr : vecpRenderMesh)
-	{
-		delete curr;
-	}
-	vecpRenderMesh.clear();
-
-	// Other
-	delete pRenderSettings;
+	// Cleanup config & settings
+	PTR_RELEASE(pRenderSettings);
 	jsonConfig.GetAllocator().Clear();
 	PxManager::GetInstance().DeletePhysx();
 }

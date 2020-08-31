@@ -10,6 +10,25 @@
 #include <Transformable.h>
 #pragma warning(pop)
 
+#define RENDERFILE_BEGIN \
+{\
+	rapidjson::StringBuffer renderstring;\
+	JSONWriter writer(renderstring);\
+	writer.StartArray();
+
+#define RENDERFILE_WRITER writer
+
+#define RENDERFILE_PROCESS(renderer) \
+	writer.EndArray();\
+	std::string renderfile(renderstring.GetString());\
+	renderer->ProcessRenderfile(renderfile);\
+}
+
+#define RENDERFILE_SINGLE(renderer, builder, cams, out, start) \
+	RENDERFILE_BEGIN;\
+	builder(RENDERFILE_WRITER, cams, out, start);\
+	RENDERFILE_PROCESS(renderer);
+
 //---------------------------------------
 // Necessary for render related data
 //---------------------------------------
@@ -67,7 +86,7 @@ private:
 		Eigen::Affine3f::LinearMatrixType rotation, scale;
 		trans.computeRotationScaling(&rotation, &scale);
 		// Update internals
-		pos = trans.translation();
+		pos = trans.translation().eval();
 		rot = Eigen::Quaternionf(rotation);
 		scl = scale.diagonal();
 	}

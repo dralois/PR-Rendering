@@ -85,23 +85,11 @@ target_link_libraries(BlenderLib PRIVATE Boost::python37)
 include(AddBlender)
 include(AddAppleseed)
 
-# TODO
 # Add dependencies
-# AddBlender(BlenderLib ${PROJECT_EXTERNAL_DIR}/blender)
-# AddAppleseed(BlenderLib ${PROJECT_EXTERNAL_DIR}/appleseed)
+AddBlender(BlenderLib ${CMAKE_CURRENT_SOURCE_DIR}/python/BlenderModule)
+AddAppleseed(BlenderLib)
 
 # Add linker flags on Linux
 if(UNIX)
     target_link_options(BlenderLib PRIVATE -lboost_python37)
 endif()
-
-# Add dll copy project
-include(ContentHelpers)
-# Add copy target
-add_custom_target(CopyDlls${PROJECT_NAME} COMMENT "Copies required dlls" VERBATIM)
-# Add copy commands
-CopyContent(CopyDlls${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR}/Debug ${CMAKE_CURRENT_BINARY_DIR}/Release)
-# Make library depend on it
-add_dependencies(BlenderLib CopyDlls${PROJECT_NAME})
-# Hide in IDE folder
-set_target_properties(CopyDlls${PROJECT_NAME} PROPERTIES FOLDER "DLL Copy")

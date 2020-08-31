@@ -101,14 +101,14 @@ function(CopyContent TO_TARGET DLL_DEBUG DLL_RELEASE)
     # Add post-build debug version copy commands to target
     foreach(DLL ${DLL_LIST_DEBUG})
         add_custom_command(TARGET ${TO_TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${DLL_DEBUG}/${DLL}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${DLL}"
+            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Debug>,copy,true> "${DLL_DEBUG}/${DLL}" "$<TARGET_FILE_DIR:${TO_TARGET}>/${DLL}"
             VERBATIM
         )
     endforeach()
     # Same for release versions
     foreach(DLL ${DLL_LIST_RELEASE})
         add_custom_command(TARGET ${TO_TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Release>,copy,true> "${DLL_RELEASE}/${DLL}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${DLL}"
+            COMMAND ${CMAKE_COMMAND} -E $<IF:$<CONFIG:Release>,copy,true> "${DLL_RELEASE}/${DLL}" "$<TARGET_FILE_DIR:${TO_TARGET}>/${DLL}"
             VERBATIM
         )
     endforeach()

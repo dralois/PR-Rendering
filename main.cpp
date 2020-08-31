@@ -44,6 +44,7 @@ int main(int argc, char** argv)
 		boost::filesystem::create_directories(finalDir / "rgb");
 		boost::filesystem::create_directories(finalDir / "depth");
 		boost::filesystem::create_directories(finalDir / "segs");
+		boost::filesystem::create_directories(finalDir / "annotations");
 	}
 
 	// Create temporary output directories

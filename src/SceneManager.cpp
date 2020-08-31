@@ -6,27 +6,8 @@
 
 #define USE_AO 1
 
-#define PI (3.1415926535897931f)
-#define PIOVER2 (1.5707963267948966f)
-
-#define RENDERFILE_BEGIN \
-{\
-	rapidjson::StringBuffer renderstring;\
-	JSONWriter writer(renderstring);\
-	writer.StartArray();
-
-#define RENDERFILE_WRITER writer
-
-#define RENDERFILE_PROCESS \
-	writer.EndArray();\
-	std::string renderfile(renderstring.GetString());\
-	pBlender->ProcessRenderfile(renderfile);\
-}
-
-#define RENDERFILE_SINGLE(builder, cams, out, start) \
-	RENDERFILE_BEGIN\
-	builder(RENDERFILE_WRITER, cams, out, start);\
-	RENDERFILE_PROCESS
+#define PTR_RELEASE(x) if(x != NULL) { delete x; x = NULL; }
+#define VEC_RELEASE(x) for(auto curr : x) { delete curr; } x.clear();
 
 using namespace physx;
 
@@ -156,26 +137,21 @@ void SceneManager::X_PxCreateObjs()
 //---------------------------------------
 void SceneManager::X_CleanupScene()
 {
-	// Cleanup object meshes & physx meshes
-	for (auto currPx : vecpPxMeshCurrObjs)
-	{
-		delete currPx;
-	}
-	for (auto currRender : vecpRenderMeshCurrObjs)
-	{
-		delete currRender;
-	}
-	vecpPxMeshCurrObjs.clear();
-	vecpRenderMeshCurrObjs.clear();
+	// Cleanup annotations
+	PTR_RELEASE(pAnnotations);
 
-	// Cleanup scene mesh & physx mesh & physx
-	delete pRenderMeshScene;
-	pRenderMeshScene = NULL;
-	if (pPxMeshScene)
-	{
-		delete pPxMeshScene;
-		pPxMeshScene = NULL;
-	}
+	// Cleanup lights
+	VEC_RELEASE(vecpLights);
+
+	// Cleanup object meshes & physx meshes
+	VEC_RELEASE(vecpPxMeshCurrObjs);
+	VEC_RELEASE(vecpRenderMeshCurrObjs);
+
+	// Cleanup scene render & physx mesh
+	PTR_RELEASE(pRenderMeshScene);
+	PTR_RELEASE(pPxMeshScene);
+
+	// Cleanup physx scene
 	if (pPxScene)
 	{
 		pPxScene->flushSimulation();
@@ -186,9 +162,6 @@ void SceneManager::X_CleanupScene()
 
 	// Reload Blender rendering
 	pBlender->UnloadProcesses();
-
-	// Finish annotation
-	pAnnotations->End();
 }
 
 //---------------------------------------
@@ -220,10 +193,10 @@ void SceneManager::X_PxSaveSimResults()
 	{
 		// Get position & transform to Blender system (90* around X)
 		PxTransform pose = currPx->GetTransform();
-		PxTransform adjustPos = PxTransform(PxQuat(PIOVER2, PxVec3(1.0f, 0.0f, 0.0f))).transform(pose);
+		PxTransform adjustPos = PxTransform(PxQuat(PxHalfPi, PxVec3(1.0f, 0.0f, 0.0f))).transform(pose);
 		// Transform rotation to Blender system (-90* around local X)
 		PxVec3 localX = adjustPos.q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-		PxTransform adjustRot = PxTransform(PxQuat(-PIOVER2, localX)).transform(adjustPos);
+		PxTransform adjustRot = PxTransform(PxQuat(-PxHalfPi, localX)).transform(adjustPos);
 
 		// Save & create mesh for rendering
 		RenderMesh* currMesh = new RenderMesh(*vecpRenderMeshObjs[currPx->GetMeshId()]);
@@ -538,7 +511,7 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	RENDERFILE_BEGIN;
 	X_BuildObjectsDepth(RENDERFILE_WRITER, cams, objectDepths, start);
 	X_BuildSceneDepth(RENDERFILE_WRITER, cams, sceneDepths, start);
-	RENDERFILE_PROCESS;
+	RENDERFILE_PROCESS(pBlender);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -588,7 +561,7 @@ void SceneManager::X_RenderSegments(
 	objectLabels.reserve(cams.size());
 
 	// Create & process renderfile
-	RENDERFILE_SINGLE(X_BuildObjectsLabel, cams, objectLabels, start);
+	RENDERFILE_SINGLE(pBlender, X_BuildObjectsLabel, cams, objectLabels, start);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -606,10 +579,20 @@ void SceneManager::X_RenderSegments(
 		segResult.SetTexture(ComputeSegmentMask(objectLabels[curr].GetTexture(), masks[curr].GetTexture()));
 		segResult.StoreTexture();
 
-		// Create & store annotations
+		// Create annotation file
+		pAnnotations->Begin(start + curr);
+		// Add all visible objects
 		for (auto currMesh : vecpRenderMeshCurrObjs)
-			pAnnotations->Write(currMesh, objectLabels[curr].GetTexture(),
-				segResult.GetTexture(), camBlueprint, start + curr);
+		{
+			pAnnotations->Write(
+				currMesh,
+				objectLabels[curr].GetTexture(),
+				segResult.GetTexture(),
+				camBlueprint
+			);
+		}
+		// Store & close
+		pAnnotations->End();
 	}
 }
 
@@ -630,10 +613,10 @@ void SceneManager::X_RenderPBRBlend(
 
 	// Create & process ambient occlusion renderfile
 #if USE_AO
-	RENDERFILE_SINGLE(X_BuildObjectsAO, cams, objectsAO, start);
+	RENDERFILE_SINGLE(pBlender, X_BuildObjectsAO, cams, objectsAO, start);
 #endif
 	// Create & process PBR renderfile
-	RENDERFILE_SINGLE(X_BuildObjectsPBR, cams, objectPBRs, start);
+	RENDERFILE_SINGLE(pBlender, X_BuildObjectsPBR, cams, objectPBRs, start);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -673,7 +656,7 @@ void SceneManager::X_RenderPBRBlend(
 			targetSize)
 		);
 		blendResult.StoreTexture();
-	}
+}
 }
 
 //---------------------------------------
@@ -685,11 +668,7 @@ void SceneManager::X_PlaceLights(
 )
 {
 	// Clean up existing lights
-	for (auto curr : vecpLights)
-	{
-		delete curr;
-	}
-	vecpLights.clear();
+	VEC_RELEASE(vecpLights);
 
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -782,8 +761,8 @@ int SceneManager::ProcessNext(int imageCount)
 	{
 		pBlender->LogPerformance("Iteration " + std::to_string(iter + 1));
 
-		// Create / open annotation file
-		pAnnotations->Begin(*pRenderSettings);
+		// Create annotations manager
+		pAnnotations = new AnnotationsManager(*pRenderSettings);
 
 		// Create scene render mesh
 		float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
@@ -910,9 +889,6 @@ SceneManager::SceneManager(
 	std::random_device randDev;
 	randGen = std::default_random_engine(randDev());
 
-	// Create annotations manager
-	pAnnotations = new AnnotationsManager();
-
 	// Create Blender render interface
 	pBlender = new Blender::BlenderRenderer();
 }
@@ -925,16 +901,6 @@ SceneManager::~SceneManager()
 	// Meshes & simulation
 	X_CleanupScene();
 
-	// Renderer etc.
-	delete pBlender;
-	pBlender = NULL;
-	delete pAnnotations;
-	pAnnotations = NULL;
-
-	// Lights
-	for (auto currLight : vecpLights)
-	{
-		delete currLight;
-	}
-	vecpLights.clear();
+	// Renderer
+	PTR_RELEASE(pBlender);
 }
