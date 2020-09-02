@@ -7,7 +7,7 @@
 - The objects array should contain all objects that can be rendered
 
 ## Required Libraries & Setup
-Most of the required libraries are automatically downloaded, compiled and installed correctly, however the requirements listed bellow need to be installed manually.
+Most of the required libraries are automatically downloaded, compiled and installed correctly, however the requirements listed bellow need to be installed manually. On Linux, Clang-9 is needed to compile PhysX. For everything else GCC-9 is fine. On Windows, Visual Studio 19 has been tested and works, although earlier versions should be fine, too.
 
 ### [CMake 3.17](https://cmake.org/download/)
 - Download & install at least version 3.15, preferrably 3.17
@@ -31,12 +31,32 @@ Most of the required libraries are automatically downloaded, compiled and instal
 - Most Linux distributions include boost
 - On Windows it is necessary to install / build boost
 - Boost is statically linked, build / install accordingly
-- The required modules are **System, Thread, Filesystem, Python (3.7!)**
+- The required modules are **System, Thread, Filesystem, Python (3.7, may have to be built manually!)**
 
 ### [3D Scan Dataset](https://waldjohannau.github.io/RIO/)
 - Download script is also provided in data/3Rscan. It requires python2 to run smoothly
-- To prepare the dataset, run the "unpack.sh" script and set path to the downloaded data
+- To prepare the dataset, run the _unpack.<span></span>sh_ script and set path to the downloaded data
 - Set path of 3RScan in the config.json
 
-### [3D Objects]()
-- The 3D objects may be provided at a later date
+### [3D Objects](https://www.alexanderepple.de/pr-rendering-objects-download/)
+- The 3D objects can be downloaded through the provided link
+- Unpack the zip file into a folder and setup the config file
+- Other meshes may be used instead, supported are _Wavefront_ and _glTF_.
+
+## Building
+
+## Windows
+- Create a new folder (e.g. _build_) and setup cmake
+- Click generate & wait until all dependencies have been built
+- Build the project using Visual Studio
+
+## Linux
+- Create a new folder (e.g. _build_)
+- Generate the project from root directory
+```shell
+cmake -S ./ -B ./build -DCMAKE_BUILD_TYPE=Release
+```
+- Compile the project in _build_ folder
+```shell
+cd build && make -j 16
+```

@@ -29,7 +29,11 @@ function(AddRapidJSON TO_TARGET INSTALL_PATH)
             )
             # Build content
             InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH} dev)
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH} dev)
+
+            # Debug only on Windows
+            if(WIN32)
+                InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH} dev)
+            endif()
         endif()
         # Load package
         CheckRapidJSON(CHECK_FOUND)

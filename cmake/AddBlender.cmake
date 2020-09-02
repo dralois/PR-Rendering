@@ -25,13 +25,13 @@ function(AddBlender TO_TARGET MODULE_DIR)
     endif()
 
     # Add copy command
-    add_custom_command(TARGET ${TO_TARGET} PRE_BUILD
+    add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${${CONTENT_NAME}_SOURCE_DIR} $<TARGET_FILE_DIR:${TO_TARGET}>
         VERBATIM
     )
 
     # Copy BlenderModule
-    add_custom_command(TARGET ${TO_TARGET} PRE_BUILD
+    add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${MODULE_DIR} $<TARGET_FILE_DIR:${TO_TARGET}>/BlenderModule
         VERBATIM
     )

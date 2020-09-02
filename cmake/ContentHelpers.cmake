@@ -25,6 +25,7 @@ function(BuildContent BIN_DIR CONFIG)
     execute_process(COMMAND ${CMAKE_COMMAND}
                     --build ${BIN_DIR}
                     --config ${CONFIG}
+                    --parallel 16
                     WORKING_DIRECTORY ${BIN_DIR}
                     COMMAND_ECHO STDOUT
     )

@@ -67,16 +67,22 @@ function(AddOpenCV TO_TARGET INSTALL_PATH)
             )
             # Build opencv
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
             InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+
+            # Debug only on Windows
+            if(WIN32)
+                BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
+                InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+            endif()
         endif()
         # Load package with components
         CheckOpenCV(CHECK_FOUND ${COMPONENTS})
     endif()
 
     # Copy required dlls
-    CopyContent(${TO_TARGET} ${INSTALL_PATH}/x64/vc16/bin ${INSTALL_PATH}/x64/vc16/bin)
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/x64/vc16/bin ${INSTALL_PATH}/x64/vc16/bin)
+    endif()
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE ${COMPONENTS})

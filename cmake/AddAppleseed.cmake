@@ -29,7 +29,7 @@ function(AddAppleseed TO_TARGET)
     endif()
 
     # Add zip command
-    add_custom_command(TARGET ${TO_TARGET} PRE_BUILD
+    add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E tar cf $<TARGET_FILE_DIR:${TO_TARGET}>/blenderseed.zip --format=zip -- .
         WORKING_DIRECTORY ${AS_SOURCE_DIR}
         VERBATIM

@@ -53,7 +53,7 @@ target_include_directories(PRRendering PRIVATE include)
 # Find & add boost
 set(Boost_ADDITIONAL_VERSIONS "1.73.0")
 find_package(Boost REQUIRED system thread filesystem)
-target_link_libraries(PRRendering PRIVATE Boost::thread Boost::filesystem)
+target_link_libraries(PRRendering PRIVATE Boost::system Boost::thread Boost::filesystem)
 
 # Set external path
 set(PROJECT_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
@@ -71,13 +71,8 @@ AddAssimp(PRRendering ${PROJECT_EXTERNAL_DIR}/assimp)
 AddOpenCV(PRRendering ${PROJECT_EXTERNAL_DIR}/opencv
     opencv_core opencv_highgui opencv_imgproc opencv_objdetect)
 AddPhysX(PRRendering ${PROJECT_EXTERNAL_DIR}/physx
-    PhysX::PhysX PhysX::PhysXCommon PhysX::PhysXCooking PhysX::PhysXExtensions PhysX::PhysXFoundation PhysX::PhysXPvdSDK)
+    PhysX::PhysX PhysX::PhysXPvdSDK PhysX::PhysXExtensions PhysX::PhysXCooking PhysX::PhysXCommon PhysX::PhysXFoundation)
 AddRapidJSON(PRRendering ${PROJECT_EXTERNAL_DIR}/rapidjson)
-
-# Finally add linker flags on Linux
-if(UNIX)
-    target_link_options(PRRendering PRIVATE -pthread -ldl -lboost_system -lboost_thread -lboost_filesystem)
-endif()
 
 ###########################################################################################
 # Additional libraries

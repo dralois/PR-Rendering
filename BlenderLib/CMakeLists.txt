@@ -66,7 +66,8 @@ set(Boost_ADDITIONAL_VERSIONS "1.73.0")
 set(Boost_USE_DEBUG_PYTHON OFF)
 
 # Find python for development
-find_package(Python 3.7 REQUIRED Development)
+find_package(Python 3.7 EXACT REQUIRED Development)
+
 # Bug: Enforce no debug on Windows
 if(WIN32)
     set_target_properties(Python::Python PROPERTIES
@@ -74,6 +75,7 @@ if(WIN32)
                         IMPORTED_LOCATION_DEBUG "${Python_RUNTIME_LIBRARY_RELEASE}"
     )
 endif()
+
 # Add python development library
 target_link_libraries(BlenderLib PRIVATE Python::Python)
 
@@ -88,8 +90,3 @@ include(AddAppleseed)
 # Add dependencies
 AddBlender(BlenderLib ${CMAKE_CURRENT_SOURCE_DIR}/python/BlenderModule)
 AddAppleseed(BlenderLib)
-
-# Add linker flags on Linux
-if(UNIX)
-    target_link_options(BlenderLib PRIVATE -lboost_python37)
-endif()

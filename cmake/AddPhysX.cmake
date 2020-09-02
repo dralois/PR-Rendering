@@ -19,8 +19,7 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
         # Download source code
         FetchContent_Declare(${CONTENT_NAME}
                             GIT_REPOSITORY https://github.com/phcerdan/PhysX.git
-                            GIT_TAG cmake_for_easier_integration
-                            GIT_SHALLOW True
+                            GIT_TAG 4bdc673eba67ec7510a5c366b0c11b9f685d0ff3
                             GIT_PROGRESS True
         )
         # Make available
@@ -40,24 +39,32 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
                     file(APPEND ${${CONTENT_NAME}_SOURCE_DIR}/physx/source/CMakeLists.txt "${STRIPPED}\n")
                 endif()
             endforeach()
+            # Linux compiler needs to be Clang 9
+            if(WIN32)
+                set(EXTRA_FLAGS NV_USE_STATIC_WINCRT=OFF NV_USE_DEBUG_WINCRT=OFF)
+            else()
+                set(EXTRA_FLAGS CMAKE_C_COMPILER=clang-9 CMAKE_CXX_COMPILER=clang++-9 PX_GENERATE_SOURCE_DISTRO=ON NV_USE_GAMEWORKS_OUTPUT_DIRS=OFF)
+            endif()
             # Configure physx release
             CreateContent(${${CONTENT_NAME}_SOURCE_DIR}/physx ${${CONTENT_NAME}_BINARY_DIR}
                         CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-                        NV_USE_STATIC_WINCRT=OFF
-                        NV_USE_DEBUG_WINCRT=OFF
+                        ${EXTRA_FLAGS}
             )
             # Build physx release
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
             InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
-            # Configure physx debug
-            CreateContent(${${CONTENT_NAME}_SOURCE_DIR}/physx ${${CONTENT_NAME}_BINARY_DIR}
-                        CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-                        NV_USE_STATIC_WINCRT=OFF
-                        NV_USE_DEBUG_WINCRT=ON
-            )
-            # Build physx debug
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+
+            # Debug only on Windows
+            if(WIN32)
+                # Configure physx debug
+                CreateContent(${${CONTENT_NAME}_SOURCE_DIR}/physx ${${CONTENT_NAME}_BINARY_DIR}
+                            CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
+                            ${EXTRA_FLAGS}
+                )
+                # Build physx debug
+                BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
+                InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+            endif()
         endif()
         # Load package with components
         CheckPhysX(CHECK_FOUND ${COMPONENTS})
@@ -100,8 +107,14 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
     get_filename_component(GPU_DEBUG_DLL ${GPU_DEBUG_DLL} DIRECTORY)
     get_filename_component(GPU_RELEASE_DLL ${GPU_RELEASE_DLL} DIRECTORY)
     CopyContent(${TO_TARGET} ${GPU_DEBUG_DLL} ${GPU_RELEASE_DLL})
+
     # Copy other required dlls
-    CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
+    else()
+        # CUDA must be available..
+        # target_link_libraries(${TO_TARGET} PRIVATE ${INSTALL_PATH}/PhysX/bin/release/libPhysXGpu_64.so)
+    endif()
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE ${COMPONENTS})

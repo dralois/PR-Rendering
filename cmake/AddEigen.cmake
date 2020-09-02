@@ -28,9 +28,13 @@ function(AddEigen TO_TARGET INSTALL_PATH)
             )
             # Build eigen
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
             InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+
+            # Debug only on Windows
+            if(WIN32)
+                BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
+                InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+            endif()
         endif()
         # Load package
         CheckEigen(CHECK_FOUND)

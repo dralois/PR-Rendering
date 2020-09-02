@@ -35,16 +35,22 @@ function(AddAssimp TO_TARGET INSTALL_PATH)
             )
             # Build assimp
             BuildContent(${${CONTENT_NAME}_BINARY_DIR} "release")
-            BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
             InstallContent(${${CONTENT_NAME}_BINARY_DIR} "release" ${INSTALL_PATH})
-            InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+
+            # Debug only on Windows
+            if(WIN32)
+                BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")
+                InstallContent(${${CONTENT_NAME}_BINARY_DIR} "debug" ${INSTALL_PATH})
+            endif()
         endif()
         # Load package
         CheckAssimp(CHECK_FOUND)
     endif()
 
     # Copy required dlls
-    CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
+    if(WIN32)
+        CopyContent(${TO_TARGET} ${INSTALL_PATH}/bin ${INSTALL_PATH}/bin)
+    endif()
 
     # Link and include components
     target_link_libraries(${TO_TARGET} PRIVATE assimp::assimp)
@@ -55,6 +61,8 @@ function(CheckAssimp CHECK_FOUND)
     find_package(assimp
                 PATHS
                 ${INSTALL_PATH}
+                PATH_SUFFIXES
+                lib
                 NO_DEFAULT_PATH
     )
     # Return result
