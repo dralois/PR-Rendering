@@ -66,11 +66,30 @@ static VectorType SafeGetEigenVector(
 		{
 			for (int i = 0; i < out.rows(); ++i)
 			{
-				out[i] = val[i].Get<VectorType::value_type>();
+				out[i] = val[i].Get<typename VectorType::value_type>();
 			}
 		}
 	}
 	return out;
+}
+
+//---------------------------------------
+// Fail-safe json value get
+//---------------------------------------
+template<typename T>
+static T SafeGetValue(
+	const rapidjson::Value& val
+)
+{
+	// Return value if is of type
+	if (val.Is<T>())
+	{
+		return val.Get<T>();
+	}
+	else
+	{
+		return T();
+	}
 }
 
 //---------------------------------------
@@ -87,26 +106,7 @@ static T SafeGet(
 	// Return value if found or default
 	if (member != doc.MemberEnd())
 	{
-		return SafeGet<T>(member->value);
-	}
-	else
-	{
-		return T();
-	}
-}
-
-//---------------------------------------
-// Fail-safe json value get
-//---------------------------------------
-template<typename T>
-static T SafeGet(
-	const rapidjson::Value& val
-)
-{
-	// Return value if is of type
-	if (val.Is<T>())
-	{
-		return val.Get<T>();
+		return SafeGetValue<T>(member->value);
 	}
 	else
 	{

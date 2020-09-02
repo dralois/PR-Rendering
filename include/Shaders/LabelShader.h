@@ -23,7 +23,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	void LabelShader::X_AddToJSON(JSONWriterRef writer) override
+	void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("maskRed");
 		writer.Int(maskRed);

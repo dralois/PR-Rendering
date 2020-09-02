@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <random>
+#include <thread>
 
 #pragma warning(push, 0)
 #include <boost/algorithm/string.hpp>

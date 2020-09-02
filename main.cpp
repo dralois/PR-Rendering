@@ -1,5 +1,3 @@
-#pragma once
-
 #include <iostream>
 
 #pragma warning(push, 0)

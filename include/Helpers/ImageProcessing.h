@@ -170,7 +170,7 @@ static cv::Rect ComputeBoundingBox(
 //---------------------------------------
 // Converts packed depth to float
 //---------------------------------------
-static auto UnpackDepth = [&](cv::Mat& packed) -> cv::Mat
+static auto UnpackDepth = [](cv::Mat& packed) -> cv::Mat
 {
 	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_32FC1);
 	// Unpack into one channel, convert no hit (0.0f) to inf
@@ -184,7 +184,7 @@ static auto UnpackDepth = [&](cv::Mat& packed) -> cv::Mat
 //---------------------------------------
 // Converts packed label to rgb
 //---------------------------------------
-static auto UnpackLabel = [&](cv::Mat& packed) -> cv::Mat
+static auto UnpackLabel = [](cv::Mat& packed) -> cv::Mat
 {
 	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_8UC3);
 	// Unpack float and convert to rgb
@@ -198,7 +198,7 @@ static auto UnpackLabel = [&](cv::Mat& packed) -> cv::Mat
 //---------------------------------------
 // Converts packed ao to [0-1]
 //---------------------------------------
-static auto UnpackAO = [&](cv::Mat& packed) -> cv::Mat
+static auto UnpackAO = [](cv::Mat& packed) -> cv::Mat
 {
 	cv::Mat unpacked = cv::Mat::ones(packed.rows, packed.cols, CV_32FC1);
 	// Load rgb and convert to float [0-1]

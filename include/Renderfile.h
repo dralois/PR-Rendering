@@ -138,55 +138,55 @@ public:
 	}
 
 	// Position
-	inline const Eigen::Vector3f RenderfileObject::GetPosition() const
+	inline const Eigen::Vector3f GetPosition() const
 	{
 		Eigen::Vector3f pos, scl;
 		Eigen::Quaternionf rot;
 		X_GetPosRotScale(pos, rot, scl);
 		return pos;
 	}
-	virtual const Eigen::Vector3f RenderfileObject::GetPosition() override
+	virtual const Eigen::Vector3f GetPosition() override
 	{
 		X_GetPosRotScale(meshPos, meshRot, meshScale);
 		return meshPos;
 	}
-	virtual void RenderfileObject::SetPosition(Eigen::Vector3f pos) override
+	virtual void SetPosition(Eigen::Vector3f pos) override
 	{
 		X_SetPosRotScale(&pos, NULL, NULL);
 	}
 
 	// Rotation
-	inline const Eigen::Quaternionf RenderfileObject::GetRotation() const
+	inline const Eigen::Quaternionf GetRotation() const
 	{
 		Eigen::Vector3f pos, scl;
 		Eigen::Quaternionf rot;
 		X_GetPosRotScale(pos, rot, scl);
 		return rot;
 	}
-	virtual const Eigen::Quaternionf RenderfileObject::GetRotation() override
+	virtual const Eigen::Quaternionf GetRotation() override
 	{
 		X_GetPosRotScale(meshPos, meshRot, meshScale);
 		return meshRot;
 	}
-	virtual void RenderfileObject::SetRotation(Eigen::Quaternionf rot) override
+	virtual void SetRotation(Eigen::Quaternionf rot) override
 	{
 		X_SetPosRotScale(NULL, &rot, NULL);
 	}
 
 	// Scale
-	inline const Eigen::Vector3f RenderfileObject::GetScale() const
+	inline const Eigen::Vector3f GetScale() const
 	{
 		Eigen::Vector3f pos, scl;
 		Eigen::Quaternionf rot;
 		X_GetPosRotScale(pos, rot, scl);
 		return scl;
 	}
-	virtual const Eigen::Vector3f RenderfileObject::GetScale() override
+	virtual const Eigen::Vector3f GetScale() override
 	{
 		X_GetPosRotScale(meshPos, meshRot, meshScale);
 		return meshScale;
 	}
-	virtual void RenderfileObject::SetScale(Eigen::Vector3f scale) override
+	virtual void SetScale(Eigen::Vector3f scale) override
 	{
 		X_SetPosRotScale(NULL, NULL, &scale);
 	}

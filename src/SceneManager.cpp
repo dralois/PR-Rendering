@@ -43,17 +43,25 @@ void SceneManager::X_PxCreateScene()
 		)
 	);
 
-	bool cudaAvailable = PxManager::GetInstance().GetCudaManager() != nullptr;
 	// Standart gravity & continuous collision detection & GPU rigidbodies
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
-	sceneDesc.flags |= PxSceneFlag::eENABLE_STABILIZATION | PxSceneFlag::eENABLE_CCD |
-		(cudaAvailable ? PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM : PxSceneFlag::eENABLE_PCM);
 	sceneDesc.broadPhaseType = PxManager::GetInstance().GetCudaManager() ? PxBroadPhaseType::eGPU : PxBroadPhaseType::eABP;
 	sceneDesc.cpuDispatcher = PxDefaultCpuDispatcherCreate(std::thread::hardware_concurrency());
 	sceneDesc.cudaContextManager = PxManager::GetInstance().GetCudaManager();
 	sceneDesc.filterShader = PxManager::CCDFilterShader;
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
 	sceneDesc.gpuMaxNumPartitions = 8;
+
+	// Enable GPU rigidbodies if available
+	if(PxManager::GetInstance().GetCudaManager())
+	{
+		sceneDesc.flags = PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_STABILIZATION | PxSceneFlag::eENABLE_CCD | PxSceneFlag::eENABLE_PCM;
+	}
+	else
+	{
+		sceneDesc.flags = PxSceneFlag::eENABLE_STABILIZATION | PxSceneFlag::eENABLE_CCD | PxSceneFlag::eENABLE_PCM;
+	}
+
 	// Objects should never spawn outside the scene bounds
 	sceneDesc.sanityBounds = pPxMeshScene->GetGlobalBounds();
 
@@ -315,7 +323,8 @@ void SceneManager::X_BuildSceneDepth(
 	if (toRender.size() > 0)
 	{
 		// Add configured scene to renderfile
-		X_ConvertToRenderfile(writer, std::vector<RenderMesh*>{pRenderMeshScene}, toRender);
+		std::vector<RenderMesh*> meshes{pRenderMeshScene};
+		X_ConvertToRenderfile(writer, meshes, toRender);
 	}
 }
 

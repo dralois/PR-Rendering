@@ -54,8 +54,8 @@ public:
 	inline bool GetStoreBlend() const { return storeBlend; }
 	inline Eigen::Vector2i GetRenderResolution() const { return renderResolution; }
 	inline int GetAntiAliasingFactor() const { return antiAliasingFactor; }
-	inline ReferencePath GetLogLevel() const { return logLevel; }
-	inline ReferencePath GetPluginDir() const { return pluginPath; }
+	inline ModifiablePath GetLogLevel() const { return logLevel; }
+	inline ModifiablePath GetPluginDir() const { return pluginPath; }
 	inline const std::vector<ModifiablePath>& GetShaderDirs() const { return shaderDirs; }
 	inline const Intrinsics& GetIntrinsics() const { return customIntrinsics; }
 
@@ -73,10 +73,10 @@ public:
 
 	// Paths
 	inline void SetScenePath(ReferencePath path) { scenePath = path; }
-	inline ReferencePath GetScenePath() const { return scenePath; }
-	inline ReferencePath GetMeshesPath() const { return meshesPath; }
-	inline ReferencePath GetTemporaryPath() const { return tempPath; }
-	inline ReferencePath GetFinalPath() const { return finalPath; }
+	inline ModifiablePath GetScenePath() const { return scenePath; }
+	inline ModifiablePath GetMeshesPath() const { return meshesPath; }
+	inline ModifiablePath GetTemporaryPath() const { return tempPath; }
+	inline ModifiablePath GetFinalPath() const { return finalPath; }
 
 	inline ModifiablePath GetImagePath(
 		const std::string& category,

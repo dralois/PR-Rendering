@@ -22,7 +22,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	void DepthShader::X_AddToJSON(JSONWriterRef writer) override
+	void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("clipNear");
 		AddFloat(writer, camNear);

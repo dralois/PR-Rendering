@@ -48,11 +48,11 @@ void SimManager::X_LoadMeshes()
 			{
 				// Build paths
 				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
-				meshPath.append(SafeGet<const char*>(objects[i]));
+				meshPath.append(SafeGetValue<const char*>(objects[i]));
 				meshPath.concat(".");
 				meshPath.concat(format.empty() ? "obj" : format);
 				ModifiablePath texturePath(pRenderSettings->GetMeshesPath());
-				texturePath.append(SafeGet<const char*>(objects[i]));
+				texturePath.append(SafeGetValue<const char*>(objects[i]));
 				texturePath.concat("_color.png");
 
 				// Mesh file must exist
