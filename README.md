@@ -45,12 +45,15 @@ Most of the required libraries are automatically downloaded, compiled and instal
 
 ## Building
 
-## Windows
+### Windows
 - Create a new folder (e.g. _build_) and setup cmake
 - Click generate & wait until all dependencies have been built
 - Build the project using Visual Studio
 
-## Linux
+### Linux
+- Make sure both Clang 9 & GCC 9 are installed
+- Make sure boost & boost::python37 are available
+- Make sure python 3.7 dev is available
 - Create a new folder (e.g. _build_)
 - Generate the project from root directory
 ```shell
