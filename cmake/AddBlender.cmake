@@ -24,13 +24,13 @@ function(AddBlender TO_TARGET MODULE_DIR)
         FetchContent_Populate(${CONTENT_NAME})
     endif()
 
-    # Add copy command
+    # Add copy Blender
     add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${${CONTENT_NAME}_SOURCE_DIR} $<TARGET_FILE_DIR:${TO_TARGET}>
         VERBATIM
     )
 
-    # Copy BlenderModule
+    # Add copy BlenderModule
     add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${MODULE_DIR} $<TARGET_FILE_DIR:${TO_TARGET}>/BlenderModule
         VERBATIM

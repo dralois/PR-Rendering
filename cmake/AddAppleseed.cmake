@@ -26,12 +26,17 @@ function(AddAppleseed TO_TARGET)
     FetchContent_GetProperties(${CONTENT_NAME})
     if(NOT ${CONTENT_NAME}_POPULATED)
         FetchContent_Populate(${CONTENT_NAME})
+        # Build zip
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${AS_SOURCE_DIR}/out
+            COMMAND ${CMAKE_COMMAND} -E tar cfv ${AS_SOURCE_DIR}/out/blenderseed.zip --format=zip -- blenderseed
+            WORKING_DIRECTORY ${AS_SOURCE_DIR}
+        )
     endif()
 
-    # Add zip command
+    # Add copy Appleseed
     add_custom_command(TARGET ${TO_TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E tar cf $<TARGET_FILE_DIR:${TO_TARGET}>/blenderseed.zip --format=zip -- .
-        WORKING_DIRECTORY ${AS_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${AS_SOURCE_DIR}/out/blenderseed.zip $<TARGET_FILE_DIR:${TO_TARGET}>
         VERBATIM
     )
 endfunction()

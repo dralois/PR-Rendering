@@ -46,6 +46,14 @@ endif()
 # Make includes available
 target_include_directories(PRRendering PRIVATE include)
 
+# Configure output
+set_target_properties(PRRendering PROPERTIES
+                    PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    COMPILE_PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+)
+
 ###########################################################################################
 # External packages
 ###########################################################################################

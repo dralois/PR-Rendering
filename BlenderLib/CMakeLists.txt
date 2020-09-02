@@ -53,6 +53,7 @@ target_include_directories(BlenderLib PRIVATE include/BlenderLib)
 # Configure output
 set_target_properties(BlenderLib PROPERTIES
                     PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+                    COMPILE_PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
                     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
                     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
 )
@@ -80,8 +81,8 @@ endif()
 target_link_libraries(BlenderLib PRIVATE Python::Python)
 
 # Find & add boost
-find_package(Boost REQUIRED python37)
-target_link_libraries(BlenderLib PRIVATE Boost::python37)
+find_package(Boost REQUIRED system filesystem python37)
+target_link_libraries(BlenderLib PRIVATE Boost::system Boost::filesystem Boost::python37)
 
 # Include cmake modules
 include(AddBlender)

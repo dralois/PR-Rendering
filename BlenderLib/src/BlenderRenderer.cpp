@@ -1,12 +1,23 @@
 #include <BlenderRenderer.h>
 
 #pragma warning(push, 0)
+#define HAVE_SNPRINTF
+
 #define BOOST_PYTHON_STATIC_LIB
 #include <boost/python/detail/wrap_python.hpp>
 #include <boost/python.hpp>
+
+#include <boost/filesystem.hpp>
 #pragma warning(pop)
 
 using namespace boost::python;
+using namespace boost::filesystem;
+
+#ifdef WIN32
+static wchar_t sep = ';';
+#else
+static wchar_t sep = ':';
+#endif
 
 namespace Blender
 {
@@ -43,7 +54,7 @@ namespace Blender
 				PyErr_Print();
 			}
 		}
-		
+
 		void ProcessRenderfile(
 			const std::string& renderfile
 		)
@@ -80,14 +91,24 @@ namespace Blender
 			{
 				// Start embedded interpreter
 				Py_Initialize();
+
+				// Append current directory to python path
+				path cwd = current_path();
+				std::wstring path(Py_GetPath());
+				path += sep + cwd.wstring();
+				Py_SetPath(path.c_str());
+
 				// Store main and globals
 				blenderModule = import("BlenderModule");
 				blenderNamespace = blenderModule.attr("__dict__");
+
 				// Setup embedded python for multiprocessing
 				object utils = import("BlenderModule.Utils");
 				utils.attr("SetupMultiprocessing")();
+
 				// Store logger for performance measuring
 				logger = import("BlenderModule.Utils.Logger");
+
 				// Store render manager instance
 				object renderModule = import("BlenderModule.Managers.RenderManager");
 				renderManager = renderModule.attr("RenderManager")();
