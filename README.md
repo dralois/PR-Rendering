@@ -1,10 +1,4 @@
-# PRRendering
-
-## Configuration & Options
-- The config.json file contains options & settings
-- The paths to the bodies & scenes need to be set to the respective folders
-- The output paths need to be set to some folder
-- The objects array should contain all objects that can be rendered
+# PRRendering Dataset Generator
 
 ## Required Libraries & Setup
 Most of the required libraries are automatically downloaded, compiled and installed correctly, however the requirements listed bellow need to be installed manually. On Linux, Clang-9 is needed to compile PhysX. For everything else GCC-9 is fine. On Windows, Visual Studio 19 has been tested and works, although earlier versions should be fine, too.
@@ -63,3 +57,32 @@ cmake -S ./ -B ./build -DCMAKE_BUILD_TYPE=Release
 ```shell
 cd build && make -j 16
 ```
+- Copy all PhysX libraries & the appleseed library from the _build_ folder to /lib/
+
+## Configuration & Options
+- The config.json file contains options & settings
+- The paths to the bodies & scenes need to be set to the respective folders
+- The output paths need to be set to some folder
+- The objects array should contain all objects that can be rendered
+
+## Scene & Meshes Layout
+
+### Meshes
+- Meshes need to be either of _.obj_ or _glTF_ format
+- Used meshes need to be listed name-only in the config file (_render\_objs_)
+- The mesh format needs to be specified in the config file (_mesh\_format_)
+    - The mesh scaling factor (_objs\_unit_) needs to be set so 1 unit = 1 meter
+    - If available, the diffuse albedo texture needs to be named objectname\__color.png_
+    - The meshes are read with the assumption that _Y=forward, Z=up_
+
+### Scenes
+- Each scene needs to have a _rgbd_ folder and a mesh in _.obj_ format
+- The scene mesh needs to be named _mesh.refined.obj_, it may be scaled using the config file (_scene\_unit_)
+    - The mesh is read with the assumption that _Y=forward, Z=up_
+    - If present, the diffuse albedo texture needs to be named _mesh.refined\_0.png_
+- The rgbd folder must contain a _\_info.txt_, containing details about the used camera intrinsics
+    - The camera width & height in pixels are named _m\_colorWidth = x_ & _m\_colorHeight = x_
+    - The intrinsics are a 4x4, rhs matrix named _m\_calibrationColorIntrinsic = x x ... (16 values)_
+    - Alternatively, the intrinsics may be set manually in the config file instead
+- The frames have to end with framenum\._color.jpg_ with corresponding framenum\._pose.txt_
+- The pose file has to contain only the 4x4, rhs extrinsics matrix, one row per line, with _Y=forward, Z=up_

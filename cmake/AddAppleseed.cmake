@@ -34,9 +34,17 @@ function(AddAppleseed TO_TARGET)
         )
     endif()
 
-    # Add copy Appleseed
+    # Add copy Blenderseed
     add_custom_command(TARGET ${TO_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${AS_SOURCE_DIR}/out/blenderseed.zip $<TARGET_FILE_DIR:${TO_TARGET}>
         VERBATIM
     )
+
+    # Add copy Appleseed library on Linux
+    if(UNIX)
+        add_custom_command(TARGET ${TO_TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${${CONTENT_NAME}_SOURCE_DIR}/appleseed/lib/libappleseed.so $<TARGET_FILE_DIR:${TO_TARGET}>
+            VERBATIM
+        )
+    endif()
 endfunction()

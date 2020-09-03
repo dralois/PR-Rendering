@@ -74,8 +74,9 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
     SubDirList(DEBUG_DIRS ${FETCHCONTENT_BASE_DIR}/${CONTENT_NAME}-src/physx/bin debug)
     SubDirList(RELEASE_DIRS ${FETCHCONTENT_BASE_DIR}/${CONTENT_NAME}-src/physx/bin release)
 
-    # Find actual GPU dlls
+    # PhysX GPU libraries
     if(WIN32)
+        # Find actual GPU dlls
         find_file(GPU_DEBUG_DLL
                 PhysXGpu_64.dll
                 PATHS
@@ -88,32 +89,35 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
                 ${RELEASE_DIRS}
                 NO_DEFAULT_PATH
         )
+        # Get directory of GPU dlls & add copy command
+        get_filename_component(GPU_DEBUG_DLL ${GPU_DEBUG_DLL} DIRECTORY)
+        get_filename_component(GPU_RELEASE_DLL ${GPU_RELEASE_DLL} DIRECTORY)
+        CopyContent(${TO_TARGET} ${GPU_DEBUG_DLL} ${GPU_RELEASE_DLL})
     else()
-        find_file(GPU_DEBUG_DLL
-                libPhysXGpu_64.so
-                PATHS
-                ${DEBUG_DIRS}
-                NO_DEFAULT_PATH
-        )
+        # Find actual GPU dll
         find_file(GPU_RELEASE_DLL
                 libPhysXGpu_64.so
                 HINTS
                 ${RELEASE_DIRS}
                 NO_DEFAULT_PATH
+        )
+        # Add copy command
+        add_custom_command(TARGET ${TO_TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GPU_RELEASE_DLL} $<TARGET_FILE_DIR:${TO_TARGET}>
+            VERBATIM
         )
     endif()
-
-    # Get directory of GPU dlls & add copy command
-    get_filename_component(GPU_DEBUG_DLL ${GPU_DEBUG_DLL} DIRECTORY)
-    get_filename_component(GPU_RELEASE_DLL ${GPU_RELEASE_DLL} DIRECTORY)
-    CopyContent(${TO_TARGET} ${GPU_DEBUG_DLL} ${GPU_RELEASE_DLL})
 
     # Copy other required dlls
     if(WIN32)
         CopyContent(${TO_TARGET} ${INSTALL_PATH}/PhysX/bin/debug ${INSTALL_PATH}/PhysX/bin/release)
     else()
-        # CUDA must be available..
-        # target_link_libraries(${TO_TARGET} PRIVATE ${INSTALL_PATH}/PhysX/bin/release/libPhysXGpu_64.so)
+        # Add copy dynamic libs to build directory
+        file(GLOB DLL_LIST CONFIGURE_DEPENDS "${INSTALL_PATH}/PhysX/bin/release/*.so")
+        add_custom_command(TARGET ${TO_TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_LIST} $<TARGET_FILE_DIR:${TO_TARGET}>
+            VERBATIM
+        )
     endif()
 
     # Link and include components
