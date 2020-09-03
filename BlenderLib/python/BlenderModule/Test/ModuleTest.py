@@ -5,7 +5,7 @@ import json
 # Runs test in main thread
 def TestBase():
     # Load json file
-    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
+    testScene = json.load(open("./BlenderModule/Test/module_test_base.json"))
     sceneStr = json.dumps(testScene)
     # Test rendering
     mgr = RenderManager()
@@ -14,8 +14,8 @@ def TestBase():
 # Runs renderfile update test in subprocess
 def TestUpdate():
     # Load json files
-    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
-    updateScene = json.load(open(".\\BlenderModule\\Test\\module_test_update.json"))
+    testScene = json.load(open("./BlenderModule/Test/module_test_base.json"))
+    updateScene = json.load(open("./BlenderModule/Test/module_test_update.json"))
     testStr = json.dumps(testScene)
     updateStr = json.dumps(updateScene)
     # Test rendering & updating
@@ -28,7 +28,7 @@ def TestUpdate():
 # Runs test multithreaded
 def TestMultithread():
     # Load json file
-    testScene = json.load(open(".\\BlenderModule\\Test\\module_test_base.json"))
+    testScene = json.load(open("./BlenderModule/Test/module_test_base.json"))
     sceneStr = json.dumps([testScene[0], testScene[0]])
     # Test rendering
     mgr = RenderManager()

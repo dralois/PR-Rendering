@@ -3,14 +3,14 @@
         "settings" :
         {
             "logLevel" : "info",
-            "pluginDir" : "..\\blenderseed.zip",
-            "shaderDirs" : [".\\Test\\Resources"]
+            "pluginDir" : "../blenderseed.zip",
+            "shaderDirs" : ["./Test/Resources"]
         },
         "cameras" : [
             {
                 "position" : [6.0, -3.0, 5.0],
                 "rotation" : [0.767653, 0.370819, 0.227351, 0.470652],
-                "resultFile" : ".\\Test\\Results\\test_render_update.png",
+                "resultFile" : "./Test/Results/test_render_update.png",
                 "resolution" : [1280, 720]
             }
         ],
@@ -18,7 +18,7 @@
             {
                 "position" : [-1.0, -1.0, 0.0],
                 "objectID" : 1,
-                "file" : ".\\Test\\Resources\\module_test.obj",
+                "file" : "./Test/Resources/module_test.obj",
                 "shader" :
                 {
                     "name" : "uv_to_color"
@@ -27,7 +27,7 @@
             {
                 "position" : [1.0, 1.0, 0.0],
                 "objectID" : 2,
-                "file" : ".\\Test\\Resources\\module_test.obj",
+                "file" : "./Test/Resources/module_test.obj",
                 "shader" :
                 {
                     "name" : "module_test",

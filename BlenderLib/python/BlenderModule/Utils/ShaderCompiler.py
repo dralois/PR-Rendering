@@ -11,8 +11,8 @@ logger = GetLogger()
 def CompileFolder(shaderFolder, modulePath, forceCompile):
     logger.info(f"Compiling shaders in folder {shaderFolder}")
     # Glob all osl files, compile and store them
-    for oslShader in glob.glob(shaderFolder + "\\*.osl"):
-        compiledFile = f"{FileDir(oslShader)}\\{FileName(oslShader)}.oso"
+    for oslShader in glob.glob(shaderFolder + "/*.osl"):
+        compiledFile = f"{FileDir(oslShader)}/{FileName(oslShader)}.oso"
         if not os.path.exists(compiledFile) or forceCompile:
             bytecode = CompileFile(FullPath(oslShader), modulePath)
             StoreBytecode(bytecode, compiledFile)
@@ -21,7 +21,7 @@ def CompileFolder(shaderFolder, modulePath, forceCompile):
 def CompileFile(sourceFile, modulePath):
     # Store original path
     tempPath = os.environ["PATH"]
-    pyDir = FullPath(f"{modulePath}\\appleseed\\lib")
+    pyDir = FullPath(f"{modulePath}/appleseed/lib")
 
     # Modify sys path and import tools
     sys.path.append(pyDir)
@@ -61,7 +61,7 @@ def StoreBytecode(bytecode, codeFile):
 
 # Ensures blenderseed is extracted & available
 def EnsureInstalled(modulePath, pluginPath):
-    if not os.path.exists(f"{modulePath}\\appleseed\\lib"):
+    if not os.path.exists(f"{modulePath}/appleseed/lib"):
         from zipfile import ZipFile
         with ZipFile(pluginPath, "r") as plugin:
             plugin.extractall(os.path.split(modulePath)[0])

@@ -5,16 +5,18 @@ import sys
 
 # Called from C++
 def SetupMultiprocessing():
-    # Set argv (not set for embedded interpreters)
-    sys.argv = [FullPath(f"{FileDir(__file__)}\\..\\__init__.py")]
-    # Deduce executable path
     from platform import system
-    exeFile = "python.exe" if system() == "Windows" else "bin\\python"
-    exePath = f"{os.path.split(FileDir(os.__file__))[0]}\\{exeFile}"
-    # Set executable path & start method
     from multiprocessing import set_executable, set_start_method
+    # Set argv (not set for embedded interpreters)
+    sys.argv = [FullPath(f"{FileDir(__file__)}/../__init__.py")]
+    # Determine executable path
+    if system() == "Windows":
+        exePath = f"{os.path.split(FileDir(os.__file__))[0]}/python.exe"
+    else:
+        exePath = "/usr/bin/python3.7"
+    # Set executable path & start method
+    set_start_method("spawn", True)
     set_executable(FullPath(exePath))
-    set_start_method("spawn")
 
 # Full path from (relative) path
 def FullPath(filePath):

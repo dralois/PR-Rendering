@@ -60,7 +60,7 @@ class Scene(object):
         self.__SetRaytracingSettings(currCam)
         # Store to blend file (last camera only)
         if self.__storeBlend and len(self.__renderQueue) == 0:
-            saveFile = f"{FileDir(currCam.CameraResultFile)}\\Scene.blend"
+            saveFile = f"{FileDir(currCam.CameraResultFile)}/Scene.blend"
             bpy.ops.wm.save_mainfile(filepath=saveFile, check_existing=False)
         # Render scene to file
         logger.info(f"Rendering scene to {currCam.CameraResultFile}")
@@ -118,13 +118,13 @@ class Scene(object):
         SetLevel(settings.get("logLevel", "error"))
         self.__storeBlend = settings.get("storeBlend", False)
         # Make sure blenderseed is available
-        modulePath = f'{bpy.utils.user_resource("SCRIPTS", "addons")}\\blenderseed'
-        pluginPath = FullPath(settings.get("pluginPath", "..\\blenderseed.zip"))
+        modulePath = f'{bpy.utils.user_resource("SCRIPTS", "addons")}/blenderseed'
+        pluginPath = FullPath(settings.get("pluginPath", "../blenderseed.zip"))
         isInstalled = EnsureInstalled(modulePath, pluginPath)
         # Compile all shaders
         searchPaths = ""
         compilePaths = settings.get("shaderDirs", [])
-        compilePaths.append(FullPath(f"{FileDir(__file__)}\\..\\Shaders\\"))
+        compilePaths.append(FullPath(f"{FileDir(__file__)}/../Shaders/"))
         # Compile & add each shader directory (always in debug mode)
         forceCompile = logger.level < 30 and self.__storeBlend
         for shaderPath in [FullPath(path) for path in compilePaths]:

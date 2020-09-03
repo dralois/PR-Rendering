@@ -12,13 +12,13 @@ colorDepths = ["default", "uint8", "sint8", "uint16", "sint16", "half", "float"]
 # Converts a given image & returns path to new texture
 def ConvertTexture(imageFile, colorSpace, colorDepth, modulePath):
     # Don't convert if texture exists
-    outPath = f"{FileDir(imageFile)}\\{FileName(imageFile)}.tx"
+    outPath = f"{FileDir(imageFile)}/{FileName(imageFile)}.tx"
     if os.path.exists(outPath):
         return outPath
 
     # Store original path
     tempPath = os.environ["PATH"]
-    pyDir = FullPath(f"{modulePath}\\appleseed\\lib")
+    pyDir = FullPath(f"{modulePath}/appleseed/lib")
 
     # Modify sys path and import tools
     sys.path.append(pyDir)

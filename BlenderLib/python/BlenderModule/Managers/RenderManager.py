@@ -109,7 +109,7 @@ class RenderProcess(mp.Process):
         # Scene imports
         from .SceneManager import CreateFromJSON, UpdateFromJSON, Scene
         # Change working dir in process
-        chdir(FullPath(f"{FileDir(__file__)}\\..\\"))
+        chdir(FullPath(f"{FileDir(__file__)}/../"))
         # Process file queue
         while True:
             try:

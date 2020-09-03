@@ -91,6 +91,14 @@ _deps
 **/[Ee]xternal/*
 __pycache__/*
 **/__pycache__/*
+[Oo]bjects/*
+**/[Oo]bjects/*
+[Bb]odies/*
+**/[Bb]odies/*
+[Oo]utput/*
+**/[Oo]utput/*
+[Ss]cenes/*
+**/[Ss]cenes/*
 
 # Special files
 !**/module_test.obj

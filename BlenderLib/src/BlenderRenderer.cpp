@@ -91,12 +91,9 @@ namespace Blender
 			{
 				// Start embedded interpreter
 				Py_Initialize();
-
-				// Append current directory to python path
-				path cwd = current_path();
-				std::wstring path(Py_GetPath());
-				path += sep + cwd.wstring();
-				Py_SetPath(path.c_str());
+				wchar_t* empty = L"";
+				wchar_t* pEmpty[] = {empty};
+				PySys_SetArgvEx(0, pEmpty, 1);
 
 				// Store main and globals
 				blenderModule = import("BlenderModule");
@@ -106,10 +103,8 @@ namespace Blender
 				object utils = import("BlenderModule.Utils");
 				utils.attr("SetupMultiprocessing")();
 
-				// Store logger for performance measuring
+				// Store logger & render manager instance
 				logger = import("BlenderModule.Utils.Logger");
-
-				// Store render manager instance
 				object renderModule = import("BlenderModule.Managers.RenderManager");
 				renderManager = renderModule.attr("RenderManager")();
 			}
