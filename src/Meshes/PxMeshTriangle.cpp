@@ -37,7 +37,9 @@ void PxMeshTriangle::X_CookMesh()
 		triangleDesc.triangles.data = X_GetIndices();
 
 		// Cook the mesh
+#pragma warning(disable:26812)
 		PxTriangleMeshCookingResult::Enum result;
+#pragma warning(default:26812)
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!PxManager::GetInstance().GetCooker()->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
 		{
@@ -150,8 +152,12 @@ void PxMeshTriangle::X_CreateShape()
 //---------------------------------------
 // Default constructor
 //---------------------------------------
-PxMeshTriangle::PxMeshTriangle(ReferencePath meshPath, int meshId) :
-	PxMesh(meshPath, meshId),
+PxMeshTriangle::PxMeshTriangle(
+	ReferencePath meshPath,
+	const std::string& meshClass,
+	int meshId
+) :
+	PxMesh(meshPath, meshClass, meshId),
 	pPxMesh(NULL)
 {
 }

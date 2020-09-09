@@ -14,12 +14,54 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 	// Determine size
 	size_t fileSize = boost::filesystem::file_size(configPath);
 	// Open und parse config file
+	rapidjson::Document jsonConfig;
 	char* buffer = new char[fileSize];
 	rapidjson::FileReadStream inFile(pFile, buffer, fileSize);
 	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
 	// Create settings
-	pRenderSettings = new Settings(&jsonConfig);
+	pRenderSettings = new Settings(std::move(static_cast<rapidjson::Document&>(jsonConfig.Move())));
 	delete[] buffer;
+}
+
+//---------------------------------------
+// Creates output folder structure
+//---------------------------------------
+void SimManager::X_CreateOutputFolders()
+{
+	using namespace boost::filesystem;
+
+	// Save the paths
+	ModifiablePath finalDir(pRenderSettings->GetFinalPath());
+	ModifiablePath tempDir(pRenderSettings->GetTemporaryPath());
+
+	// Create final output directories
+	if (!exists(finalDir))
+	{
+		create_directories(finalDir);
+	}
+	if (is_empty(finalDir))
+	{
+		create_directories(finalDir / "rgb");
+		create_directories(finalDir / "depth");
+		create_directories(finalDir / "segs");
+		create_directories(finalDir / "models");
+		create_directories(finalDir / "annotations");
+	}
+
+	// Create temporary output directories
+	if (!exists(tempDir))
+	{
+		create_directories(tempDir);
+	}
+	if (is_empty(tempDir))
+	{
+		create_directories(tempDir / "body_depth");
+		create_directories(tempDir / "body_label");
+		create_directories(tempDir / "body_mask");
+		create_directories(tempDir / "body_rgb");
+		create_directories(tempDir / "body_ao");
+	}
+
 }
 
 //---------------------------------------
@@ -27,51 +69,71 @@ void SimManager::X_LoadConfig(ReferencePath configPath)
 //---------------------------------------
 void SimManager::X_LoadMeshes()
 {
+	using namespace boost::filesystem;
+
 	// Cleanup old meshes
 	VEC_RELEASE(vecpRenderMesh);
 	VEC_RELEASE(vecpPxMesh);
 
 	// Load values from json & initialize
-	float toMeters = SafeGet<float>(jsonConfig, "objs_unit");
-	std::string format = SafeGet<const char*>(jsonConfig, "mesh_format");
-	rapidjson::Value objects = SafeGetArray<const char*>(jsonConfig, "render_objs");
+
+	rapidjson::Value objects = SafeGetArray(pRenderSettings->GetJSONConfig(), "render_objs");
 	vecpPxMesh.reserve(objects.Size());
 	vecpRenderMesh.reserve(objects.Size());
 
 	// If path exists & directory
-	if (boost::filesystem::exists(pRenderSettings->GetMeshesPath()))
+	if (exists(pRenderSettings->GetMeshesPath()))
 	{
-		if (boost::filesystem::is_directory(pRenderSettings->GetMeshesPath()))
+		if (is_directory(pRenderSettings->GetMeshesPath()))
 		{
 			// For each object
 			for (int i = 0; i < static_cast<int>(objects.Size()); ++i)
 			{
+				// Get mesh descriptor
+				const rapidjson::Value& currVal = objects[i];
+
 				// Build paths
-				ModifiablePath meshPath(pRenderSettings->GetMeshesPath());
-				meshPath.append(SafeGetValue<const char*>(objects[i]));
-				meshPath.concat(".");
-				meshPath.concat(format.empty() ? "obj" : format);
-				ModifiablePath texturePath(pRenderSettings->GetMeshesPath());
-				texturePath.append(SafeGetValue<const char*>(objects[i]));
+				ModifiablePath basePath(SafeGet<const char*>(currVal, "mesh_path"));
+				ModifiablePath meshPath = basePath.has_parent_path() ?
+					basePath : pRenderSettings->GetMeshesPath() / basePath;
+				ModifiablePath texturePath = (basePath.has_parent_path() ?
+					basePath.parent_path() : pRenderSettings->GetMeshesPath()) / basePath.stem();
 				texturePath.concat("_color.png");
 
 				// Mesh file must exist
-				if (!boost::filesystem::exists(meshPath))
+				if (!exists(meshPath))
 				{
 					std::cout << "\r\33[2K" << "Mesh missing:\t" << meshPath.relative_path() << ", skipping" << std::endl;
 					continue;
 				}
 
+				// Extract other infos
+				float meshScale = SafeGet<float>(currVal, "mesh_unit");
+				std::string meshClass(SafeGet<const char*>(currVal, "mesh_class"));
+
 				// Create and save physx mesh
-				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, i);
+				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, meshClass, i);
+				pxCurr->SetObjId(0);
 				pxCurr->CreateMesh();
-				pxCurr->SetScale(physx::PxVec3(toMeters));
+				pxCurr->SetScale(physx::PxVec3(meshScale));
 				vecpPxMesh.push_back(pxCurr);
 
 				// Create and save render mesh
-				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, i);
-				renderCurr->SetScale(Eigen::Vector3f().setConstant(toMeters));
+				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, meshClass, i);
+				renderCurr->SetObjId(0);
+				renderCurr->CreateMesh();
+				renderCurr->SetScale(Eigen::Vector3f().setConstant(meshScale));
 				vecpRenderMesh.push_back(renderCurr);
+
+				// Copy the mesh to final folder
+				boost::system::error_code res;
+				copy_file(
+					meshPath,
+					pRenderSettings->GetFinalPath() / "models" / meshPath.filename(),
+					copy_option::fail_if_exists,
+					res
+				);
+
 				std::cout << std::endl;
 			}
 		}
@@ -138,16 +200,17 @@ SimManager::SimManager(
 ) :
 	vecpPxMesh(),
 	vecpRenderMesh(),
-	jsonConfig(NULL),
 	pRenderSettings(NULL),
 	vecSceneFolders()
 {
 	// Init
 	PxManager::GetInstance().InitPhysx();
 	X_LoadConfig(configPath);
+	X_CreateOutputFolders();
 	X_LoadMeshes();
+
 	// Setup scenes
-	ModifiablePath scenesPath(SafeGet<const char*>(jsonConfig, "scenes_path"));
+	ModifiablePath scenesPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scenes_path"));
 	X_SaveSceneFolders(boost::filesystem::absolute(scenesPath));
 }
 
@@ -160,8 +223,16 @@ SimManager::~SimManager()
 	VEC_RELEASE(vecpRenderMesh);
 	VEC_RELEASE(vecpPxMesh);
 
+	// Delete temporary output
+#if !_DEBUG && !DEBUG
+	ModifiablePath tempDir(pRenderSettings->GetTemporaryPath());
+	if (boost::filesystem::exists(tempDir))
+	{
+		boost::filesystem::remove_all(tempDir);
+	}
+#endif //!_DEBUG && !DEBUG
+
 	// Cleanup config & settings
 	PTR_RELEASE(pRenderSettings);
-	jsonConfig.GetAllocator().Clear();
 	PxManager::GetInstance().DeletePhysx();
 }

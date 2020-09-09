@@ -28,43 +28,8 @@ int main(int argc, char** argv)
 	// Create simulation manager
 	SimManager simulation(configPath);
 
-	// Save the paths
-	ModifiablePath finalDir(simulation.GetSettings()->GetFinalPath());
-	ModifiablePath tempDir(simulation.GetSettings()->GetTemporaryPath());
-
-	// Create final output directories
-	if (!boost::filesystem::exists(finalDir))
-	{
-		boost::filesystem::create_directories(finalDir);
-	}
-	if(boost::filesystem::is_empty(finalDir))
-	{
-		boost::filesystem::create_directories(finalDir / "rgb");
-		boost::filesystem::create_directories(finalDir / "depth");
-		boost::filesystem::create_directories(finalDir / "segs");
-		boost::filesystem::create_directories(finalDir / "annotations");
-	}
-
-	// Create temporary output directories
-	if (!boost::filesystem::exists(tempDir))
-	{
-		boost::filesystem::create_directories(tempDir / "body_depth");
-		boost::filesystem::create_directories(tempDir / "body_label");
-		boost::filesystem::create_directories(tempDir / "body_mask");
-		boost::filesystem::create_directories(tempDir / "body_rgb");
-		boost::filesystem::create_directories(tempDir / "body_ao");
-	}
-
 	// Run the simulation
 	simulation.RunSimulation();
-
-	// Delete temporary output
-#if !_DEBUG && !DEBUG
-	if (boost::filesystem::exists(tempDir))
-	{
-		boost::filesystem::remove_all(tempDir);
-	}
-#endif //!_DEBUG && !DEBUG
 
 	return 0;
 }

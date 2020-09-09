@@ -28,7 +28,6 @@ private:
 
 	// Config
 	Settings* pRenderSettings;
-	rapidjson::Document jsonConfig;
 	std::vector<ModifiablePath> vecSceneFolders;
 
 	//---------------------------------------
@@ -37,15 +36,10 @@ private:
 
 	void X_SaveSceneFolders(ReferencePath path);
 	void X_LoadConfig(ReferencePath configPath);
+	void X_CreateOutputFolders();
 	void X_LoadMeshes();
 
 public:
-	//---------------------------------------
-	// Properties
-	//---------------------------------------
-
-	inline const Settings* GetSettings() const { return pRenderSettings; }
-
 	//---------------------------------------
 	// Methods
 	//---------------------------------------

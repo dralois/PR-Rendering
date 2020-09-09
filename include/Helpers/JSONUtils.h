@@ -93,31 +93,32 @@ static T SafeGetValue(
 }
 
 //---------------------------------------
-// Fail-safe json document get
+// Fail-safe json member get
 //---------------------------------------
 template<typename T>
 static T SafeGet(
-	const rapidjson::Document& doc,
+	const rapidjson::Value& val,
 	const std::string& name
 )
 {
-	// Try to find by name
-	auto member = doc.FindMember(name.c_str());
-	// Return value if found or default
-	if (member != doc.MemberEnd())
+	// If is json object
+	if(val.IsObject())
 	{
-		return SafeGetValue<T>(member->value);
+		// Try to find by name
+		auto member = val.FindMember(name.c_str());
+		// Return value if found
+		if (member != val.MemberEnd())
+		{
+			return SafeGetValue<T>(member->value);
+		}
 	}
-	else
-	{
-		return T();
-	}
+	// Default if not object / member not found
+	return T();
 }
 
 //---------------------------------------
 // Fail-safe json array get
 //---------------------------------------
-template<typename T>
 static rapidjson::Value SafeGetArray(
 	rapidjson::Document& doc,
 	const std::string& name
@@ -132,15 +133,11 @@ static rapidjson::Value SafeGetArray(
 		// If member is array
 		if(member->value.IsArray())
 		{
-			// Copy & store each value that is of correct type
+			// Copy & store each value
 			for(auto& val : member->value.GetArray())
 			{
-				if(val.Is<T>())
-				{
-					rapidjson::Value cpy;
-					cpy.Set<T>(val.Get<T>(), doc.GetAllocator());
-					out.PushBack(std::move(cpy), doc.GetAllocator());
-				}
+				rapidjson::Value cpy(val, doc.GetAllocator(), true);
+				out.PushBack(std::move(cpy.Move()), doc.GetAllocator());
 			}
 		}
 	}

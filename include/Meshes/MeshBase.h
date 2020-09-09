@@ -20,6 +20,8 @@ protected:
 	//---------------------------------------
 	int objId = -1;
 	int meshId = -1;
+	std::string meshClass = "none";
+
 	ModifiablePath meshPath;
 	ModifiablePath texturePath;
 
@@ -44,18 +46,19 @@ public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
-	inline int GetMeshId() const { return meshId; }
 	inline int GetObjId() const { return objId; }
 	inline void SetObjId(int id) { objId = id; }
-	inline ReferencePath GetMeshPath() const { return meshPath; }
-	inline ReferencePath GetTexturePath() const { return texturePath; }
-	inline std::string GetName() const { return meshPath.stem().string() + "_" + std::to_string(objId); }
+	inline int GetMeshId() const { return meshId; }
+	inline std::string GetMeshClass() const { return meshClass; }
+	inline ModifiablePath GetMeshPath() const { return meshPath; }
+	inline ModifiablePath GetTexturePath() const { return texturePath; }
+	inline std::string GetName() const { return meshPath.stem().string(); }
 
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
-	MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId);
-	MeshBase(ReferencePath meshPath, int meshId);
+	MeshBase(ReferencePath meshPath, ReferencePath texturePath, const std::string& meshClass, int meshId);
+	MeshBase(ReferencePath meshPath, const std::string& meshClass, int meshId);
 	MeshBase(const MeshBase& copy);
 	MeshBase(MeshBase&& other);
 	virtual ~MeshBase();

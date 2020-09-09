@@ -56,6 +56,9 @@ public:
 	// Properties
 	//---------------------------------------
 
+	inline bool GetIndirect() const { return indirect; }
+	inline void SetIndirect(bool isIndirect) { indirect = isIndirect; }
+
 	inline const OSLShader* GetShader() const { return oslShader; }
 	inline void SetShader(OSLShader* shader)
 	{
@@ -76,10 +79,11 @@ public:
 	RenderMesh(
 		ReferencePath meshFile,
 		ReferencePath textureFile,
+		const std::string& meshClass,
 		int meshId,
 		bool indirect = false
 	) :
-		MeshBase(meshFile, textureFile, meshId),
+		MeshBase(meshFile, textureFile, meshClass, meshId),
 		RenderfileObject(),
 		indirect(indirect),
 		oslShader(NULL)
@@ -88,10 +92,11 @@ public:
 
 	RenderMesh(
 		ReferencePath meshFile,
+		const std::string& meshClass,
 		int meshId,
 		bool indirect = false
 	) :
-		RenderMesh(meshFile, "", meshId, indirect)
+		RenderMesh(meshFile, "", meshClass, meshId, indirect)
 	{
 	}
 
@@ -101,7 +106,7 @@ public:
 		indirect(copy.indirect),
 		oslShader(NULL)
 	{
-		if(copy.oslShader)
+		if (copy.oslShader)
 		{
 			oslShader = copy.oslShader->MakeCopy();
 		}

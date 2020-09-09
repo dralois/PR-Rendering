@@ -13,14 +13,30 @@
 using namespace boost::python;
 using namespace boost::filesystem;
 
-#ifdef WIN32
-static wchar_t sep = ';';
-#else
-static wchar_t sep = ':';
-#endif
-
 namespace Blender
 {
+	//---------------------------------------
+	// Automatic scoped GIL lock / unlock
+	//---------------------------------------
+	class GILLock
+	{
+	private:
+		PyGILState_STATE gstate;
+
+	public:
+		GILLock()
+		{
+#pragma warning(disable:26812)
+			gstate = PyGILState_Ensure();
+#pragma warning(default:26812)
+		}
+
+		~GILLock()
+		{
+			PyGILState_Release(gstate);
+		}
+	};
+
 	//---------------------------------------
 	// Implementation class
 	//---------------------------------------
@@ -42,12 +58,13 @@ namespace Blender
 		//---------------------------------------
 
 		void LogPerformance(
-			const std::string& what
+			const std::string& what,
+			int thread
 		)
 		{
 			try
 			{
-				logger.attr("LogPerformance")(what);
+				logger.attr("LogPerformance")(what, thread);
 			}
 			catch (const error_already_set&)
 			{
@@ -56,12 +73,17 @@ namespace Blender
 		}
 
 		void ProcessRenderfile(
-			const std::string& renderfile
+			const std::string& renderfile,
+			float timeout,
+			int thread
 		)
 		{
 			try
 			{
-				renderManager.attr("ProcessRenderfile")(renderfile);
+				if (!renderfile.empty())
+				{
+					renderManager.attr("ProcessRenderfile")(renderfile, timeout, thread);
+				}
 			}
 			catch (const error_already_set&)
 			{
@@ -69,11 +91,11 @@ namespace Blender
 			}
 		}
 
-		void UnloadProcesses()
+		void UnloadProcess(int thread)
 		{
 			try
 			{
-				renderManager.attr("UnloadProcesses")();
+				renderManager.attr("UnloadProcess")(thread);
 			}
 			catch (const error_already_set&)
 			{
@@ -85,14 +107,15 @@ namespace Blender
 		// Constructors
 		//---------------------------------------
 
-		Renderer_impl()
+		Renderer_impl(int workerCount)
 		{
 			try
 			{
 				// Start embedded interpreter
 				Py_Initialize();
+
 				wchar_t* empty = L"";
-				wchar_t* pEmpty[] = {empty};
+				wchar_t* pEmpty[] = { empty };
 				PySys_SetArgvEx(0, pEmpty, 1);
 
 				// Store main and globals
@@ -106,7 +129,11 @@ namespace Blender
 				// Store logger & render manager instance
 				logger = import("BlenderModule.Utils.Logger");
 				object renderModule = import("BlenderModule.Managers.RenderManager");
-				renderManager = renderModule.attr("RenderManager")();
+				renderManager = renderModule.attr("RenderManager")(workerCount);
+
+				// Manually release GIL
+				auto mainThread = PyThreadState_Get();
+				PyEval_ReleaseThread(mainThread);
 			}
 			catch (const error_already_set&)
 			{
@@ -119,57 +146,51 @@ namespace Blender
 	// Forward performance logging
 	//---------------------------------------
 	void BlenderRenderer::LogPerformance(
-		const std::string& what
+		const std::string& what,
+		int thread
 	)
 	{
-		rendererImpl->LogPerformance(what);
+		GILLock scope;
+		rendererImpl->LogPerformance(what, thread);
 	}
 
 	//---------------------------------------
 	// Forward renderfile processing
 	//---------------------------------------
 	void BlenderRenderer::ProcessRenderfile(
-		const std::string& renderfile
+		const std::string& renderfile,
+		float timeout,
+		int thread
 	)
 	{
-		rendererImpl->ProcessRenderfile(renderfile);
+		GILLock scope;
+		rendererImpl->ProcessRenderfile(renderfile, timeout, thread);
 	}
 
 	//---------------------------------------
 	// Forward process reloading
 	//---------------------------------------
-	void BlenderRenderer::UnloadProcesses()
+	void BlenderRenderer::UnloadProcess(int thread)
 	{
-		rendererImpl->UnloadProcesses();
+		GILLock scope;
+		rendererImpl->UnloadProcess(thread);
 	}
 
 	//---------------------------------------
 	// Forward API creation
 	//---------------------------------------
-	BlenderRenderer::BlenderRenderer() :
-		rendererImpl(new Renderer_impl())
+	BlenderRenderer::BlenderRenderer(int workerCount) :
+		rendererImpl(new Renderer_impl(workerCount))
 	{
-	}
-
-	//---------------------------------------
-	// Copy constructor
-	//---------------------------------------
-	BlenderRenderer::BlenderRenderer(const BlenderRenderer& other) :
-		rendererImpl(new Renderer_impl(*other.rendererImpl))
-	{
-	}
-
-	//---------------------------------------
-	// Assignment operator
-	//---------------------------------------
-	BlenderRenderer& BlenderRenderer::operator=(BlenderRenderer rhs)
-	{
-		swap(rendererImpl, rhs.rendererImpl);
-		return *this;
 	}
 
 	//---------------------------------------
 	// Destructor
 	//---------------------------------------
-	BlenderRenderer::~BlenderRenderer() = default;
+	BlenderRenderer::~BlenderRenderer()
+	{
+		GILLock scope;
+		delete rendererImpl;
+		rendererImpl = NULL;
+	}
 }

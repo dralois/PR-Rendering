@@ -21,6 +21,7 @@ private:
 
 	Intrinsics cameraIntrinsics;
 	ModifiablePath sourceFile;
+
 	Eigen::Vector3f aspectFOV;
 	Eigen::Vector2f lensShift;
 	ModifiablePath resultFile;
@@ -29,6 +30,8 @@ private:
 	int rayBounces;
 	int aaSamples;
 	std::string shadingOverride;
+
+	int imageNum;
 
 	//---------------------------------------
 	// Methods
@@ -66,11 +69,14 @@ public:
 	// Properties
 	//---------------------------------------
 
-	inline const Intrinsics& GetIntrinsics() const { return cameraIntrinsics; }
+	inline Intrinsics GetIntrinsics() const { return cameraIntrinsics; }
 	inline void SetIntrinsics(const Intrinsics& intr) { cameraIntrinsics = intr; }
-	inline ReferencePath GetSourceFile() const { return sourceFile; }
+	inline ModifiablePath GetSourceFile() const { return sourceFile; }
 	inline Eigen::Vector2f GetFOV() const { return Eigen::Vector2f(aspectFOV.y(), aspectFOV.z()); }
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return lensShift; }
+
+	inline void SetImageNum(int num) { imageNum = num; }
+	inline int GetImageNum() const { return imageNum; }
 
 	//---------------------------------------
 	// Methods
@@ -172,11 +178,12 @@ public:
 		aspectFOV(Eigen::Vector3f(1.5f, 0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		resultFile(""),
-		resolution(Eigen::Vector2i(1920, 1080)),
+		resolution(Eigen::Vector2i(0, 0)),
 		dataOnly(false),
 		rayBounces(-1),
 		aaSamples(16),
-		shadingOverride("")
+		shadingOverride(""),
+		imageNum(0)
 	{
 	}
 
@@ -191,7 +198,8 @@ public:
 		dataOnly(copy.dataOnly),
 		rayBounces(copy.rayBounces),
 		aaSamples(copy.aaSamples),
-		shadingOverride(copy.shadingOverride)
+		shadingOverride(copy.shadingOverride),
+		imageNum(copy.imageNum)
 	{
 	}
 
@@ -208,6 +216,11 @@ public:
 		rayBounces = std::exchange(other.rayBounces, 0);
 		aaSamples = std::exchange(other.aaSamples, 0);
 		shadingOverride = std::exchange(other.shadingOverride, "");
-	};
+		imageNum = std::exchange(other.imageNum, 0);
+	}
+
+	~Camera()
+	{
+	}
 
 };

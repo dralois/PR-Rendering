@@ -19,7 +19,7 @@ protected:
 	//---------------------------------------
 
 	std::string name;
-	std::vector<Texture*> textures;
+	std::vector<Texture> textures;
 
 	//---------------------------------------
 	// Methods
@@ -44,9 +44,9 @@ public:
 		// Texture array
 		writer.Key("textures");
 		writer.StartArray();
-		for (auto currTex : textures)
+		for (auto& currTex : textures)
 		{
-			currTex->AddToJSON(writer);
+			currTex.AddToJSON(writer);
 		}
 		writer.EndArray();
 
@@ -65,7 +65,7 @@ public:
 
 	OSLShader(
 		const std::string& name,
-		const std::vector<Texture*>& textures
+		const std::vector<Texture>& textures
 	) :
 		name(name),
 		textures(textures)
@@ -77,15 +77,5 @@ public:
 	) :
 		OSLShader(name, {})
 	{
-	}
-
-	virtual ~OSLShader()
-	{
-		// Shader base is responsible for its textures
-		for(auto tex : textures)
-		{
-			delete tex;
-		}
-		textures.clear();
 	}
 };

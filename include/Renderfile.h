@@ -10,24 +10,25 @@
 #include <Transformable.h>
 #pragma warning(pop)
 
-#define RENDERFILE_BEGIN \
+#define RENDER_TIMEOUT 30.0f
+
+#define RENDERFILE_SINGLE(renderer, thread, builder, meshes, scene, cams, lights, out) \
 {\
 	rapidjson::StringBuffer renderstring;\
 	JSONWriter writer(renderstring);\
-	writer.StartArray();
-
-#define RENDERFILE_WRITER writer
-
-#define RENDERFILE_PROCESS(renderer) \
-	writer.EndArray();\
+	builder(writer, meshes, scene, cams, lights, out);\
 	std::string renderfile(renderstring.GetString());\
-	renderer->ProcessRenderfile(renderfile);\
+	renderer->ProcessRenderfile(renderfile, cams.size() * RENDER_TIMEOUT, thread);\
 }
 
-#define RENDERFILE_SINGLE(renderer, builder, cams, out, start) \
-	RENDERFILE_BEGIN;\
-	builder(RENDERFILE_WRITER, cams, out, start);\
-	RENDERFILE_PROCESS(renderer);
+#define RENDERFILE_DEPTH(renderer, thread, builder, meshes, scene, cams, lights, out, maxDist) \
+{\
+	rapidjson::StringBuffer renderstring;\
+	JSONWriter writer(renderstring);\
+	builder(writer, meshes, scene, cams, lights, out, maxDist);\
+	std::string renderfile(renderstring.GetString());\
+	renderer->ProcessRenderfile(renderfile, cams.size() * RENDER_TIMEOUT, thread);\
+}
 
 //---------------------------------------
 // Necessary for render related data

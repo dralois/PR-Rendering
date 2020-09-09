@@ -1,49 +1,47 @@
-[
+{
+    "settings" :
     {
-        "settings" :
+        "logLevel" : "info",
+        "pluginDir" : "../blenderseed.zip",
+        "shaderDirs" : ["./Test/Resources"]
+    },
+    "cameras" : [
         {
-            "logLevel" : "info",
-            "pluginDir" : "../blenderseed.zip",
-            "shaderDirs" : ["./Test/Resources"]
+            "position" : [6.0, -3.0, 5.0],
+            "rotation" : [0.767653, 0.370819, 0.227351, 0.470652],
+            "resultFile" : "./Test/Results/test_render_update.png",
+            "resolution" : [1280, 720]
+        }
+    ],
+    "meshes" : [
+        {
+            "position" : [-1.0, -1.0, 0.0],
+            "objectID" : 1,
+            "file" : "./Test/Resources/module_test.obj",
+            "shader" :
+            {
+                "name" : "uv_to_color"
+            }
         },
-        "cameras" : [
+        {
+            "position" : [1.0, 1.0, 0.0],
+            "objectID" : 2,
+            "file" : "./Test/Resources/module_test.obj",
+            "shader" :
             {
-                "position" : [6.0, -3.0, 5.0],
-                "rotation" : [0.767653, 0.370819, 0.227351, 0.470652],
-                "resultFile" : "./Test/Results/test_render_update.png",
-                "resolution" : [1280, 720]
-            }
-        ],
-        "meshes" : [
-            {
-                "position" : [-1.0, -1.0, 0.0],
-                "objectID" : 1,
-                "file" : "./Test/Resources/module_test.obj",
-                "shader" :
+                "name" : "module_test",
+                "params" :
                 {
-                    "name" : "uv_to_color"
-                }
-            },
-            {
-                "position" : [1.0, 1.0, 0.0],
-                "objectID" : 2,
-                "file" : "./Test/Resources/module_test.obj",
-                "shader" :
-                {
-                    "name" : "module_test",
-                    "params" :
-                    {
-                        "color" : [0.3, 0.7, 0.5]
-                    }
+                    "color" : [0.3, 0.7, 0.5]
                 }
             }
-        ],
-        "lights" : [
-            {
-                "position" : [3.0, -4.2, 5.0],
-                "type" : "POINT",
-                "intensity" : 100
-            }
-        ]
-    }
-]
+        }
+    ],
+    "lights" : [
+        {
+            "position" : [3.0, -4.2, 5.0],
+            "type" : "POINT",
+            "intensity" : 100
+        }
+    ]
+}

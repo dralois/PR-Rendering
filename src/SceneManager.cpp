@@ -7,41 +7,53 @@
 #define USE_AO 1
 
 #define PTR_RELEASE(x) if(x != NULL) { delete x; x = NULL; }
-#define VEC_RELEASE(x) for(auto curr : x) { delete curr; } x.clear();
 
 using namespace physx;
 
 //---------------------------------------
-// Create physx scan scene mesh
+// Create scan scene render mesh
 //---------------------------------------
-void SceneManager::X_PxCreateScene()
+RenderMesh SceneManager::X_CreateSceneMesh() const
 {
 	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
-	// Create physx mesh of scan scene
+	// Create mesh file path
 	ModifiablePath meshPath(pRenderSettings->GetScenePath());
 	meshPath.append("mesh.refined.obj");
-	pPxMeshScene = new PxMeshTriangle(meshPath, 0);
-	pPxMeshScene->CreateMesh();
-	pPxMeshScene->SetObjId(0);
-	pPxMeshScene->SetScale(PxVec3(toMeters));
+	// Create & return mesh
+	RenderMesh meshScene(meshPath, "scene", 0, true);
+	meshScene.SetScale(Eigen::Vector3f().setConstant(toMeters));
+	return meshScene;
+}
+
+//---------------------------------------
+// Create physx scan scene mesh
+//---------------------------------------
+PxMeshTriangle SceneManager::X_PxCreateSceneMesh() const
+{
+	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
+	// Create mesh file path
+	ModifiablePath meshPath(pRenderSettings->GetScenePath());
+	meshPath.append("mesh.refined.obj");
+	// Create physx mesh of scan scene
+	PxMeshTriangle pxMeshScene(meshPath, "scene", 0);
+	pxMeshScene.CreateMesh();
+	pxMeshScene.SetObjId(0);
+	pxMeshScene.SetScale(PxVec3(toMeters));
 	std::cout << std::endl;
+	// Return new mesh
+	return pxMeshScene;
+}
 
+//---------------------------------------
+// Create simulation scene
+//---------------------------------------
+physx::PxScene* SceneManager::X_PxCreateSimulation(
+	PxMeshTriangle& sceneMesh,
+	float& maxDist
+) const
+{
 	// For human readable depth: Maximal possible distance
-	maxDist = pPxMeshScene->GetGlobalBounds().getDimensions().magnitude();
-
-	// Create lights according to scene size
-	X_PlaceLights(
-		Eigen::Vector3f(
-			pPxMeshScene->GetGlobalBounds().minimum.x,
-			pPxMeshScene->GetGlobalBounds().minimum.y,
-			pPxMeshScene->GetGlobalBounds().minimum.z
-		),
-		Eigen::Vector3f(
-			pPxMeshScene->GetGlobalBounds().maximum.x,
-			pPxMeshScene->GetGlobalBounds().maximum.y,
-			pPxMeshScene->GetGlobalBounds().maximum.z
-		)
-	);
+	maxDist = sceneMesh.GetGlobalBounds().getDimensions().magnitude();
 
 	// Standart gravity & continuous collision detection & GPU rigidbodies
 	PxSceneDesc sceneDesc(PxGetPhysics().getTolerancesScale());
@@ -53,7 +65,7 @@ void SceneManager::X_PxCreateScene()
 	sceneDesc.gpuMaxNumPartitions = 8;
 
 	// Enable GPU rigidbodies if available
-	if(PxManager::GetInstance().GetCudaManager())
+	if (PxManager::GetInstance().GetCudaManager())
 	{
 		sceneDesc.flags = PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_STABILIZATION | PxSceneFlag::eENABLE_CCD | PxSceneFlag::eENABLE_PCM;
 	}
@@ -63,119 +75,124 @@ void SceneManager::X_PxCreateScene()
 	}
 
 	// Objects should never spawn outside the scene bounds
-	sceneDesc.sanityBounds = pPxMeshScene->GetGlobalBounds();
+	sceneDesc.sanityBounds = sceneMesh.GetGlobalBounds();
 
 	// Create scene & add mesh
-	pPxScene = PxGetPhysics().createScene(sceneDesc);
-	pPxMeshScene->AddRigidActor(pPxScene);
+	PxScene* pCurrScene = PxGetPhysics().createScene(sceneDesc);
+	sceneMesh.AddRigidActor(pCurrScene);
+
+	// Return simulation
+	return pCurrScene;
 }
 
 //---------------------------------------
 // Create physx object meshes
 //---------------------------------------
-void SceneManager::X_PxCreateObjs()
+std::vector<PxMeshConvex> SceneManager::X_PxCreateObjs(
+	std::default_random_engine& generator,
+	PxMeshTriangle& sceneMesh,
+	physx::PxScene* simulation
+) const
 {
-	// Setup & fetch params
-	vecpPxMeshCurrObjs.reserve(pRenderSettings->GetObjectsPerSimulation());
-	const PxVec3 sceneCenter = pPxMeshScene->GetGlobalBounds().getCenter();
-	const PxVec3 sceneExtends = pPxMeshScene->GetGlobalBounds().getExtents();
-	const PxVec3 velMax = PxVec3(
-		fabs(pRenderSettings->GetMaxVelocity().x()),
-		fabs(pRenderSettings->GetMaxVelocity().y()),
-		fabs(pRenderSettings->GetMaxVelocity().z())
-	);
-	const PxVec3 trqMax = PxVec3(
-		fabs(pRenderSettings->GetMaxTorque().x()),
-		fabs(pRenderSettings->GetMaxTorque().y()),
-		fabs(pRenderSettings->GetMaxTorque().z())
-	);
-
-	// Helper lambdas for random values
+	// Helper lambdas
+	auto eigenToPx = [](Eigen::Vector3f in) -> PxVec3
+	{
+		return PxVec3(in.x(), in.y(), in.z());
+	};
 	auto uniformRandInt = [&](int lower, int upper) -> int
 	{
 		std::uniform_int_distribution<int> distr(lower, upper);
-		return distr(randGen);
+		return distr(generator);
 	};
 	auto uniformRandVec = [&](PxVec3 lower, PxVec3 upper) -> PxVec3
 	{
 		std::uniform_real_distribution<float> distX(lower.x, upper.x);
 		std::uniform_real_distribution<float> distY(lower.y, upper.y);
 		std::uniform_real_distribution<float> distZ(lower.z, upper.z);
-		return PxVec3(distX(randGen), distY(randGen), distZ(randGen));
+		return PxVec3(distX(generator), distY(generator), distZ(generator));
 	};
 	auto applyForce = [&](float likelyhood) -> bool
 	{
 		std::bernoulli_distribution distr(likelyhood);
-		return distr(randGen);
+		return distr(generator);
 	};
+
+	// Simulation objects
+	std::vector<PxMeshConvex> newBodies;
+	newBodies.reserve(pRenderSettings->GetObjectsPerSimulation());
+
+	// Setup & fetch params
+	const PxVec3 sceneCenter = sceneMesh.GetGlobalBounds().getCenter();
+	const PxVec3 sceneExtends = sceneMesh.GetGlobalBounds().getExtents();
+	const PxVec3 spawnMin = eigenToPx(pRenderSettings->GetSpawnMin());
+	const PxVec3 spawnMax = eigenToPx(pRenderSettings->GetSpawnMax());
+	const PxVec3 velMax = eigenToPx(pRenderSettings->GetMaxVelocity());
+	const PxVec3 trqMax = eigenToPx(pRenderSettings->GetMaxTorque());
 
 	// For each object
 	for (int i = 0; i < pRenderSettings->GetObjectsPerSimulation(); ++i)
 	{
 		// Fetch random object & create instance with new id
 		int randObj = uniformRandInt(0, vecpPxMeshObjs.size() - 1);
-		PxMeshConvex* currObj = new PxMeshConvex(*vecpPxMeshObjs[randObj]);
-		currObj->SetObjId(i);
-		currObj->CreateMesh();
+		PxMeshConvex currObj(*vecpPxMeshObjs[randObj]);
+		currObj.SetObjId(i + 1);
+		currObj.CreateMesh();
 
 		// Random position in scene
-		PxVec3 randPos = sceneCenter + uniformRandVec(
-			PxVec3(-0.75f, 0.25f, -0.75f),
-			PxVec3(0.75f, 0.75f, 0.75f)).multiply(sceneExtends);
+		PxVec3 randPos = sceneCenter +
+			uniformRandVec(spawnMin, spawnMax).multiply(sceneExtends);
 
 		// Set pose & actor
 		PxTransform pose(randPos, PxQuat(PxIdentity));
-		currObj->SetTransform(pose);
-		currObj->AddRigidActor(pPxScene);
+		currObj.SetTransform(pose);
+		currObj.AddRigidActor(simulation);
 
 		// Possibly add random velocity & torque impulses
 		if (applyForce(pRenderSettings->GetApplyProbability()))
 		{
-			currObj->AddVelocity(uniformRandVec(-velMax, velMax));
-			currObj->AddTorque(uniformRandVec(-trqMax, trqMax));
+			currObj.AddVelocity(uniformRandVec(-velMax, velMax));
+			currObj.AddTorque(uniformRandVec(-trqMax, trqMax));
 		}
 
 		// Place in vector
-		vecpPxMeshCurrObjs.push_back(std::move(currObj));
+		newBodies.push_back(std::move(currObj));
 	}
+
+	// Return simulation objects
+	return newBodies;
 }
 
 //---------------------------------------
 // Cleanup scene & iteration
 //---------------------------------------
-void SceneManager::X_CleanupScene()
+void SceneManager::X_CleanupScene(
+	physx::PxScene* simulation,
+	AnnotationsManager* annotations,
+	Blender::BlenderRenderer* renderer,
+	int threadID
+) const
 {
 	// Cleanup annotations
-	PTR_RELEASE(pAnnotations);
-
-	// Cleanup lights
-	VEC_RELEASE(vecpLights);
-
-	// Cleanup object meshes & physx meshes
-	VEC_RELEASE(vecpPxMeshCurrObjs);
-	VEC_RELEASE(vecpRenderMeshCurrObjs);
-
-	// Cleanup scene render & physx mesh
-	PTR_RELEASE(pRenderMeshScene);
-	PTR_RELEASE(pPxMeshScene);
+	PTR_RELEASE(annotations);
 
 	// Cleanup physx scene
-	if (pPxScene)
+	if (simulation)
 	{
-		pPxScene->flushSimulation();
-		auto dispatcher = (PxDefaultCpuDispatcher*)pPxScene->getCpuDispatcher();
+		simulation->flushSimulation();
+		auto dispatcher = (PxDefaultCpuDispatcher*)simulation->getCpuDispatcher();
 		PX_RELEASE(dispatcher);
-		PX_RELEASE(pPxScene);
+		PX_RELEASE(simulation);
 	}
 
-	// Reload Blender rendering
-	pBlender->UnloadProcesses();
+	// Reload render process thread
+	renderer->UnloadProcess(threadID);
 }
 
 //---------------------------------------
 // Run physx simulation
 //---------------------------------------
 void SceneManager::X_PxRunSim(
+	physx::PxScene* simulation,
 	float timestep,
 	int stepCount
 ) const
@@ -183,45 +200,53 @@ void SceneManager::X_PxRunSim(
 	// Simulate in steps
 	for (int i = 0; i < stepCount; ++i)
 	{
-		pPxScene->simulate(timestep);
-		pPxScene->fetchResults(true);
-		std::cout << "\r\33[2K" << "Simulating:\t" << (i + 1) << "/" << stepCount << std::flush;
+		simulation->simulate(timestep);
+		simulation->fetchResults(true);
 	}
-	// Formatting
-	std::cout << std::endl;
+
+	// Some status logging
+	std::cout << "Done simulating (" << timestep << "s steps, " << timestep * stepCount << "s total)" << std::endl;
 }
 
 //---------------------------------------
 // Fetch and save simulation results
 //---------------------------------------
-void SceneManager::X_PxSaveSimResults()
+std::vector<RenderMesh> SceneManager::X_PxSaveSimResults(
+	std::vector<PxMeshConvex>& simulationObjs
+) const
 {
+	std::vector<RenderMesh> newMeshes;
+	newMeshes.reserve(simulationObjs.size());
+
 	// For each physx object
-	for (auto currPx : vecpPxMeshCurrObjs)
+	for (auto& currPx : simulationObjs)
 	{
 		// Get position & transform to Blender system (90* around X)
-		PxTransform pose = currPx->GetTransform();
+		PxTransform pose = currPx.GetTransform();
 		PxTransform adjustPos = PxTransform(PxQuat(PxHalfPi, PxVec3(1.0f, 0.0f, 0.0f))).transform(pose);
 		// Transform rotation to Blender system (-90* around local X)
 		PxVec3 localX = adjustPos.q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
 		PxTransform adjustRot = PxTransform(PxQuat(-PxHalfPi, localX)).transform(adjustPos);
 
 		// Save & create mesh for rendering
-		RenderMesh* currMesh = new RenderMesh(*vecpRenderMeshObjs[currPx->GetMeshId()]);
-		currMesh->SetObjId(currPx->GetObjId());
+		RenderMesh currMesh(*vecpRenderMeshObjs[currPx.GetMeshId()]);
+		currMesh.SetObjId(currPx.GetObjId());
 
 		// Build transform from simulated pose
 		Eigen::Affine3f currTrans;
 		currTrans.fromPositionOrientationScale(
 			Eigen::Vector3f(adjustPos.p.x, adjustPos.p.y, adjustPos.p.z),
 			Eigen::Quaternionf(adjustRot.q.w, adjustRot.q.x, adjustRot.q.y, adjustRot.q.z),
-			currMesh->GetScale()
+			currMesh.GetScale()
 		);
 
 		// Store it
-		currMesh->SetTransform(currTrans.matrix());
-		vecpRenderMeshCurrObjs.push_back(std::move(currMesh));
+		currMesh.SetTransform(currTrans.matrix());
+		newMeshes.push_back(std::move(currMesh));
 	}
+
+	// Return converted meshes
+	return newMeshes;
 }
 
 //---------------------------------------
@@ -229,9 +254,10 @@ void SceneManager::X_PxSaveSimResults()
 //---------------------------------------
 void SceneManager::X_ConvertToRenderfile(
 	JSONWriterRef writer,
-	std::vector<RenderMesh*>& meshes,
-	std::vector<Camera>& cams
-)
+	std::vector<RenderMesh>& meshes,
+	std::vector<Camera>& cams,
+	std::vector<Light>& lights
+) const
 {
 	writer.StartObject();
 
@@ -251,18 +277,18 @@ void SceneManager::X_ConvertToRenderfile(
 	// Add provided meshes
 	writer.Key("meshes");
 	writer.StartArray();
-	for (auto currMesh : meshes)
+	for (auto& currMesh : meshes)
 	{
-		currMesh->AddToJSON(writer);
+		currMesh.AddToJSON(writer);
 	}
 	writer.EndArray();
 
 	// Add lights
 	writer.Key("lights");
 	writer.StartArray();
-	for (auto currLight : vecpLights)
+	for (auto& currLight : lights)
 	{
-		currLight->AddToJSON(writer);
+		currLight.AddToJSON(writer);
 	}
 	writer.EndArray();
 
@@ -274,35 +300,43 @@ void SceneManager::X_ConvertToRenderfile(
 //---------------------------------------
 void SceneManager::X_BuildSceneDepth(
 	JSONWriterRef writer,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
+	std::vector<Light>& lights,
 	std::vector<Texture>& results,
-	int start
-)
+	float maxDist
+) const
 {
 	std::vector<Camera> toRender;
 	toRender.reserve(cams.size());
+
+	// Determine render resolution
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	renderRes *= pRenderSettings->GetRenderScale();
+
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Determine depth output file
-		std::string pose(cams[curr].GetSourceFile().string());
-		boost::algorithm::replace_last(pose, "pose.txt", "depth.tiff");
+		std::string depthPath(cams[curr].GetSourceFile().string());
+		boost::algorithm::replace_last(depthPath, "pose.txt", "depth.tiff");
 		// Create depth output texture
 		Texture currDepth(true, true);
-		// Either mark for rendering or already load texture
-		if (boost::filesystem::exists(pose))
+		// Mark for rendering or load already
+		if (boost::filesystem::exists(depthPath))
 		{
-			currDepth.SetPath(pose, false);
+			currDepth.SetPath(depthPath, false);
 			currDepth.LoadTexture();
 		}
 		else
 		{
-			currDepth.SetPath(pose, true, "exr");
+			currDepth.SetPath(depthPath, true, "exr");
 			// Create & setup camera
 			Camera currCam = Camera(cams[curr]);
 			currCam.SetupRendering(
 				currDepth.GetPath(),
-				pRenderSettings->GetRenderResolution(),
+				renderRes,
 				true,
 				1,
 				0,
@@ -315,17 +349,20 @@ void SceneManager::X_BuildSceneDepth(
 		results.emplace_back(std::move(currDepth));
 	}
 
-	// Set shader
+	// Set shader & temporarily mark direct mesh
 	DepthShader* shader = new DepthShader(FLT_EPSILON, maxDist);
-	pRenderMeshScene->SetShader(shader);
+	sceneMesh.SetShader(shader);
+	sceneMesh.SetIndirect(false);
 
 	// If any cameras are marked for rendering
 	if (toRender.size() > 0)
 	{
 		// Add configured scene to renderfile
-		std::vector<RenderMesh*> meshes{pRenderMeshScene};
-		X_ConvertToRenderfile(writer, meshes, toRender);
+		X_ConvertToRenderfile(writer, std::vector<RenderMesh>{sceneMesh}, toRender, lights);
 	}
+
+	// Mark indirect again
+	sceneMesh.SetIndirect(true);
 }
 
 //---------------------------------------
@@ -333,21 +370,28 @@ void SceneManager::X_BuildSceneDepth(
 //---------------------------------------
 void SceneManager::X_BuildObjectsDepth(
 	JSONWriterRef writer,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
+	std::vector<Light>& lights,
 	std::vector<Texture>& results,
-	int start
-)
+	float maxDist
+) const
 {
+	// Determine render resolution
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	renderRes *= pRenderSettings->GetRenderScale();
+
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create depth output texture
 		Texture currDepth(true, true);
-		currDepth.SetPath(pRenderSettings->GetImagePath("body_depth", start + curr), true, "exr");
+		currDepth.SetPath(pRenderSettings->GetImagePath("body_depth", cams[curr].GetImageNum()), true, "exr");
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currDepth.GetPath(),
-			pRenderSettings->GetRenderResolution(),
+			renderRes,
 			true,
 			1,
 			0,
@@ -358,14 +402,14 @@ void SceneManager::X_BuildObjectsDepth(
 	}
 
 	// Set shaders
-	for (auto currMesh : vecpRenderMeshCurrObjs)
+	for (auto& currMesh : meshes)
 	{
 		DepthShader* currShader = new DepthShader(FLT_EPSILON, maxDist);
-		currMesh->SetShader(currShader);
+		currMesh.SetShader(currShader);
 	}
 
 	// Add configured scene to renderfile
-	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
+	X_ConvertToRenderfile(writer, meshes, cams, lights);
 }
 
 //---------------------------------------
@@ -373,21 +417,27 @@ void SceneManager::X_BuildObjectsDepth(
 //---------------------------------------
 void SceneManager::X_BuildObjectsLabel(
 	JSONWriterRef writer,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
-	std::vector<Texture>& results,
-	int start
-)
+	std::vector<Light>& lights,
+	std::vector<Texture>& results
+) const
 {
+	// Determine render resolution
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	renderRes *= pRenderSettings->GetRenderScale();
+
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create label output texture
 		Texture currLabel(true, false);
-		currLabel.SetPath(pRenderSettings->GetImagePath("body_label", start + curr), true, "exr");
+		currLabel.SetPath(pRenderSettings->GetImagePath("body_label", cams[curr].GetImageNum()), true, "exr");
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currLabel.GetPath(),
-			pRenderSettings->GetRenderResolution(),
+			renderRes,
 			true,
 			1,
 			0,
@@ -398,16 +448,15 @@ void SceneManager::X_BuildObjectsLabel(
 	}
 
 	// Set shaders
-	for (auto currMesh : vecpRenderMeshCurrObjs)
+	for (auto& currMesh : meshes)
 	{
-		cv::Vec3b encodedId = EncodeInt(currMesh->GetObjId());
 		// Store encoded ID as BGR
-		LabelShader* currShader = new LabelShader(encodedId[2], encodedId[1], encodedId[0]);
-		currMesh->SetShader(currShader);
+		LabelShader* currShader = new LabelShader(EncodeInt(currMesh.GetObjId()));
+		currMesh.SetShader(currShader);
 	}
 
 	// Add configured scene to renderfile
-	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
+	X_ConvertToRenderfile(writer, meshes, cams, lights);
 }
 
 //---------------------------------------
@@ -415,20 +464,23 @@ void SceneManager::X_BuildObjectsLabel(
 //---------------------------------------
 void SceneManager::X_BuildObjectsPBR(
 	JSONWriterRef writer,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
-	std::vector<Texture>& results,
-	int start
-)
+	std::vector<Light>& lights,
+	std::vector<Texture>& results
+) const
 {
-	// Resolution should match real image (with factor if aa is used)
-	Eigen::Vector2i renderRes =
-		camBlueprint.GetIntrinsics().GetResolution() * pRenderSettings->GetAntiAliasingFactor();
+	// Determine render resolution
+	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	renderRes *= pRenderSettings->GetRenderScale();
+
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create PBR output texture
 		Texture currPBR(false, false);
-		currPBR.SetPath(pRenderSettings->GetImagePath("body_rgb", start + curr), false);
+		currPBR.SetPath(pRenderSettings->GetImagePath("body_rgb", cams[curr].GetImageNum()), false);
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currPBR.GetPath(),
@@ -443,26 +495,26 @@ void SceneManager::X_BuildObjectsPBR(
 	}
 
 	// Set shaders
-	for (auto currMesh : vecpRenderMeshCurrObjs)
+	for (auto& currMesh : meshes)
 	{
 		// Create diffuse texture
-		Texture* currDiffuse = new Texture();
-		currDiffuse->SetPath(currMesh->GetTexturePath(), false);
+		Texture currDiffuse;
+		currDiffuse.SetPath(currMesh.GetTexturePath(), false);
 		// Set PBR shader
 		PBRShader* currShader = new PBRShader(currDiffuse);
-		currMesh->SetShader(currShader);
+		currMesh.SetShader(currShader);
 	}
 
 	// Setup scene for indirect light & shadows
-	Texture* diffuseScene = new Texture();
-	diffuseScene->SetPath(pRenderSettings->GetScenePath() / "mesh.refined_0.png", false);
+	Texture diffuseScene;
+	diffuseScene.SetPath(pRenderSettings->GetScenePath() / "mesh.refined_0.png", false);
 	PBRShader* scenePBR = new PBRShader(diffuseScene);
-	pRenderMeshScene->SetShader(scenePBR);
+	sceneMesh.SetShader(scenePBR);
 
 	// Add configured scene to renderfile
-	vecpRenderMeshCurrObjs.push_back(pRenderMeshScene);
-	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
-	vecpRenderMeshCurrObjs.pop_back();
+	meshes.push_back(sceneMesh);
+	X_ConvertToRenderfile(writer, meshes, cams, lights);
+	meshes.pop_back();
 }
 
 //---------------------------------------
@@ -470,10 +522,12 @@ void SceneManager::X_BuildObjectsPBR(
 //---------------------------------------
 void SceneManager::X_BuildObjectsAO(
 	JSONWriterRef writer,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
-	std::vector<Texture>& results,
-	int start
-)
+	std::vector<Light>& lights,
+	std::vector<Texture>& results
+) const
 {
 	// Resolution should match real scene images
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
@@ -482,13 +536,13 @@ void SceneManager::X_BuildObjectsAO(
 	{
 		// Create ambient occlusion output texture
 		Texture currAO(false, false);
-		currAO.SetPath(pRenderSettings->GetImagePath("body_ao", start + curr), false);
+		currAO.SetPath(pRenderSettings->GetImagePath("body_ao", cams[curr].GetImageNum()), false);
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currAO.GetPath(),
 			renderRes,
 			false,
-			1,
+			2,
 			-1,
 			"ambient_occlusion"
 		);
@@ -497,18 +551,24 @@ void SceneManager::X_BuildObjectsAO(
 	}
 
 	// Add configured scene to renderfile
-	vecpRenderMeshCurrObjs.push_back(pRenderMeshScene);
-	X_ConvertToRenderfile(writer, vecpRenderMeshCurrObjs, cams);
-	vecpRenderMeshCurrObjs.pop_back();
+	meshes.push_back(sceneMesh);
+	X_ConvertToRenderfile(writer, meshes, cams, lights);
+	meshes.pop_back();
 }
 
 //---------------------------------------
 // Render coverage masks & depths
 //---------------------------------------
 std::vector<Mask> SceneManager::X_RenderDepthMasks(
+	Blender::BlenderRenderer* renderer,
+	int threadID,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
-	int start
-)
+	std::vector<Light>& lights,
+	boost::mutex* syncPoint,
+	float maxDist
+) const
 {
 	// Initialize output vectors
 	std::vector<Mask> maskedResults(cams.size(), Mask());
@@ -516,11 +576,36 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	objectDepths.reserve(cams.size());
 	sceneDepths.reserve(cams.size());
 
+	// Only the first thread renders scene depth
+	syncPoint->lock();
+
+	RENDERFILE_DEPTH(renderer, threadID, X_BuildSceneDepth, sceneMesh, meshes, cams, lights, sceneDepths, maxDist);
+
+	// For every pose
+	for (int curr = 0; curr < cams.size(); ++curr)
+	{
+		// Load scene depth if not yet loaded
+		if (sceneDepths[curr].GetTexture().empty())
+		{
+			// Load & unpack & replace scene depth
+			sceneDepths[curr].LoadTexture(UnpackDepth);
+			sceneDepths[curr].ReplacePacked();
+			sceneDepths[curr].StoreTexture();
+#if STORE_DEBUG_TEX
+			// Store human readable
+			sceneDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
+#endif //STORE_DEBUG_TEX
+		}
+	}
+
+	// Now other threads may load
+	syncPoint->unlock();
+
 	// Create & process renderfile
-	RENDERFILE_BEGIN;
-	X_BuildObjectsDepth(RENDERFILE_WRITER, cams, objectDepths, start);
-	X_BuildSceneDepth(RENDERFILE_WRITER, cams, sceneDepths, start);
-	RENDERFILE_PROCESS(pBlender);
+	RENDERFILE_DEPTH(renderer, threadID, X_BuildObjectsDepth, sceneMesh, meshes, cams, lights, objectDepths, maxDist);
+
+	static boost::barrier sync(std::thread::hardware_concurrency() / 2);
+	sync.count_down_and_wait();
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -528,22 +613,16 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 		// Load & unpack object depth
 		objectDepths[curr].LoadTexture(UnpackDepth);
 		objectDepths[curr].ReplacePacked();
-		// Load & unpack scene depth if not yet loaded
-		if (sceneDepths[curr].GetTexture().empty())
-		{
-			sceneDepths[curr].LoadTexture(UnpackDepth);
-			sceneDepths[curr].ReplacePacked();
-			sceneDepths[curr].StoreTexture();
-		}
+		// Load scene depth if not yet loaded
+		sceneDepths[curr].LoadTexture();
 #if STORE_DEBUG_TEX
 		// Store human readable
 		objectDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
-		sceneDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
 #endif //STORE_DEBUG_TEX
 
 		// Create blended depth texture & coverage mask
 		maskedResults[curr].LoadBlendedDepth(ComputeDepthBlend(objectDepths[curr].GetTexture(), sceneDepths[curr].GetTexture()));
-		maskedResults[curr].SetPath(pRenderSettings->GetImagePath("body_mask", start + curr), false);
+		maskedResults[curr].SetPath(pRenderSettings->GetImagePath("body_mask", cams[curr].GetImageNum()), false);
 		maskedResults[curr].SetTexture(
 			ComputeOcclusionMask(objectDepths[curr].GetTexture(), sceneDepths[curr].GetTexture(), maskedResults[curr].Occluded())
 		);
@@ -560,17 +639,22 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 // Render segments & create annotations
 //---------------------------------------
 void SceneManager::X_RenderSegments(
+	Blender::BlenderRenderer* renderer,
+	int threadID,
+	AnnotationsManager* annotations,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
-	std::vector<Mask>& masks,
-	int start
-)
+	std::vector<Light>& lights,
+	std::vector<Mask>& masks
+) const
 {
 	// Initialize output vector
 	std::vector<Texture> objectLabels;
 	objectLabels.reserve(cams.size());
 
 	// Create & process renderfile
-	RENDERFILE_SINGLE(pBlender, X_BuildObjectsLabel, cams, objectLabels, start);
+	RENDERFILE_SINGLE(renderer, threadID, X_BuildObjectsLabel, sceneMesh, meshes, cams, lights, objectLabels);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -583,17 +667,17 @@ void SceneManager::X_RenderSegments(
 #endif //STORE_DEBUG_TEX
 
 		// Create & store masked segmentation texture
-		Texture segResult(false, false);
-		segResult.SetPath(pRenderSettings->GetImagePath("segs", start + curr, true), false);
+		Texture segResult(false, true);
+		segResult.SetPath(pRenderSettings->GetImagePath("segs", cams[curr].GetImageNum(), true), false);
 		segResult.SetTexture(ComputeSegmentMask(objectLabels[curr].GetTexture(), masks[curr].GetTexture()));
 		segResult.StoreTexture();
 
 		// Create annotation file
-		pAnnotations->Begin(start + curr);
+		annotations->Begin(cams[curr].GetImageNum());
 		// Add all visible objects
-		for (auto currMesh : vecpRenderMeshCurrObjs)
+		for (auto& currMesh : meshes)
 		{
-			pAnnotations->Write(
+			annotations->Write(
 				currMesh,
 				objectLabels[curr].GetTexture(),
 				segResult.GetTexture(),
@@ -601,7 +685,7 @@ void SceneManager::X_RenderSegments(
 			);
 		}
 		// Store & close
-		pAnnotations->End();
+		annotations->End();
 	}
 }
 
@@ -609,11 +693,15 @@ void SceneManager::X_RenderSegments(
 // Render synthetic objects & create blend
 //---------------------------------------
 void SceneManager::X_RenderPBRBlend(
+	Blender::BlenderRenderer* renderer,
+	int threadID,
+	RenderMesh& sceneMesh,
+	std::vector<RenderMesh>& meshes,
 	std::vector<Camera>& cams,
+	std::vector<Light>& lights,
 	std::vector<Mask>& masks,
-	std::vector<SceneImage>& sceneRGBs,
-	int start
-)
+	std::vector<SceneImage>& sceneRGBs
+) const
 {
 	// Initialize output vector
 	std::vector<Texture> objectPBRs, objectsAO;
@@ -622,10 +710,13 @@ void SceneManager::X_RenderPBRBlend(
 
 	// Create & process ambient occlusion renderfile
 #if USE_AO
-	RENDERFILE_SINGLE(pBlender, X_BuildObjectsAO, cams, objectsAO, start);
+	RENDERFILE_SINGLE(renderer, threadID, X_BuildObjectsAO, sceneMesh, meshes, cams, lights, objectsAO);
+#else
+	objectsAO.assign(cams.size(), Texture(false, false));
 #endif
+
 	// Create & process PBR renderfile
-	RENDERFILE_SINGLE(pBlender, X_BuildObjectsPBR, cams, objectPBRs, start);
+	RENDERFILE_SINGLE(renderer, threadID, X_BuildObjectsPBR, sceneMesh, meshes, cams, lights, objectPBRs);
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -635,7 +726,6 @@ void SceneManager::X_RenderPBRBlend(
 #if USE_AO
 		objectsAO[curr].LoadTexture(UnpackAO);
 #else
-		objectsAO[curr] = Texture(false, false);
 		objectsAO[curr].SetTexture(cv::Mat::ones(
 			objectPBRs[curr].GetTexture().rows,
 			objectPBRs[curr].GetTexture().cols,
@@ -643,41 +733,31 @@ void SceneManager::X_RenderPBRBlend(
 		));
 #endif
 
-		// Potentially resize images
-		objectsAO[curr].ResizeTexture(objectPBRs[curr].GetTexture());
+		// Potentially resize original scene image
 		sceneRGBs[curr].ResizeSceneTexture(objectPBRs[curr].GetTexture());
-		masks[curr].ResizeTexture(objectPBRs[curr].GetTexture());
-
-		// Determine original image size
-		cv::Size targetSize(
-			camBlueprint.GetIntrinsics().GetResolution().x(),
-			camBlueprint.GetIntrinsics().GetResolution().y()
-		);
 
 		// Blend & store result
 		Texture blendResult(false, false);
-		blendResult.SetPath(pRenderSettings->GetImagePath("rgb", start + curr, true), false);
+		blendResult.SetPath(pRenderSettings->GetImagePath("rgb", cams[curr].GetImageNum(), true), false);
 		blendResult.SetTexture(ComputeRGBBlend(
 			objectPBRs[curr].GetTexture(),
 			objectsAO[curr].GetTexture(),
 			sceneRGBs[curr].GetSceneTexture(),
-			masks[curr].GetTexture(),
-			targetSize)
+			masks[curr].GetTexture())
 		);
 		blendResult.StoreTexture();
-}
+	}
 }
 
 //---------------------------------------
 // Places lights according to scene dims
 //---------------------------------------
-void SceneManager::X_PlaceLights(
+std::vector<Light> SceneManager::X_PlaceLights(
 	Eigen::Vector3f min,
 	Eigen::Vector3f max
-)
+) const
 {
-	// Clean up existing lights
-	VEC_RELEASE(vecpLights);
+	std::vector<Light> newLights;
 
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -686,15 +766,17 @@ void SceneManager::X_PlaceLights(
 	for (int i = 0; i < 4; i++)
 	{
 		PointLightParams* params = new PointLightParams();
-		Light* addLight = new Light(params, Eigen::Vector3f().setOnes(), intensity, 1.0f);
-		// Add 8 lights in a box pattern
-		addLight->SetPosition(Eigen::Vector3f(
+		Light addLight(params, Eigen::Vector3f().setOnes(), intensity, 1.0f);
+		// Add lights above scene in a rect pattern
+		addLight.SetPosition(Eigen::Vector3f(
 			(i >> 0) % 2 == 0 ? max.x() : min.x(),
 			(i >> 1) % 2 == 0 ? max.z() : min.z(),
 			(i >> 2) % 2 == 0 ? max.y() : max.y())
 		);
-		vecpLights.push_back(addLight);
+		newLights.push_back(std::move(addLight));
 	}
+
+	return newLights;
 }
 
 //---------------------------------------
@@ -720,7 +802,6 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 					// Only use non-blurry images (= great variance)
 					if (ComputeVariance(entry.path()) > varThreshold)
 					{
-						std::cout << "Using image\t" << entry.path().filename() << std::endl;
 						// Store path to real RGB image
 						SceneImage currImage;
 						currImage.SetScenePath(entry.path());
@@ -740,9 +821,13 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 }
 
 //---------------------------------------
-// Run simulation & render synthetic images
+// Processing is done multithreaded
 //---------------------------------------
-int SceneManager::ProcessNext(int imageCount)
+void SceneManager::X_ProcessThread(
+	Blender::BlenderRenderer* renderer,
+	boost::mutex* syncPoint,
+	int threadID
+)
 {
 	// Get non blurry images
 	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(
@@ -752,13 +837,12 @@ int SceneManager::ProcessNext(int imageCount)
 
 	// Make sure there are images
 	if (sceneImages.empty())
-		return 0;
+		return;
 
 	// Create camera blueprint for scene
 	camBlueprint.LoadIntrinsics(*pRenderSettings);
 
 	// Control params
-	int newImages = 0;
 	int maxIters = pRenderSettings->GetIterationCount();
 	size_t poseCount = sceneImages.size();
 	size_t batchSize = pRenderSettings->GetRenderBatchSize();
@@ -766,33 +850,58 @@ int SceneManager::ProcessNext(int imageCount)
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++iter)
+	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetMaxImageCount(); ++iter)
 	{
-		pBlender->LogPerformance("Iteration " + std::to_string(iter + 1));
+		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 
 		// Create annotations manager
-		pAnnotations = new AnnotationsManager(*pRenderSettings);
+		ModifiablePath annotationPath = pRenderSettings->GetFinalPath() / "annotations";
+		Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+		renderRes *= pRenderSettings->GetRenderScale();
+		auto annotations = new AnnotationsManager(annotationPath, renderRes);
 
-		// Create scene render mesh
-		float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
-		ModifiablePath meshPath(pRenderSettings->GetScenePath());
-		meshPath.append("mesh.refined.obj");
-		pRenderMeshScene = new RenderMesh(meshPath, 0, true);
-		pRenderMeshScene->SetScale(Eigen::Vector3f().setConstant(toMeters));
+		syncPoint->lock();
+		// Create render mesh of scan scene
+		auto meshScene = X_CreateSceneMesh();
+		// Create physx mesh of scan scene
+		auto pxMeshScene = X_PxCreateSceneMesh();
+		syncPoint->unlock();
 
-		// Create physx representation of scan scene
-		X_PxCreateScene();
+		// Create simulation
+		float maxDist = 0.0f;
+		auto simulation = X_PxCreateSimulation(pxMeshScene, maxDist);
+
+		// Create lights according to scene size
+		auto vecLights = X_PlaceLights(
+			Eigen::Vector3f(
+				pxMeshScene.GetGlobalBounds().minimum.x,
+				pxMeshScene.GetGlobalBounds().minimum.y,
+				pxMeshScene.GetGlobalBounds().minimum.z
+			),
+			Eigen::Vector3f(
+				pxMeshScene.GetGlobalBounds().maximum.x,
+				pxMeshScene.GetGlobalBounds().maximum.y,
+				pxMeshScene.GetGlobalBounds().maximum.z
+			)
+		);
+
+		// Init random generator
+		std::random_device randDev;
+		auto randGen = std::default_random_engine(randDev());
+
 		// Create physx objects
-		X_PxCreateObjs();
+		auto vecPxObjs = X_PxCreateObjs(randGen, pxMeshScene, simulation);
+
 		// Run the simulation
-		X_PxRunSim(1.0f / 50.0f, pRenderSettings->GetStepsPerSimulation());
+		X_PxRunSim(simulation, 1.0f / 50.0f, pRenderSettings->GetStepsPerSimulation());
+
 		// Save results
-		X_PxSaveSimResults();
+		auto vecObjs = X_PxSaveSimResults(vecPxObjs);
 
 		// For every batch
-		for (size_t batch = 0; batch < batchMax && imageCount + newImages < pRenderSettings->GetMaxImageCount(); ++batch)
+		for (size_t batch = 0; batch < batchMax && imgCountUnoccluded < pRenderSettings->GetMaxImageCount(); ++batch)
 		{
-			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
+			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
 			std::cout << "Scene\t" << scenePath << ":\tIteration\t" << iter + 1 << "/" << maxIters
 				<< ":\tBatch\t" << batch + 1 << "/" << batchMax << "\t(" << batchSize << " each)" << std::endl;
 
@@ -812,15 +921,27 @@ int SceneManager::ProcessNext(int imageCount)
 			for (size_t batchPose = 0; batchPose < currImages.size(); ++batchPose)
 			{
 				currCams[batchPose].LoadExtrinsics(currImages[batchPose].GetPosePath());
+				// Store & update image number atomically
+				imgMtx.lock();
+				currCams[batchPose].SetImageNum(++imgCountDepth);
+				imgMtx.unlock();
 			}
 
 			// Render depths & masks
-			pBlender->LogPerformance("Depth & Masks");
-			std::vector<Mask> masks = X_RenderDepthMasks(currCams, start);
-			pBlender->LogPerformance("Depth & Masks");
+			renderer->LogPerformance("Depth & Masks", threadID);
+			std::vector<Mask> masks = X_RenderDepthMasks(
+				renderer,
+				threadID,
+				meshScene,
+				vecObjs,
+				currCams,
+				vecLights,
+				syncPoint,
+				maxDist
+			);
+			renderer->LogPerformance("Depth & Masks", threadID);
 
 			// Determine which images should be processed further
-			int unoccludedCount = 0;
 			std::vector<Mask> unoccludedMasks;
 			std::vector<Camera> unoccludedCams;
 			std::vector<SceneImage> unoccludedImages;
@@ -829,8 +950,12 @@ int SceneManager::ProcessNext(int imageCount)
 				// Only process unoccluded images
 				if (!masks[i].Occluded())
 				{
+					// Store & update image number atomically
+					imgMtx.lock();
+					currCams[i].SetImageNum(++imgCountUnoccluded);
+					imgMtx.unlock();
 					// Store the blended depth
-					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imageCount + newImages + unoccludedCount, true);
+					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imgCountUnoccluded, true);
 #if STORE_DEBUG_TEX
 					masks[i].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
 #else
@@ -840,36 +965,86 @@ int SceneManager::ProcessNext(int imageCount)
 					unoccludedCams.push_back(std::move(currCams[i]));
 					unoccludedMasks.push_back(std::move(masks[i]));
 					unoccludedImages.push_back(std::move(currImages[start + i]));
-					++unoccludedCount;
+				}
 			}
-		}
 
 			// If batch contains useful images
-			if (unoccludedCount > 0)
+			if (!unoccludedImages.empty())
 			{
 				// Render labels & create annotations
-				pBlender->LogPerformance("Labels & Annotating");
-				X_RenderSegments(unoccludedCams, unoccludedMasks, newImages);
-				pBlender->LogPerformance("Labels & Annotating");
+				renderer->LogPerformance("Labels & Annotating", threadID);
+				X_RenderSegments(
+					renderer,
+					threadID,
+					annotations,
+					meshScene,
+					vecObjs,
+					unoccludedCams,
+					vecLights,
+					unoccludedMasks
+				);
+				renderer->LogPerformance("Labels & Annotating", threadID);
 
 				// Render synthetic image & blend with real one
-				pBlender->LogPerformance("PBR Render & Blend");
-				X_RenderPBRBlend(unoccludedCams, unoccludedMasks, unoccludedImages, newImages);
-				pBlender->LogPerformance("PBR Render & Blend");
+				renderer->LogPerformance("PBR Render & Blend", threadID);
+				X_RenderPBRBlend(
+					renderer,
+					threadID,
+					meshScene,
+					vecObjs,
+					unoccludedCams,
+					vecLights,
+					unoccludedMasks,
+					unoccludedImages
+				);
+				renderer->LogPerformance("PBR Render & Blend", threadID);
 			}
 
 			// Update total count & output duration
-			pBlender->LogPerformance("Batch " + std::to_string(batch + 1));
-			newImages += unoccludedCount;
-	}
+			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
+		}
 
 		// Done with iteration
-		pBlender->LogPerformance("Iteration " + std::to_string(iter + 1));
-		X_CleanupScene();
+		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
+		X_CleanupScene(simulation, annotations, renderer, threadID);
+	}
 }
 
+//---------------------------------------
+// Run simulation & render synthetic images
+//---------------------------------------
+int SceneManager::ProcessNext(
+	int imageCount
+)
+{
+	// Update total images so far
+	imgCountUnoccluded = imageCount;
+
+	// Create threaded renderer
+	auto syncPoint = new boost::mutex();
+	auto processCount = std::thread::hardware_concurrency() / 2;
+	auto render = new Blender::BlenderRenderer(processCount);
+
+	// Create one thread / core
+	std::vector<boost::thread*> threads;
+	for(int i = 0; i < processCount; ++i)
+	{
+		threads.push_back(new boost::thread(&SceneManager::X_ProcessThread, this, render, syncPoint, i));
+	}
+
+	// Wait until done
+	for (int i = 0; i < processCount; ++i)
+	{
+		threads[i]->join();
+		delete threads[i];
+	}
+
+	// Cleanup
+	PTR_RELEASE(syncPoint);
+	PTR_RELEASE(render);
+
 	// Return how many images were rendered
-	return newImages;
+	return (imgCountUnoccluded - imageCount);
 }
 
 //---------------------------------------
@@ -880,36 +1055,11 @@ SceneManager::SceneManager(
 	const std::vector<PxMeshConvex*>& vecPhysxObjs,
 	const std::vector<RenderMesh*>& vecArnoldObjs
 ) :
+	camBlueprint(),
 	vecpPxMeshObjs(vecPhysxObjs),
 	vecpRenderMeshObjs(vecArnoldObjs),
 	pRenderSettings(settings),
-	vecpPxMeshCurrObjs(),
-	vecpRenderMeshCurrObjs(),
-	pRenderMeshScene(NULL),
-	pPxMeshScene(NULL),
-	pAnnotations(NULL),
-	camBlueprint(),
-	vecpLights(),
-	maxDist(10.0f),
-	pPxScene(NULL),
-	pBlender(NULL)
+	imgCountDepth(0),
+	imgCountUnoccluded(0)
 {
-	// Init random generator
-	std::random_device randDev;
-	randGen = std::default_random_engine(randDev());
-
-	// Create Blender render interface
-	pBlender = new Blender::BlenderRenderer();
-}
-
-//---------------------------------------
-// Cleanup scene
-//---------------------------------------
-SceneManager::~SceneManager()
-{
-	// Meshes & simulation
-	X_CleanupScene();
-
-	// Renderer
-	PTR_RELEASE(pBlender);
 }

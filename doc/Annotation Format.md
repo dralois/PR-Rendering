@@ -3,6 +3,6 @@ The annotation output files (_cvs format_) contains one annotation each line. Ev
 
 # Format
 
-Information | *Bounding Box* | *Object* | *Position* | *Rotation* | *Intrinsics*
-:--------- | :----------: | :----: | :------: | :------: | :--------:
-**Content** | x; y; w; h | objectName; meshID; objectID | x; y; z | w; x; y; z | fx; fy; ox; oy
+Information | *Bounding Box* | *Object* | *Position* | *Rotation* | *Scale* | *Intrinsics* | *Other*
+:---------- | :------------: | :------: | :--------: | :--------: | :-----: | :----------: | :-----:
+**Content** | x; y; w; h | objectClass; objectName; objectInstanceID | x; y; z | w; x; y; z | x; y; z; | fx; fy; ox; oy | learn3D

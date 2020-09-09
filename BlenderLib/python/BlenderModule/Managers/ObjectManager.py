@@ -121,6 +121,7 @@ class InstanceStorage(Generic[V, T], BlueprintStorage[T]):
                 staleInstances.append(instance)
         # Delete them
         for instance in staleInstances:
+            logger.info(f"Removing stale {instance}")
             self._RemoveInstance(instance)
         # Clear up to date cache
         self.__updateCache.clear()
@@ -227,11 +228,14 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
     # Override: Build hash value for instance / json
     def _BuildHash(self, toHash):
         if isinstance(toHash, dict):
-            return toHash.get("objectID", -1)
+            if "objectID" in toHash:
+                return toHash["objectID"]
+            else:
+                raise ValueError
         elif isinstance(toHash, Mesh.MeshInstance):
             return toHash.ObjectID
         else:
-            return -1
+            raise ValueError
 
     # Override: Updates existing instance with new json data
     def _UpdateInstance(self, data : dict, instance : V) -> V:

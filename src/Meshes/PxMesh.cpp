@@ -52,7 +52,7 @@ void PxMesh::AddVelocity(physx::PxVec3 velocity)
 	// If actor exists & is rigidbody
 	if (pPxActor)
 	{
-		if(pPxActor->getType() == PxActorType::eRIGID_DYNAMIC)
+		if (pPxActor->getType() == PxActorType::eRIGID_DYNAMIC)
 		{
 			// Apply velocity (as impulse)
 			((PxRigidDynamic*)pPxActor)->addForce(velocity, PxForceMode::eIMPULSE);
@@ -245,10 +245,14 @@ const PxTransform PxMesh::GetTransform()
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-PxMesh::PxMesh(ReferencePath meshPath, int meshId) :
+PxMesh::PxMesh(
+	ReferencePath meshPath,
+	const std::string& meshClass,
+	int meshId
+) :
 	pPxShape(NULL),
 	pPxActor(NULL),
-	MeshBase(meshPath, meshId),
+	MeshBase(meshPath, meshClass, meshId),
 	Transformable(
 		PxTransform(PxIdentity),
 		PxVec3(0.0f),

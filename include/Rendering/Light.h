@@ -32,6 +32,8 @@ public:
 	// Methods
 	//---------------------------------------
 
+	virtual LightParamsBase* MakeCopy() const = 0;
+
 	virtual void AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("type");
@@ -118,6 +120,30 @@ public:
 	{
 	}
 
+	Light(const Light& copy) :
+		RenderfileObject(copy),
+		color(copy.color),
+		intensity(copy.intensity),
+		exposure(copy.exposure),
+		castsIndirect(copy.castsIndirect),
+		params(NULL)
+	{
+		if (copy.params)
+		{
+			params = copy.params->MakeCopy();
+		}
+	}
+
+	Light(Light&& other) :
+		RenderfileObject(std::move(other))
+	{
+		color = std::exchange(other.color, Eigen::Vector3f().setZero());
+		intensity = std::exchange(other.intensity, 0.0f);
+		exposure = std::exchange(other.exposure, 0.0f);
+		castsIndirect = std::exchange(other.castsIndirect, false);
+		params = std::exchange(other.params, nullptr);
+	}
+
 	~Light()
 	{
 		// Light cleans up internals
@@ -141,6 +167,15 @@ protected:
 	}
 
 public:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual LightParamsBase* MakeCopy() const override
+	{
+		return new PointLightParams(*this);
+	}
+
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
@@ -175,6 +210,15 @@ protected:
 
 public:
 	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual LightParamsBase* MakeCopy() const override
+	{
+		return new SpotLightParams(*this);
+	}
+
+	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
@@ -202,6 +246,15 @@ protected:
 	}
 
 public:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual LightParamsBase* MakeCopy() const override
+	{
+		return new SunLightParams(*this);
+	}
+
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
@@ -239,6 +292,15 @@ protected:
 	}
 
 public:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	virtual LightParamsBase* MakeCopy() const override
+	{
+		return new AreaLightParams(*this);
+	}
+
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------

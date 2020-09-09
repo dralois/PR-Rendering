@@ -1,9 +1,11 @@
 import logging
 import time
+from threading import Semaphore
 
 __logger = None
 
 __performance = {}
+__logThreadSem = Semaphore()
 
 __mapping = {   "debug" : logging.DEBUG,
                 "info" : logging.INFO,
@@ -40,13 +42,18 @@ def GetLevel():
     return __reversed.get(__logger.level, "error")
 
 # Convenience performance measure function
-def LogPerformance(what):
-    global __performance
+def LogPerformance(what, thread):
+    global __performance, __logThreadSem
     # Log duration or start timer
-    if what in __performance:
-        GetLogger().critical("***********************************************")
-        GetLogger().critical(f"{what} duration: {time.clock() - __performance[what]}")
-        GetLogger().critical("***********************************************")
-        del __performance[what]
+    if thread in __performance:
+        if what in __performance[thread]:
+            __logThreadSem.acquire()
+            GetLogger().critical("*************************************************************")
+            GetLogger().critical(f"[Thread {thread}] {what} duration: {time.clock() - __performance[thread][what]}")
+            GetLogger().critical("*************************************************************")
+            del __performance[thread][what]
+            __logThreadSem.release()
+        else:
+            __performance[thread][what] = time.clock()
     else:
-        __performance[what] = time.clock()
+        __performance[thread] = {}

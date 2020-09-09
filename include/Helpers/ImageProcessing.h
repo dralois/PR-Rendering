@@ -14,17 +14,8 @@ static cv::Vec3b EncodeInt(
 	int toEncode
 )
 {
-	static std::hash<int> hash;
-	// Hash for nicer color spread
-	static int maxVal = (1 << 24) - 1;
-	toEncode = (((int) hash(toEncode)) % maxVal) + 1;
-	// Shift into uchars
-	uchar encode8 = (uchar)toEncode;
-	toEncode >>= 8;
-	uchar encode16 = (uchar)toEncode;
-	toEncode >>= 8;
-	uchar encode24 = (uchar)toEncode;
-	return cv::Vec3b(encode8, encode16, encode24);
+	// 254 shades of grey
+	return cv::Vec3b(toEncode, toEncode, toEncode);
 }
 
 //---------------------------------------
@@ -85,16 +76,14 @@ static bool ComputeObjectVisible(
 	int bodyId
 )
 {
-	// Single out current object
-	const cv::Vec3b encodedId = EncodeInt(bodyId);
 	// Determine masked amount visible
-	cv::inRange(segmented, encodedId, encodedId, objectMask);
+	objectMask = segmented == bodyId;
 	const float maskSum = cv::sum(objectMask)[0];
 	// Stop if object not visible at all
 	if (maskSum < FLT_EPSILON)
 		return false;
 	// Determine unmasked amount & visibility
-	cv::inRange(labeled, encodedId, encodedId, objectMask);
+	objectMask = labeled == bodyId;
 	const float bodySum = cv::sum(objectMask)[0];
 	const float visibility = maskSum / bodySum;
 	// Visible if at least 30% unoccluded & 2000px big
@@ -120,8 +109,7 @@ static cv::Mat ComputeRGBBlend(
 	const cv::Mat& bodiesRGB,
 	const cv::Mat& bodiesAO,
 	const cv::Mat& sceneRGB,
-	const cv::Mat& bodiesMask,
-	cv::Size targetSize
+	const cv::Mat& bodiesMask
 )
 {
 	cv::Mat blendResult;
@@ -133,8 +121,7 @@ static cv::Mat ComputeRGBBlend(
 	});
 	// Add scene RGB image to blend
 	sceneRGB.copyTo(blendResult, 255 - bodiesMask);
-	// Resize & return blended image
-	cv::resize(blendResult, blendResult, targetSize);
+	// Return blended image
 	return blendResult;
 }
 
@@ -147,7 +134,8 @@ static cv::Mat ComputeSegmentMask(
 )
 {
 	// Mask the labeled image -> segmented
-	cv::Mat segmented;
+	cv::Mat segmented(labeled.rows, labeled.cols, CV_8UC1);
+	segmented.setTo(cv::Vec<uchar, 1>(255));
 	labeled.copyTo(segmented, masked);
 	return segmented;
 }
@@ -182,15 +170,15 @@ static auto UnpackDepth = [](cv::Mat& packed) -> cv::Mat
 };
 
 //---------------------------------------
-// Converts packed label to rgb
+// Converts packed label to single channel
 //---------------------------------------
 static auto UnpackLabel = [](cv::Mat& packed) -> cv::Mat
 {
-	cv::Mat unpacked = cv::Mat::zeros(packed.rows, packed.cols, CV_8UC3);
+	cv::Mat unpacked(packed.rows, packed.cols, CV_8UC1);
 	// Unpack float and convert to rgb
-	unpacked.forEach<cv::Vec3b>([&](cv::Vec3b& val, const int pixel[]) -> void {
-		cv::Vec3f labelPacked = packed.at<cv::Vec3f>(pixel[0], pixel[1]) * 255.0f;
-		val = cv::Vec3b((uchar)labelPacked[0], (uchar)labelPacked[1], (uchar)labelPacked[2]);
+	unpacked.forEach<uchar>([&](uchar& val, const int pixel[]) -> void {
+		float labelPacked = packed.at<cv::Vec3f>(pixel[0], pixel[1])[0] * 255.0f;
+		val = labelPacked > FLT_EPSILON ? (uchar)labelPacked : val;
 	});
 	return unpacked;
 };

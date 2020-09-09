@@ -1,6 +1,7 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.ShaderCompiler import CompileFolder, EnsureInstalled
 from ..Utils.Logger import GetLogger, GetLevel, SetLevel
+from ..Utils.OutputMuter import BlenderMute, StdMute
 from ..Utils import FileDir, FileName, FullFileName, FullPath
 from ..Converters import Camera, Lights, Material, Mesh, Shader
 from . import ObjectManager, TextureManager
@@ -10,6 +11,7 @@ bpy = ImportBpy()
 logger = GetLogger()
 
 from typing import List
+import sys
 import os
 
 # Actual blender data storage & rendering class
@@ -63,8 +65,10 @@ class Scene(object):
             saveFile = f"{FileDir(currCam.CameraResultFile)}/Scene.blend"
             bpy.ops.wm.save_mainfile(filepath=saveFile, check_existing=False)
         # Render scene to file
-        logger.info(f"Rendering scene to {currCam.CameraResultFile}")
-        bpy.ops.render.render(write_still = True)
+        logger.warning(f"Render {FullFileName(currCam.CameraResultFile)} started")
+        with BlenderMute():
+            bpy.ops.render.render(write_still = True)
+        logger.warning(f"Render {FullFileName(currCam.CameraResultFile)} finished")
 
     # Sets up rendering from camera
     def __SetRenderSettings(self, camera : Camera.CameraInstance):
@@ -91,6 +95,8 @@ class Scene(object):
         ctx = bpy.context.scene
         # General appleseed settings
         ctx.appleseed.use_embree = True
+        ctx.appleseed.threads_auto = False
+        ctx.appleseed.threads = 2
         # Sampling method & quality (If data: Trace rays through center of pixel)
         if camera.CameraDataOnly:
             ctx.appleseed.pixel_sampler = "uniform"
@@ -135,12 +141,13 @@ class Scene(object):
         # Init texture system
         Shader.SetTextureSystem(TextureManager.TextureFactory(modulePath))
         # Init blenderseed plugin
-        if isInstalled:
-            bpy.ops.preferences.addon_refresh()
-            bpy.ops.preferences.addon_enable(module = "blenderseed")
-        else:
-            bpy.ops.preferences.addon_install(filepath = pluginPath)
-            bpy.ops.preferences.addon_enable(module = "blenderseed")
+        with StdMute():
+            if isInstalled:
+                bpy.ops.preferences.addon_refresh()
+                bpy.ops.preferences.addon_enable(module = "blenderseed")
+            else:
+                bpy.ops.preferences.addon_install(filepath = pluginPath)
+                bpy.ops.preferences.addon_enable(module = "blenderseed")
         # Remove default stuff from scene
         bpy.data.batch_remove([obj.data for obj in bpy.data.objects])
         bpy.data.batch_remove([mat for mat in bpy.data.materials])

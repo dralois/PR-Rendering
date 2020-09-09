@@ -15,9 +15,10 @@
     "scene_iterations": 0,
     "batch_size": 0,
     "max_images": 0,
-    "render_resolution": [0, 0],
-    "anti_aliasing": 0,
+    "render_scale": 1.0,
 
+    "spawn_min" : [0.0, 0.0, 0.0],
+    "spawn_max" : [0.0, 0.0, 0.0],
     "velocity_max" : [0.0, 0.0, 0.0],
     "torque_max" : [0.0, 0.0, 0.0],
     "apply_probability" : 0.0,
@@ -27,8 +28,12 @@
     "intrinsics_o": [0.0, 0.0],
     "intrinsics_r": [0, 0],
 
-    "render_objs": [""],
-    "mesh_format" : "",
-    "scene_unit": 0.0,
-    "objs_unit": 0.0
+    "scene_unit": 1.0,
+    "render_objs": [
+        {
+            "mesh_path" : "",
+            "mesh_class" : "",
+            "mesh_unit" : 0.0
+        }
+    ]
 }

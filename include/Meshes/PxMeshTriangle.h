@@ -31,7 +31,11 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	PxMeshTriangle(ReferencePath meshPath, int meshId);
+	PxMeshTriangle(
+		ReferencePath meshPath,
+		const std::string& meshClass,
+		int meshId
+	);
 	PxMeshTriangle(const PxMeshTriangle& copy);
 	PxMeshTriangle(PxMeshTriangle&& other);
 	~PxMeshTriangle();

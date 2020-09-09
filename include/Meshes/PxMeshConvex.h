@@ -31,7 +31,11 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	PxMeshConvex(ReferencePath meshPath, int meshId);
+	PxMeshConvex(
+		ReferencePath meshPath,
+		const std::string& meshClass,
+		int meshId
+	);
 	PxMeshConvex(const PxMeshConvex& copy);
 	PxMeshConvex(PxMeshConvex&& other);
 	~PxMeshConvex();

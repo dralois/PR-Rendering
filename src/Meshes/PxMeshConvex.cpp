@@ -40,7 +40,9 @@ void PxMeshConvex::X_CookMesh()
 		convDesc.flags |= PxConvexFlag::eGPU_COMPATIBLE;
 
 		// Cook the mesh
+#pragma warning(disable:26812)
 		PxConvexMeshCookingResult::Enum result;
+#pragma warning(default:26812)
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!PxManager::GetInstance().GetCooker()->cookConvexMesh(convDesc, writeOutBuffer, &result))
 		{
@@ -163,8 +165,12 @@ void PxMeshConvex::X_CreateMesh()
 //---------------------------------------
 // Default constructor
 //---------------------------------------
-PxMeshConvex::PxMeshConvex(ReferencePath meshPath, int meshId) :
-	PxMesh(meshPath, meshId),
+PxMeshConvex::PxMeshConvex(
+	ReferencePath meshPath,
+	const std::string& meshClass,
+	int meshId
+) :
+	PxMesh(meshPath, meshClass, meshId),
 	pPxMesh(NULL)
 {
 }

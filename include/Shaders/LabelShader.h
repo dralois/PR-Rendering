@@ -15,9 +15,9 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	int maskRed;
-	int maskGreen;
-	int maskBlue;
+	uchar maskRed;
+	uchar maskGreen;
+	uchar maskBlue;
 
 	//---------------------------------------
 	// Methods
@@ -48,14 +48,12 @@ public:
 	//---------------------------------------
 
 	LabelShader(
-		int red,
-		int green,
-		int blue
+		cv::Vec3b color
 	):
 		OSLShader("label_obj"),
-		maskRed(red),
-		maskGreen(green),
-		maskBlue(blue)
+		maskRed(color[2]),
+		maskGreen(color[1]),
+		maskBlue(color[0])
 	{
 	}
 };

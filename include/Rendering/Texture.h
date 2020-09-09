@@ -73,9 +73,17 @@ public:
 
 	void LoadTexture(const std::function<cv::Mat(cv::Mat&)>& converter = NULL)
 	{
+		// Overriding is not allowed
+		if (!loadedImage.empty())
+			return;
+
+		// Load according to texture type
+#pragma warning(disable:26812)
 		loadedImage = cv::imread(filePath.string(),
 			(singleChannel ? cv::IMREAD_GRAYSCALE : cv::IMREAD_COLOR) |
 			(floatPrecision ? cv::IMREAD_ANYDEPTH : cv::IMREAD_ANYCOLOR));
+#pragma warning(default:26812)
+
 		// Convert image into correct format if lambda is provided
 		if(converter)
 		{

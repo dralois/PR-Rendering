@@ -1,60 +1,58 @@
-[
+{
+    "settings" :
     {
-        "settings" :
+        "logLevel" : "info",
+        "pluginDir" : "../blenderseed.zip",
+        "shaderDirs" : ["./Test/Resources"]
+    },
+    "cameras" : [
         {
-            "logLevel" : "info",
-            "pluginDir" : "../blenderseed.zip",
-            "shaderDirs" : ["./Test/Resources"]
+            "position" : [6.0, -3.0, 5.0],
+            "rotation" : [0.767653, 0.370819, 0.227351, 0.470652],
+            "resultFile" : "./Test/Results/test_render_base.png",
+            "resolution" : [1280, 720]
+        }
+    ],
+    "meshes" : [
+        {
+            "position" : [-0.5, -0.5, 0.0],
+            "scale" : [0.5, 0.5, 0.5],
+            "objectID" : 1,
+            "file" : "./Test/Resources/module_test.obj",
+            "shader" :
+            {
+                "name" : "simple_texture",
+                "textures" : [
+                    {
+                        "filePath" : "./Test/Resources/module_test.png"
+                    }
+                ],
+                "params" :
+                {
+                    "filename" : "./Test/Resources/module_test.png"
+                }
+            }
         },
-        "cameras" : [
+        {
+            "position" : [1.0, 1.0, 0.0],
+            "scale" : [0.5, 0.5, 0.5],
+            "objectID" : 2,
+            "file" : "./Test/Resources/module_test.obj",
+            "shader" :
             {
-                "position" : [6.0, -3.0, 5.0],
-                "rotation" : [0.767653, 0.370819, 0.227351, 0.470652],
-                "resultFile" : "./Test/Results/test_render_base.png",
-                "resolution" : [1280, 720]
-            }
-        ],
-        "meshes" : [
-            {
-                "position" : [-0.5, -0.5, 0.0],
-                "scale" : [0.5, 0.5, 0.5],
-                "objectID" : 1,
-                "file" : "./Test/Resources/module_test.obj",
-                "shader" :
+                "name" : "module_test",
+                "params" :
                 {
-                    "name" : "simple_texture",
-                    "textures" : [
-                        {
-                            "filePath" : "./Test/Resources/module_test.png"
-                        }
-                    ],
-                    "params" :
-                    {
-                        "filename" : "./Test/Resources/module_test.png"
-                    }
-                }
-            },
-            {
-                "position" : [1.0, 1.0, 0.0],
-                "scale" : [0.5, 0.5, 0.5],
-                "objectID" : 2,
-                "file" : "./Test/Resources/module_test.obj",
-                "shader" :
-                {
-                    "name" : "module_test",
-                    "params" :
-                    {
-                        "color" : [0.3, 0.7, 0.5]
-                    }
+                    "color" : [0.3, 0.7, 0.5]
                 }
             }
-        ],
-        "lights" : [
-            {
-                "position" : [3.0, -4.2, 5.0],
-                "type" : "POINT",
-                "intensity" : 100
-            }
-        ]
-    }
-]
+        }
+    ],
+    "lights" : [
+        {
+            "position" : [3.0, -4.2, 5.0],
+            "type" : "POINT",
+            "intensity" : 100
+        }
+    ]
+}

@@ -61,19 +61,23 @@ cd build && make -j 16
 
 ## Configuration & Options
 - The config.json file contains options & settings
-- The paths to the bodies & scenes need to be set to the respective folders
-- The output paths need to be set to some folder
-- The objects array should contain all objects that can be rendered
+- The paths in the first block need to be set to folders & files
+- Simulation & render output can be controlled in the second block
+- Object physics can be adjusted in the third block
+- Optionally, custom intrinsics can be set in the fourth block
+- Lastly, the objects that will be used in the simulation have to be defined
 
 ## Scene & Meshes Layout
 
 ### Meshes
 - Meshes need to be either of _.obj_ or _glTF_ format
-- Used meshes need to be listed name-only in the config file (_render\_objs_)
-- The mesh format needs to be specified in the config file (_mesh\_format_)
-    - The mesh scaling factor (_objs\_unit_) needs to be set so 1 unit = 1 meter
-    - If available, the diffuse albedo texture needs to be named objectname\__color.png_
-    - The meshes are read with the assumption that _Y=forward, Z=up_
+- Used meshes need to be listed in the corresponding array in the config file (_render\_objs_)
+- Each mesh has three properties but only the path is required
+    - Each file path (_mesh\_path_) can be either relative to the base directory (_meshes\_path_) or an absolute path
+    - The classification (_mesh\_class_) can be any arbitrary string
+    - The scaling factor (_mesh\_unit_) needs to be set so 1 unit = 1 meter
+- If available, the diffuse albedo texture needs to be named objectname\__color.png_ and in the same directory as the mesh
+- The meshes are read with the assumption that _Y=forward, Z=up_
 
 ### Scenes
 - Each scene needs to have a _rgbd_ folder and a mesh in _.obj_ format

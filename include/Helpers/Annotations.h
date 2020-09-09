@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #pragma warning(push, 0)
 #include <Eigen/Dense>
 
@@ -38,10 +36,12 @@ private:
 	{
 		// Description line
 		osAnnotations << "BB x" << sep << "BB y" << sep << "BB w" << sep << "BB h" << sep
-			<< "Object Name" << sep << "Mesh ID" << sep << "Object ID" << sep
+			<< "Object Class" << sep << "Object Name" << sep << "Object Instance ID" << sep
 			<< "Pos x" << sep << "Pos y" << sep << "Pos z" << sep
 			<< "Rot w" << sep << "Rot x" << sep << "Rot y" << sep << "Rot z" << sep
+			<< "Scl x" << sep << "Scl y" << sep << "Scl z" << sep
 			<< "Intr fx" << sep << "Intr fy" << sep << "Intr ox" << sep << "Intr oy" << sep
+			<< "Learn 3D" << sep
 			<< end;
 	}
 
@@ -67,37 +67,41 @@ public:
 	}
 
 	inline void Write(
-		const RenderMesh* currBody,
+		const RenderMesh& currBody,
 		const cv::Mat& labeled,
 		const cv::Mat& segmented,
 		const Camera& renderCam
 	)
 	{
 		// Only annotate properly visible objects
-		if (!ComputeObjectVisible(labeled, segmented, objectMask, currBody->GetObjId()))
+		if (!ComputeObjectVisible(labeled, segmented, objectMask, currBody.GetObjId()))
 			return;
 
 		// Compute bounding box
 		cv::Rect bbox = ComputeBoundingBox(objectMask);
 
-		// FIXME position wrong?
+		// FIXME position / scale wrong?
 		// Compute world space pose of object
-		Eigen::Vector3f pos(currBody->GetPosition());
-		Eigen::Quaternionf rot(currBody->GetRotation());
+		Eigen::Vector3f pos(currBody.GetPosition());
+		Eigen::Quaternionf rot(currBody.GetRotation());
+		Eigen::Vector3f scl(currBody.GetScale());
 
 		// Add formatted info to annotation file
 		osAnnotations << bbox.x << sep << bbox.y << sep << bbox.width << sep << bbox.height << sep
-			<< currBody->GetName() << sep << currBody->GetMeshId() << sep << currBody->GetObjId() << sep
+			<< currBody.GetMeshClass() << sep << currBody.GetName() << sep << currBody.GetObjId() << sep
 			<< pos[0] << sep << pos[1] << sep << pos[2] << sep
 			<< rot.coeffs()[3] << sep << rot.coeffs()[0] << sep << rot.coeffs()[1] << sep << rot.coeffs()[2] << sep
+			<< scl[0] << sep << scl[1] << sep << scl[2] << sep
 			<< renderCam.GetIntrinsics().GetFocalLenght().x() << sep << renderCam.GetIntrinsics().GetFocalLenght().y() << sep
-			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << sep << renderCam.GetIntrinsics().GetPrincipalPoint().y()
+			<< renderCam.GetIntrinsics().GetPrincipalPoint().x() << sep << renderCam.GetIntrinsics().GetPrincipalPoint().y() << sep
+			<< "1" << sep
 			<< end;
 	}
 
 	inline void End()
 	{
-		if(osAnnotations.good())
+		// Properly close file
+		if (osAnnotations.good())
 		{
 			if (osAnnotations.is_open())
 			{
@@ -111,13 +115,13 @@ public:
 	//---------------------------------------
 
 	AnnotationsManager(
-		const Settings& settings
-	)
+		ReferencePath storePath,
+		Eigen::Vector2i resolution
+	):
+		basePath(storePath)
 	{
-		// Get path for annotation files
-		basePath = settings.GetFinalPath() / "annotations";
-		// Create mask storage
-		objectMask.create(settings.GetRenderResolution().y(), settings.GetRenderResolution().x(), CV_8UC1);
+		// Create mask buffer
+		objectMask.create(resolution.y(), resolution.x(), CV_8UC1);
 	}
 
 	~AnnotationsManager()

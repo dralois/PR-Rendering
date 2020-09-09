@@ -15,7 +15,7 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	Texture* diffuse;
+	Texture diffuse;
 	float metalness;
 
 	//---------------------------------------
@@ -25,7 +25,7 @@ protected:
 	void X_AddToJSON(JSONWriterRef writer) override
 	{
 		writer.Key("diffusePath");
-		AddString(writer, diffuse->GetPath().string());
+		AddString(writer, diffuse.GetPath().string());
 
 		writer.Key("metalness");
 		AddFloat(writer, metalness);
@@ -46,7 +46,7 @@ public:
 	//---------------------------------------
 
 	PBRShader(
-		Texture* diffuse,
+		const Texture& diffuse,
 		float metalness = 0.0f
 	) :
 		OSLShader("pbr_obj", {diffuse}),

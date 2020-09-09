@@ -7,6 +7,8 @@
 #include <assimp/Exporter.hpp>
 #pragma warning(pop)
 
+#pragma warning(disable:26451)
+
 //---------------------------------------
 // Try to load mesh from disk
 //---------------------------------------
@@ -186,9 +188,10 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 //---------------------------------------
 // Base constructor
 //---------------------------------------
-MeshBase::MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId) :
-	meshId(meshId),
+MeshBase::MeshBase(ReferencePath meshPath, ReferencePath texturePath, const std::string& meshClass, int meshId) :
 	objId(-1),
+	meshId(meshId),
+	meshClass(meshClass),
 	meshPath(meshPath),
 	texturePath(texturePath)
 {
@@ -197,8 +200,8 @@ MeshBase::MeshBase(ReferencePath meshPath, ReferencePath texturePath, int meshId
 //---------------------------------------
 // Constructor without texture
 //---------------------------------------
-MeshBase::MeshBase(ReferencePath meshPath, int meshId) :
-	MeshBase(meshPath, "", meshId)
+MeshBase::MeshBase(ReferencePath meshPath, const std::string& meshClass, int meshId) :
+	MeshBase(meshPath, "", meshClass, meshId)
 {
 }
 
@@ -206,8 +209,9 @@ MeshBase::MeshBase(ReferencePath meshPath, int meshId) :
 // Copy constructor
 //---------------------------------------
 MeshBase::MeshBase(const MeshBase& copy) :
-	meshId(copy.meshId),
 	objId(copy.objId),
+	meshId(copy.meshId),
+	meshClass(copy.meshClass),
 	meshPath(copy.meshPath),
 	texturePath(copy.texturePath)
 {
@@ -218,8 +222,9 @@ MeshBase::MeshBase(const MeshBase& copy) :
 //---------------------------------------
 MeshBase::MeshBase(MeshBase&& other)
 {
-	meshId = std::exchange(other.meshId, -1);
 	objId = std::exchange(other.objId, -1);
+	meshId = std::exchange(other.meshId, -1);
+	meshClass = std::exchange(other.meshClass, "");
 	std::swap(meshPath, other.meshPath);
 	std::swap(texturePath, other.texturePath);
 	std::swap(vecVertices, other.vecVertices);
@@ -239,3 +244,5 @@ MeshBase::~MeshBase()
 	vecNormals.clear();
 	vecUVs.clear();
 }
+
+#pragma warning(default:26451)

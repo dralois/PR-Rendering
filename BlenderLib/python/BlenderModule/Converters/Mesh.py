@@ -1,5 +1,6 @@
 from ..Utils.Importer import ImportBpy
 from ..Utils.Logger import GetLogger
+from ..Utils.OutputMuter import StdMute
 from ..Utils import FileExt, FullPath
 from .Material import MaterialData
 from .Base import DataWrapper, ObjectWrapper
@@ -8,9 +9,7 @@ from .Base import DataWrapper, ObjectWrapper
 bpy = ImportBpy()
 logger = GetLogger()
 
-import sys
 import bmesh
-from os import devnull
 
 # Mesh descriptor
 class MeshData(DataWrapper):
@@ -34,7 +33,9 @@ class MeshData(DataWrapper):
     # Override: Cleanup & remove mesh
     def _Cleanup(self):
         if self.__mesh is not None:
-            bpy.data.meshes.remove(self.__mesh)
+            # Make sure only fake user remains
+            if self.__mesh.users <= 1:
+                bpy.data.meshes.remove(self.__mesh)
 
     # Override: Get if mesh valid
     @property
@@ -73,9 +74,8 @@ class MeshData(DataWrapper):
     # Load mesh from obj file
     def __LoadMeshObj(self):
         # Load mesh to active scene & store from selection
-        sys.stdout = open(devnull, "w")
-        bpy.ops.import_scene.obj(filepath=self.__filePath, axis_forward="Y", axis_up="Z")
-        sys.stdout = sys.__stdout__
+        with StdMute():
+            bpy.ops.import_scene.obj(filepath=self.__filePath, axis_forward="Y", axis_up="Z")
         # Delete potentially loaded materials
         loader : bpy.types.Object = bpy.context.selected_objects[0]
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])
@@ -90,9 +90,10 @@ class MeshData(DataWrapper):
     # Load mesh from glTF file
     def __LoadMeshGLTF(self):
         # Load mesh to active scene & store from selection
-        bpy.ops.import_scene.gltf(filepath = self.__filePath)
-        loader : bpy.types.Object = bpy.context.selected_objects[0]
+        with StdMute():
+            bpy.ops.import_scene.gltf(filepath = self.__filePath)
         # Delete potentially loaded materials
+        loader : bpy.types.Object = bpy.context.selected_objects[0]
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])
         # Update internals
         newMesh = loader.data

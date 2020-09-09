@@ -1,5 +1,5 @@
 {
-    "log_level": "error",
+    "log_level": "warning",
     "store_blend": false,
 
     "blenderseed_path": "../BlenderLib/python/blenderseed.zip",
@@ -15,9 +15,10 @@
     "scene_iterations": 1,
     "batch_size": 10,
     "max_images": 100,
-    "render_resolution": [1920, 1080],
-    "anti_aliasing": 1,
+    "render_scale": 1.0,
 
+    "spawn_min" : [-0.75, 0.25, -0.75],
+    "spawn_max" : [0.75, 0.75, 0.75],
     "velocity_max" : [2.0, 0.0, 2.0],
     "torque_max" : [5.0, 5.0, 5.0],
     "apply_probability" : 0.25,
@@ -27,8 +28,72 @@
     "intrinsics_o": [318.27, 239.56],
     "intrinsics_r": [640, 480],
 
-    "render_objs": ["obj_01", "obj_02", "obj_03", "obj_04", "obj_05", "obj_06", "obj_07", "obj_08", "obj_09", "obj_10", "obj_11", "obj_12", "obj_13"],
-    "mesh_format" : "obj",
     "scene_unit": 1.0,
-    "objs_unit": 0.001
+    "render_objs": [
+        {
+            "mesh_path" : "obj_01.obj",
+            "mesh_class" : "buddha",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_02.obj",
+            "mesh_class" : "wrench",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_03.obj",
+            "mesh_class" : "phone",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_04.obj",
+            "mesh_class" : "camera",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_05.obj",
+            "mesh_class" : "can",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_06.obj",
+            "mesh_class" : "cat",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_07.obj",
+            "mesh_class" : "lamp",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_08.obj",
+            "mesh_class" : "drill",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_09.obj",
+            "mesh_class" : "duck",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_10.obj",
+            "mesh_class" : "carton",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_11.obj",
+            "mesh_class" : "bottle",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_12.obj",
+            "mesh_class" : "stapler",
+            "mesh_unit" : 0.001
+        },
+        {
+            "mesh_path" : "obj_13.obj",
+            "mesh_class" : "iron",
+            "mesh_unit" : 0.001
+        }
+    ]
 }

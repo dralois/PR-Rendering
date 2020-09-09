@@ -32,7 +32,9 @@ class MaterialData(DataWrapper):
     # Override: Cleanup & remove material
     def _Cleanup(self):
         if self.__material is not None:
-            bpy.data.materials.remove(self.__material)
+            # Make sure only fake user remains
+            if self.__mesh.users <= 1:
+                bpy.data.materials.remove(self.__material)
 
     # Override: Get if material valid
     @property

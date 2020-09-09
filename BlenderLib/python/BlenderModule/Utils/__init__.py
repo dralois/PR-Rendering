@@ -1,4 +1,4 @@
-__all__ = ["Importer", "Logger", "ShaderCompiler", "TextureConverter"]
+__all__ = ["Importer", "Logger", "OutputMuter", "ShaderCompiler", "TextureConverter"]
 
 import os
 import sys

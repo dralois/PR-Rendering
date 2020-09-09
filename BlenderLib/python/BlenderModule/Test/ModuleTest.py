@@ -1,3 +1,4 @@
+from threading import Thread
 from ..Managers.RenderManager import RenderManager
 
 import json
@@ -8,8 +9,8 @@ def TestBase():
     testScene = json.load(open("./BlenderModule/Test/module_test_base.json"))
     sceneStr = json.dumps(testScene)
     # Test rendering
-    mgr = RenderManager()
-    mgr.ProcessRenderfile(sceneStr)
+    mgr = RenderManager(1)
+    mgr.ProcessRenderfile(sceneStr, 60, 0)
 
 # Runs renderfile update test in subprocess
 def TestUpdate():
@@ -19,17 +20,24 @@ def TestUpdate():
     testStr = json.dumps(testScene)
     updateStr = json.dumps(updateScene)
     # Test rendering & updating
-    mgr = RenderManager()
-    mgr.ProcessRenderfile(testStr)
-    mgr.ProcessRenderfile(updateStr)
-    mgr.UnloadProcesses()
-    mgr.ProcessRenderfile(testStr)
+    mgr = RenderManager(1)
+    mgr.ProcessRenderfile(testStr, 60, 0)
+    mgr.ProcessRenderfile(updateStr, 60, 0)
+    mgr.UnloadProcess(0)
+    mgr.ProcessRenderfile(testStr, 60, 0)
 
 # Runs test multithreaded
 def TestMultithread():
     # Load json file
     testScene = json.load(open("./BlenderModule/Test/module_test_base.json"))
-    sceneStr = json.dumps([testScene[0], testScene[0]])
+    scene1Str = json.dumps(testScene)
+    scene2Str = json.dumps(testScene)
+    mgr = RenderManager(2)
+    # Create threads
+    thr1 = Thread(target=mgr.ProcessRenderfile, args=(scene1Str, 20, 0))
+    thr2 = Thread(target=mgr.ProcessRenderfile, args=(scene2Str, 60, 1))
     # Test rendering
-    mgr = RenderManager()
-    mgr.ProcessRenderfile(sceneStr)
+    thr1.start()
+    thr2.start()
+    thr1.join()
+    thr2.join()

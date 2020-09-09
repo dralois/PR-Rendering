@@ -31,7 +31,7 @@ public:
 	// Properties
 	//---------------------------------------
 
-	inline ReferencePath GetSourceFile() const { return sourceFile; }
+	inline ModifiablePath GetSourceFile() const { return sourceFile; }
 	inline Eigen::Vector2f GetFocalLenght() const { return focalLength; }
 	inline void SetFocalLenght(Eigen::Vector2f f) { focalLength = f; }
 	inline Eigen::Vector2f GetPrincipalPoint() const { return principalPoint; }

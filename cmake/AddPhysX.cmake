@@ -42,6 +42,7 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
             # Linux compiler needs to be Clang 9
             if(WIN32)
                 set(EXTRA_FLAGS NV_USE_STATIC_WINCRT=OFF NV_USE_DEBUG_WINCRT=OFF)
+                set(EXTRA_FLAGS_DEBUG NV_USE_STATIC_WINCRT=OFF NV_USE_DEBUG_WINCRT=ON)
             else()
                 set(EXTRA_FLAGS CMAKE_C_COMPILER=clang-9 CMAKE_CXX_COMPILER=clang++-9 PX_GENERATE_SOURCE_DISTRO=ON NV_USE_GAMEWORKS_OUTPUT_DIRS=OFF)
             endif()
@@ -59,7 +60,7 @@ function(AddPhysX TO_TARGET INSTALL_PATH)
                 # Configure physx debug
                 CreateContent(${${CONTENT_NAME}_SOURCE_DIR}/physx ${${CONTENT_NAME}_BINARY_DIR}
                             CMAKE_INSTALL_PREFIX=${INSTALL_PATH}
-                            ${EXTRA_FLAGS}
+                            ${EXTRA_FLAGS_DEBUG}
                 )
                 # Build physx debug
                 BuildContent(${${CONTENT_NAME}_BINARY_DIR} "debug")

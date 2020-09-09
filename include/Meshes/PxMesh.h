@@ -39,8 +39,8 @@ protected:
 	// Properties
 	//---------------------------------------
 
-	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) & vecVertices[0]; }
-	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) & vecIndices[0]; }
+	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) &vecVertices[0]; }
+	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) &vecIndices[0]; }
 
 public:
 	//---------------------------------------
@@ -75,7 +75,11 @@ public:
 	// Constructors
 	//---------------------------------------
 
-	PxMesh(ReferencePath meshPath, int meshId);
+	PxMesh(
+		ReferencePath meshPath,
+		const std::string& meshClass,
+		int meshId
+	);
 	PxMesh(const PxMesh& copy);
 	PxMesh(PxMesh&& other);
 	virtual ~PxMesh();

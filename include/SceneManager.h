@@ -7,6 +7,7 @@
 
 #pragma warning(push, 0)
 #include <boost/algorithm/string.hpp>
+#include <boost/thread.hpp>
 
 #include <Helpers/Annotations.h>
 #include <Helpers/ImageProcessing.h>
@@ -40,39 +41,44 @@ private:
 	// Fields
 	//---------------------------------------
 
-	// PhysX
-	physx::PxScene* pPxScene;
-
 	// Rendering
-	float maxDist;
 	Camera camBlueprint;
-	std::vector<Light*> vecpLights;
 
 	// Meshes (Blueprint)
 	const std::vector<PxMeshConvex*> vecpPxMeshObjs;
 	const std::vector<RenderMesh*> vecpRenderMeshObjs;
 
-	// Meshes (Instances)
-	std::vector<PxMeshConvex*> vecpPxMeshCurrObjs;
-	std::vector<RenderMesh*> vecpRenderMeshCurrObjs;
-	PxMeshTriangle* pPxMeshScene;
-	RenderMesh* pRenderMeshScene;
-
 	// Other
 	Settings* pRenderSettings;
-	AnnotationsManager* pAnnotations;
-	Blender::BlenderRenderer* pBlender;
-	std::default_random_engine randGen;
+
+	// Multithreading
+	boost::mutex imgMtx;
+	int imgCountDepth;
+	int imgCountUnoccluded;
 
 	//---------------------------------------
 	// Methods
 	//---------------------------------------
 
+	// Scene mesh
+	RenderMesh X_CreateSceneMesh() const;
+	PxMeshTriangle X_PxCreateSceneMesh() const;
+
 	// Simulation
-	void X_PxSaveSimResults();
-	void X_PxCreateScene();
-	void X_PxCreateObjs();
+	physx::PxScene* X_PxCreateSimulation(
+		PxMeshTriangle& sceneMesh,
+		float& maxDist
+	) const;
+	std::vector<PxMeshConvex> X_PxCreateObjs(
+		std::default_random_engine& generator,
+		PxMeshTriangle& sceneMesh,
+		physx::PxScene* simulation
+	) const;
+	std::vector<RenderMesh> X_PxSaveSimResults(
+		std::vector<PxMeshConvex>& simulationObjs
+	) const;
 	void X_PxRunSim(
+		physx::PxScene* simulation,
 		float timestep,
 		int stepCount
 	) const;
@@ -80,67 +86,105 @@ private:
 	// Renderfile creation
 	void X_ConvertToRenderfile(
 		JSONWriterRef writer,
-		std::vector<RenderMesh*>& meshes,
-		std::vector<Camera>& cams
-	);
+		std::vector<RenderMesh>& meshes,
+		std::vector<Camera>& cams,
+		std::vector<Light>& lights
+	) const;
 	void X_BuildSceneDepth(
 		JSONWriterRef writer,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
+		std::vector<Light>& lights,
 		std::vector<Texture>& results,
-		int start
-	);
+		float maxDist
+	) const;
 	void X_BuildObjectsDepth(
 		JSONWriterRef writer,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
+		std::vector<Light>& lights,
 		std::vector<Texture>& results,
-		int start
-	);
+		float maxDist
+	) const;
 	void X_BuildObjectsLabel(
 		JSONWriterRef writer,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
-		std::vector<Texture>& results,
-		int start
-	);
+		std::vector<Light>& lights,
+		std::vector<Texture>& results
+	) const;
 	void X_BuildObjectsPBR(
 		JSONWriterRef writer,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
-		std::vector<Texture>& results,
-		int start
-	);
+		std::vector<Light>& lights,
+		std::vector<Texture>& results
+	) const;
 	void X_BuildObjectsAO(
 		JSONWriterRef writer,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
-		std::vector<Texture>& results,
-		int start
-	);
+		std::vector<Light>& lights,
+		std::vector<Texture>& results
+	) const;
 
 	// Blender rendering
 	std::vector<Mask> X_RenderDepthMasks(
+		Blender::BlenderRenderer* renderer,
+		int threadID,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
-		int start
-	);
+		std::vector<Light>& lights,
+		boost::mutex* syncPoint,
+		float maxDist
+	) const;
 	void X_RenderSegments(
+		Blender::BlenderRenderer* renderer,
+		int threadID,
+		AnnotationsManager* annotations,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
-		std::vector<Mask>& masks,
-		int start
-	);
+		std::vector<Light>& lights,
+		std::vector<Mask>& masks
+	) const;
 	void X_RenderPBRBlend(
+		Blender::BlenderRenderer* renderer,
+		int threadID,
+		RenderMesh& sceneMesh,
+		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
+		std::vector<Light>& lights,
 		std::vector<Mask>& masks,
-		std::vector<SceneImage>& sceneRGBs,
-		int start
-	);
+		std::vector<SceneImage>& sceneRGBs
+	) const;
 
 	// Other
-	void X_CleanupScene();
-	void X_PlaceLights(
+	void X_CleanupScene(
+		physx::PxScene* simulation,
+		AnnotationsManager* annotations,
+		Blender::BlenderRenderer* renderer,
+		int threadID
+	) const;
+	std::vector<Light> X_PlaceLights(
 		Eigen::Vector3f min,
 		Eigen::Vector3f max
-	);
+	) const;
 	std::vector<SceneImage> X_GetImagesToProcess(
 		ReferencePath dir,
 		float varThreshold
 	) const;
+	void X_ProcessThread(
+		Blender::BlenderRenderer* renderer,
+		boost::mutex* syncPoint,
+		int threadID
+	);
 
 public:
 	//---------------------------------------
@@ -158,6 +202,4 @@ public:
 		const std::vector<PxMeshConvex*>& vecPhysxObjs,
 		const std::vector<RenderMesh*>& vecArnoldObjs
 	);
-
-	~SceneManager();
 };
