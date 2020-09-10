@@ -24,6 +24,10 @@ def SetTextureSystem(value):
 # Shader generator
 class Shader(object):
 
+    # Raised if shader can't be built
+    class ShaderException(Exception):
+        pass
+
     # Builds shader from json params & adds nodes to tree
     @classmethod
     def AddShader(cls, tree : bpy.types.NodeTree, data : dict):
@@ -42,6 +46,8 @@ class Shader(object):
             if not shader.OutputsClosure:
                 finalNode = cls.__AddShaderClosure(finalNode, tree)
             cls.__AddFinalClosure(finalNode, tree)
+        else:
+            raise Shader.ShaderException
 
     # Add shader closure node and connect to closure output node
     @classmethod

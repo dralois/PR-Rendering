@@ -62,7 +62,7 @@ class Scene(object):
         self.__SetRaytracingSettings(currCam)
         # Store to blend file (last camera only)
         if self.__storeBlend and len(self.__renderQueue) == 0:
-            saveFile = f"{FileDir(currCam.CameraResultFile)}/Scene.blend"
+            saveFile = f"{FileDir(currCam.CameraResultFile)}/{FileName(currCam.CameraResultFile)}.blend"
             bpy.ops.wm.save_mainfile(filepath=saveFile, check_existing=False)
         # Render scene to file
         logger.warning(f"Render {FullFileName(currCam.CameraResultFile)} started")

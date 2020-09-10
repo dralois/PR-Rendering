@@ -231,11 +231,11 @@ class MeshFactory(InstanceStorage[Mesh.MeshInstance, Mesh.MeshData]):
             if "objectID" in toHash:
                 return toHash["objectID"]
             else:
-                raise ValueError
+                raise KeyError
         elif isinstance(toHash, Mesh.MeshInstance):
             return toHash.ObjectID
         else:
-            raise ValueError
+            raise TypeError
 
     # Override: Updates existing instance with new json data
     def _UpdateInstance(self, data : dict, instance : V) -> V:
@@ -310,7 +310,7 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
         elif "POINT" in blueprintID:
             newLight = Lights.PointLightData(blueprintID)
         else:
-            raise ValueError
+            raise TypeError
         # Create & return it
         newLight.CreateFromJSON(data)
         return newLight
@@ -329,7 +329,7 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
         elif isinstance(blueprint, Lights.PointLightData):
             lightInstance = Lights.PointLightInstance(blueprint)
         else:
-            raise ValueError
+            raise TypeError
         # Create & return it
         lightInstance.CreateFromJSON(data)
         return lightInstance

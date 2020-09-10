@@ -27,7 +27,7 @@ class CameraData(DataWrapper):
     def _Cleanup(self):
         if self.__camera is not None:
             # Make sure only fake user remains
-            if self.__mesh.users <= 1:
+            if self.__camera.users <= 1:
                 bpy.data.cameras.remove(self.__camera)
 
     # Override: Get if camera valid

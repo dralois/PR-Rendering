@@ -4,13 +4,10 @@ from ..Utils import FullPath, FileDir
 
 from typing import List
 from os import chdir
+from sys import exc_info
 
 import multiprocessing as mp
 import json
-
-# Raised if unload fails
-class UnloadException(Exception):
-    pass
 
 # Queue supporting joining with timeout
 class TimeoutQueue(JoinableQueue):
@@ -23,6 +20,14 @@ class TimeoutQueue(JoinableQueue):
 
 # Render manager, handles multithreaded rendering
 class RenderManager(object):
+
+    # Raised if process can't be removed
+    class RemoveException(Exception):
+        pass
+
+    # Raised if process can't be created
+    class CreateException(Exception):
+        pass
 
     def __init__(self, workerThreads):
         self.__maxWorkers = workerThreads
@@ -40,19 +45,21 @@ class RenderManager(object):
         assert thread < self.__maxWorkers
         # Parse string to json
         scene = json.loads(renderfile)
-        # Enqueue scene
-        _,queue,_ = self.__workers[thread]
-        # Enqueue renderfile and block until completed
-        queue.put(scene, True)
-        # Make sure rendering doesn't get stuck
+        # Prevent exceptions (crashes C++!)
         try:
+            _,queue,_ = self.__workers[thread]
+            # Enqueue renderfile and block until completed
+            queue.put(scene, True)
+            # Make sure rendering doesn't get stuck
             if not queue.join_with_timeout(timeout):
                 # If rendering is stuck, reload process
                 self.UnloadProcess(thread)
                 # Try again
                 self.ProcessRenderfile(renderfile, timeout, thread)
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+        except Exception as ex:
+            # Debug output on crash
+            exInfo = exc_info()
+            print(f"Unexpected {exInfo[0]}: {exInfo[2]} ({ex})")
 
     # Remove and reload all process
     def UnloadProcess(self, thread):
@@ -61,8 +68,6 @@ class RenderManager(object):
         if self.__RemoveProcess(thread):
             if self.__CreateProcess(thread):
                 return True
-        else:
-            raise UnloadException
 
     # Create & start a new process
     def __CreateProcess(self, index):
@@ -78,7 +83,7 @@ class RenderManager(object):
                 renderPrc.start()
                 return True
         # Creation failed
-        return False
+        raise RenderManager.CreateException
 
     # Remove & close existing process
     def __RemoveProcess(self, index):
@@ -92,17 +97,18 @@ class RenderManager(object):
                 renderPrc.join(0.5)
                 # Kill process if necessary
                 if renderPrc.is_alive():
-                    renderPrc.terminate()
-                    queue.close()
+                    renderPrc.kill()
                 else:
                     renderPrc.close()
-                    queue.close()
+                # Remove queue
+                queue.close()
+                queue.join_thread()
                 # Cleanup & reset
                 del renderPrc, queue, closeEvent
                 self.__workers[index] = None
                 return True
         # Removal failed
-        return False
+        raise RenderManager.RemoveException
 
 # Single render process
 class RenderProcess(mp.Process):
@@ -119,7 +125,7 @@ class RenderProcess(mp.Process):
         # Setup for multiprocessing
         SetPaths(paths[0], paths[1])
         # Scene imports
-        from .SceneManager import CreateFromJSON, UpdateFromJSON, Scene
+        from .SceneManager import CreateFromJSON, UpdateFromJSON
         # Change working dir in process
         chdir(FullPath(f"{FileDir(__file__)}/../"))
         # Process file queue
@@ -140,4 +146,4 @@ class RenderProcess(mp.Process):
             except mp.queues.Empty:
                 # Check for close signal
                 if self.__closeEvent.wait(0.1):
-                    exit()
+                    break

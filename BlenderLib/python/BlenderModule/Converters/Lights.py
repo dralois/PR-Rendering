@@ -23,7 +23,7 @@ class GenericLightData(DataWrapper):
     def _Cleanup(self):
         if self.__impl is not None:
             # Make sure only fake user remains
-            if self.__mesh.users <= 1:
+            if self.__impl.users <= 1:
                 bpy.data.lights.remove(self.__impl)
 
     # Override: Get if light valid

@@ -34,7 +34,7 @@ def TestMultithread():
     scene2Str = json.dumps(testScene)
     mgr = RenderManager(2)
     # Create threads
-    thr1 = Thread(target=mgr.ProcessRenderfile, args=(scene1Str, 20, 0))
+    thr1 = Thread(target=mgr.ProcessRenderfile, args=(scene1Str, 60, 0))
     thr2 = Thread(target=mgr.ProcessRenderfile, args=(scene2Str, 60, 1))
     # Test rendering
     thr1.start()

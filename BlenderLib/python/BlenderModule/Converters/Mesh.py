@@ -58,7 +58,7 @@ class MeshData(DataWrapper):
             elif meshType == ".glb":
                 self.__LoadMeshGLTF()
             else:
-                logger.warning(f"Mesh format {meshType} not supported!")
+                logger.error(f"Mesh format {meshType} not supported!")
                 self.__MakeCube()
         elif not self.__isValid:
             self.__MakeCube()
@@ -137,6 +137,7 @@ class MeshInstance(ObjectWrapper):
 
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
+        assert self.ObjectInstance is not None
         assert data is not None
         super().CreateFromJSON(data)
         # Mesh unique name
