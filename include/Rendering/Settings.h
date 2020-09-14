@@ -31,6 +31,7 @@ private:
 	int objPerSim;
 	int stepsPerSim;
 	int batchSize;
+	int sceneMax;
 	int maxImages;
 
 	// Random forces
@@ -64,6 +65,7 @@ public:
 	inline int GetObjectsPerSimulation() const { return objPerSim; }
 	inline int GetStepsPerSimulation() const { return stepsPerSim; }
 	inline int GetRenderBatchSize() const { return batchSize; }
+	inline int GetSceneImageCount() const { return sceneMax; }
 	inline int GetMaxImageCount() const { return maxImages; }
 
 	// Random forces & spawning
@@ -152,6 +154,7 @@ public:
 		objPerSim = SafeGet<int>(jsonConfig, "simulation_objects");
 		stepsPerSim = SafeGet<int>(jsonConfig, "simulation_steps");
 		batchSize = SafeGet<int>(jsonConfig, "batch_size");
+		sceneMax = SafeGet<int>(jsonConfig, "scene_images");
 		maxImages = SafeGet<int>(jsonConfig, "max_images");
 
 		// Init distribution settings

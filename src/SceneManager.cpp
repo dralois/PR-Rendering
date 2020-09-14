@@ -1,7 +1,7 @@
 #include <SceneManager.h>
 
 #if _DEBUG || DEBUG
-#define STORE_DEBUG_TEX 1
+#define STORE_DEBUG_TEX 0
 #endif //_DEBUG || DEBUG
 
 #define USE_AO 1
@@ -850,7 +850,7 @@ void SceneManager::X_ProcessThread(
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetMaxImageCount(); ++iter)
+	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetSceneImageCount(); ++iter)
 	{
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 
@@ -945,26 +945,26 @@ void SceneManager::X_ProcessThread(
 			std::vector<Mask> unoccludedMasks;
 			std::vector<Camera> unoccludedCams;
 			std::vector<SceneImage> unoccludedImages;
-			for (size_t i = 0; i < masks.size(); ++i)
+			for (size_t check = 0; check < masks.size(); ++check)
 			{
 				// Only process unoccluded images
-				if (!masks[i].Occluded())
+				if (!masks[check].Occluded())
 				{
 					// Store & update image number atomically
 					imgMtx.lock();
-					currCams[i].SetImageNum(++imgCountUnoccluded);
+					currCams[check].SetImageNum(++imgCountUnoccluded);
 					imgMtx.unlock();
 					// Store the blended depth
 					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imgCountUnoccluded, true);
 #if STORE_DEBUG_TEX
 					masks[i].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
 #else
-					masks[i].StoreBlendedDepth(depthPath);
+					masks[check].StoreBlendedDepth(depthPath);
 #endif
 					// Move corresponding poses, masks & real images
-					unoccludedCams.push_back(std::move(currCams[i]));
-					unoccludedMasks.push_back(std::move(masks[i]));
-					unoccludedImages.push_back(std::move(currImages[start + i]));
+					unoccludedCams.push_back(std::move(currCams[check]));
+					unoccludedMasks.push_back(std::move(masks[check]));
+					unoccludedImages.push_back(std::move(currImages[check]));
 				}
 			}
 
