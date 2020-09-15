@@ -165,8 +165,10 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 					}
 				}
 			}
-			// Finally sort vector
-			std::sort(vecSceneFolders.begin(), vecSceneFolders.end());
+			// Shuffle scenes for more varied outputs
+			std::random_device rd;
+			std::default_random_engine gen(rd());
+			std::shuffle(vecSceneFolders.begin(), vecSceneFolders.end(), gen);
 		}
 	}
 }
@@ -189,6 +191,9 @@ void SimManager::RunSimulation()
 		currImageCount += sceneMgr.ProcessNext(currImageCount);
 		if (currImageCount >= pRenderSettings->GetMaxImageCount())
 			break;
+		else
+			std::cout << "Switching scene, progress: " << currImageCount << "/"
+			<< pRenderSettings->GetMaxImageCount() << " images generated" << std::endl;
 	}
 }
 

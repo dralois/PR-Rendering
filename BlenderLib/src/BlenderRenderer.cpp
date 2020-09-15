@@ -111,13 +111,6 @@ namespace Blender
 		{
 			try
 			{
-				// Start embedded interpreter
-				Py_Initialize();
-
-				wchar_t* empty = L"";
-				wchar_t* pEmpty[] = { empty };
-				PySys_SetArgvEx(0, pEmpty, 1);
-
 				// Store main and globals
 				blenderModule = import("BlenderModule");
 				blenderNamespace = blenderModule.attr("__dict__");
@@ -130,10 +123,19 @@ namespace Blender
 				logger = import("BlenderModule.Utils.Logger");
 				object renderModule = import("BlenderModule.Managers.RenderManager");
 				renderManager = renderModule.attr("RenderManager")(workerCount);
+			}
+			catch (const error_already_set&)
+			{
+				PyErr_Print();
+			}
+		}
 
-				// Manually release GIL
-				auto mainThread = PyThreadState_Get();
-				PyEval_ReleaseThread(mainThread);
+		~Renderer_impl()
+		{
+			try
+			{
+				// Cleanup manager & interpreter
+				renderManager.attr("DeleteManager")();
 			}
 			catch (const error_already_set&)
 			{
@@ -170,7 +172,9 @@ namespace Blender
 	//---------------------------------------
 	// Forward process reloading
 	//---------------------------------------
-	void BlenderRenderer::UnloadProcess(int thread)
+	void BlenderRenderer::UnloadProcess(
+		int thread
+	)
 	{
 		GILLock scope;
 		rendererImpl->UnloadProcess(thread);
@@ -179,9 +183,29 @@ namespace Blender
 	//---------------------------------------
 	// Forward API creation
 	//---------------------------------------
-	BlenderRenderer::BlenderRenderer(int workerCount) :
-		rendererImpl(new Renderer_impl(workerCount))
+	BlenderRenderer::BlenderRenderer(
+		int workerCount
+	)
 	{
+		// If Python not yet initialized
+		if(!Py_IsInitialized())
+		{
+			// Start embedded interpreter
+			Py_Initialize();
+
+			// Add cwd to module path
+			wchar_t* empty = L"";
+			wchar_t* pEmpty[] = { empty };
+			PySys_SetArgvEx(0, pEmpty, 1);
+		}
+
+		// Create implemenation
+		PyGILState_Ensure();
+		rendererImpl = new Renderer_impl(workerCount);
+
+		// Manually release GIL
+		auto mainThread = PyThreadState_Get();
+		PyEval_ReleaseThread(mainThread);
 	}
 
 	//---------------------------------------

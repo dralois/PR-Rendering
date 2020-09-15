@@ -5,6 +5,7 @@ from ..Utils import FullPath, FileDir
 from typing import List
 from os import chdir
 from sys import exc_info
+from time import sleep
 
 import multiprocessing as mp
 import json
@@ -18,6 +19,44 @@ class TimeoutQueue(JoinableQueue):
             if not self._unfinished_tasks._semlock._is_zero():
                 return self._cond.wait(timeout)
 
+# Single render process
+class RenderProcess(mp.Process):
+
+    def __init__(self, fileQueue, closeEvent, importPaths):
+        super().__init__(target=self.RenderLoop, args=importPaths, daemon=True)
+        self.__fileQueue : TimeoutQueue
+        self.__fileQueue = fileQueue
+        self.__closeEvent : mp.Event
+        self.__closeEvent = closeEvent
+        self.__scene = None
+
+    def RenderLoop(self, *paths):
+        # Setup for multiprocessing
+        SetPaths(paths[0], paths[1])
+        # Scene imports
+        from .SceneManager import CreateFromJSON, UpdateFromJSON
+        # Change working dir in process
+        chdir(FullPath(f"{FileDir(__file__)}/../"))
+        # Process file queue
+        while True:
+            try:
+                # Check for work
+                data = self.__fileQueue.get(True, 0.1)
+                # Create or update scene
+                if self.__scene is None:
+                    self.__scene = CreateFromJSON(data)
+                else:
+                    self.__scene = UpdateFromJSON(data, self.__scene)
+                # Process render queue
+                while self.__scene.RenderQueueRemaining() > 0:
+                    self.__scene.RenderQueueProcessNext()
+                # Signal rendering complete to main thread
+                self.__fileQueue.task_done()
+            except mp.queues.Empty:
+                # Check for close signal
+                if self.__closeEvent.wait(0.1):
+                    break
+
 # Render manager, handles multithreaded rendering
 class RenderManager(object):
 
@@ -27,6 +66,10 @@ class RenderManager(object):
 
     # Raised if process can't be created
     class CreateException(Exception):
+        pass
+
+    # Raised if process unloading failed
+    class UnloadException(Exception):
         pass
 
     def __init__(self, workerThreads):
@@ -47,6 +90,9 @@ class RenderManager(object):
         scene = json.loads(renderfile)
         # Prevent exceptions (crashes C++!)
         try:
+            # Make sure process is spawned
+            self.__EnsureRunning(thread)
+            # Fetch worker queue
             _,queue,_ = self.__workers[thread]
             # Enqueue renderfile and block until completed
             queue.put(scene, True)
@@ -59,7 +105,7 @@ class RenderManager(object):
         except Exception as ex:
             # Debug output on crash
             exInfo = exc_info()
-            print(f"Unexpected {exInfo[0]}: {exInfo[2]} ({ex})")
+            print(f"Unexpected exception {exInfo[0]}: {exInfo[1]} ({ex})")
 
     # Remove and reload all process
     def UnloadProcess(self, thread):
@@ -68,6 +114,14 @@ class RenderManager(object):
         if self.__RemoveProcess(thread):
             if self.__CreateProcess(thread):
                 return True
+        # Unload failed
+        raise RenderManager.UnloadException
+
+    # Deletes manager & shuts down interpreter
+    def DeleteManager(self):
+        # Remove processes
+        for i in range(self.__maxWorkers):
+            self.__RemoveProcess(i)
 
     # Create & start a new process
     def __CreateProcess(self, index):
@@ -107,43 +161,18 @@ class RenderManager(object):
                 del renderPrc, queue, closeEvent
                 self.__workers[index] = None
                 return True
+            else:
+                # Process doesn't exist, which is fine
+                return True
         # Removal failed
         raise RenderManager.RemoveException
 
-# Single render process
-class RenderProcess(mp.Process):
-
-    def __init__(self, fileQueue, closeEvent, importPaths):
-        super().__init__(target=self.RenderLoop, args=importPaths, daemon=True)
-        self.__fileQueue : TimeoutQueue
-        self.__fileQueue = fileQueue
-        self.__closeEvent : mp.Event
-        self.__closeEvent = closeEvent
-        self.__scene = None
-
-    def RenderLoop(self, *paths):
-        # Setup for multiprocessing
-        SetPaths(paths[0], paths[1])
-        # Scene imports
-        from .SceneManager import CreateFromJSON, UpdateFromJSON
-        # Change working dir in process
-        chdir(FullPath(f"{FileDir(__file__)}/../"))
-        # Process file queue
-        while True:
+    # Makes sure the process is running
+    def __EnsureRunning(self, thread):
+        assert thread < self.__maxWorkers
+        # Retry process creation until it works
+        while self.__workers[thread] is None:
             try:
-                # Check for work
-                data = self.__fileQueue.get(True, 0.1)
-                # Create or update scene
-                if self.__scene is None:
-                    self.__scene = CreateFromJSON(data)
-                else:
-                    self.__scene = UpdateFromJSON(data, self.__scene)
-                # Process render queue
-                while self.__scene.RenderQueueRemaining() > 0:
-                    self.__scene.RenderQueueProcessNext()
-                # Signal rendering complete to main thread
-                self.__fileQueue.task_done()
-            except mp.queues.Empty:
-                # Check for close signal
-                if self.__closeEvent.wait(0.1):
-                    break
+                self.__CreateProcess(thread)
+            except RenderManager.CreateException:
+                sleep(0.5)
