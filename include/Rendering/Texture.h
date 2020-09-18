@@ -71,6 +71,20 @@ public:
 		writer.EndObject();
 	}
 
+	bool TextureExists()
+	{
+		// Image is loaded, so it exists
+		if (!loadedImage.empty())
+		{
+			return true;
+		}
+		else
+		{
+			// Otherwise check if image exists on disk
+			return boost::filesystem::exists(filePath);
+		}
+	}
+
 	void LoadTexture(const std::function<cv::Mat(cv::Mat&)>& converter = NULL)
 	{
 		// Overriding is not allowed
@@ -209,7 +223,7 @@ public:
 
 	Mask():
 		Texture(false, true),
-		isOccluded(false),
+		isOccluded(true),
 		blendedDepth(true, true)
 	{
 	}

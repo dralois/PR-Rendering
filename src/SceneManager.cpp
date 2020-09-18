@@ -619,6 +619,10 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 		objectDepths[curr].StoreDepth01(FLT_EPSILON, maxDist);
 #endif //STORE_DEBUG_TEX
 
+		// Sanity check
+		if (!sceneDepths[curr].TextureExists() || !objectDepths[curr].TextureExists())
+			continue;
+
 		// Create blended depth texture & coverage mask
 		maskedResults[curr].LoadBlendedDepth(ComputeDepthBlend(objectDepths[curr].GetTexture(), sceneDepths[curr].GetTexture()));
 		maskedResults[curr].SetPath(pRenderSettings->GetImagePath("body_mask", cams[curr].GetImageNum()), false);
@@ -664,6 +668,10 @@ void SceneManager::X_RenderSegments(
 #if STORE_DEBUG_TEX
 		objectLabels[curr].StoreTexture();
 #endif //STORE_DEBUG_TEX
+
+		// Sanity check
+		if (!objectLabels[curr].TextureExists() || !masks[curr].TextureExists())
+			continue;
 
 		// Create & store masked segmentation texture
 		Texture segResult(false, true);
@@ -731,6 +739,10 @@ void SceneManager::X_RenderPBRBlend(
 			CV_32FC1
 		));
 #endif
+
+		// Sanity check
+		if (!objectPBRs[curr].TextureExists() || !objectsAO[curr].TextureExists())
+			continue;
 
 		// Potentially resize original scene image
 		sceneRGBs[curr].ResizeSceneTexture(objectPBRs[curr].GetTexture());
