@@ -13,33 +13,63 @@
 //---------------------------------------
 class Settings : public RenderfileData
 {
+public:
+	//---------------------------------------
+	// Settings groups
+	//---------------------------------------
+
+	// Blender rendering
+	struct RenderEngine
+	{
+		bool StoreBlend;
+		std::string LogLevel;
+		ModifiablePath PluginPath;
+		std::vector<ModifiablePath> ShaderDirs;
+		Intrinsics CustomIntrinsics;
+		float RenderScale;
+	};
+
+	// Image filter paramters
+	struct BlurDetection
+	{
+		float EdgeThreshold;
+		float EdgeWeak;
+		float EdgeStrong;
+		float EdgeFactor;
+		float FrequencyFactor;
+	};
+
+	// Simulation limits
+	struct Simulation
+	{
+		int SimulationObjects;
+		int SimulationSteps;
+		int SceneIterations;
+		int BatchSize;
+		int SceneLimit;
+		int TotalLimit;
+	};
+
+	// Object spawning & forces
+	struct Spawning
+	{
+		Eigen::Vector3f SpawnMin;
+		Eigen::Vector3f SpawnMax;
+		Eigen::Vector3f VelocityMax;
+		Eigen::Vector3f TorqueMax;
+		float ApplyProbability;
+	};
+
 private:
 	//---------------------------------------
 	// Fields
 	//---------------------------------------
 
-	// Blender rendering
-	bool storeBlend;
-	std::string logLevel;
-	float renderScale;
-	ModifiablePath pluginPath;
-	std::vector<ModifiablePath> shaderDirs;
-	Intrinsics customIntrinsics;
-
-	// Simulation
-	int iterCount;
-	int objPerSim;
-	int stepsPerSim;
-	int batchSize;
-	int sceneMax;
-	int maxImages;
-
-	// Random forces
-	Eigen::Vector3f spawnMin;
-	Eigen::Vector3f spawnMax;
-	Eigen::Vector3f maxVelocity;
-	Eigen::Vector3f maxTorque;
-	float applyProbability;
+	// Groups
+	RenderEngine engineSettings;
+	BlurDetection filterSettings;
+	Simulation simSettings;
+	Spawning spawnSettings;
 
 	// Paths
 	ModifiablePath meshesPath, tempPath, finalPath, scenePath;
@@ -52,30 +82,11 @@ public:
 	// Properties
 	//---------------------------------------
 
-	// Blender rendering
-	inline bool GetStoreBlend() const { return storeBlend; }
-	inline float GetRenderScale() const { return renderScale; }
-	inline ModifiablePath GetLogLevel() const { return logLevel; }
-	inline ModifiablePath GetPluginDir() const { return pluginPath; }
-	inline std::vector<ModifiablePath> GetShaderDirs() const { return shaderDirs; }
-	inline Intrinsics GetIntrinsics() const { return customIntrinsics; }
+	inline Settings::RenderEngine GetEngineSettings() const { return engineSettings; }
+	inline Settings::BlurDetection GetFilterSettings() const { return filterSettings; }
+	inline Settings::Simulation GetSimulationSettings() const { return simSettings; }
+	inline Settings::Spawning GetSpawnSettings() const { return spawnSettings; }
 
-	// Simulation
-	inline int GetIterationCount() const { return iterCount; }
-	inline int GetObjectsPerSimulation() const { return objPerSim; }
-	inline int GetStepsPerSimulation() const { return stepsPerSim; }
-	inline int GetRenderBatchSize() const { return batchSize; }
-	inline int GetSceneImageCount() const { return sceneMax; }
-	inline int GetMaxImageCount() const { return maxImages; }
-
-	// Random forces & spawning
-	inline Eigen::Vector3f GetSpawnMin() const { return spawnMin; }
-	inline Eigen::Vector3f GetSpawnMax() const { return spawnMax; }
-	inline Eigen::Vector3f GetMaxVelocity() const { return maxVelocity; }
-	inline Eigen::Vector3f GetMaxTorque() const { return maxTorque; }
-	inline float GetApplyProbability() const { return applyProbability; }
-
-	// Paths
 	inline void SetScenePath(ReferencePath path) { scenePath = path; }
 	inline ModifiablePath GetScenePath() const { return scenePath; }
 	inline ModifiablePath GetMeshesPath() const { return meshesPath; }
@@ -113,17 +124,17 @@ public:
 		writer.StartObject();
 
 		writer.Key("logLevel");
-		AddString(writer, logLevel);
+		AddString(writer, engineSettings.LogLevel);
 
 		writer.Key("storeBlend");
-		writer.Bool(storeBlend);
+		writer.Bool(engineSettings.StoreBlend);
 
 		writer.Key("pluginPath");
-		AddString(writer, pluginPath.string());
+		AddString(writer, engineSettings.PluginPath.string());
 
 		writer.Key("shaderDirs");
 		writer.StartArray();
-		for (auto curr : shaderDirs)
+		for (const auto& curr : engineSettings.ShaderDirs)
 		{
 			AddString(writer, curr.string());
 		}
@@ -139,7 +150,10 @@ public:
 	Settings(
 		rapidjson::Document&& json
 	) :
-		customIntrinsics()
+		engineSettings(),
+		filterSettings(),
+		simSettings(),
+		spawnSettings()
 	{
 		// Steal json document
 		json.Swap(jsonConfig);
@@ -149,39 +163,46 @@ public:
 		finalPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path")));
 		tempPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path")));
 
-		// Init simulation settings
-		iterCount = SafeGet<int>(jsonConfig, "scene_iterations");
-		objPerSim = SafeGet<int>(jsonConfig, "simulation_objects");
-		stepsPerSim = SafeGet<int>(jsonConfig, "simulation_steps");
-		batchSize = SafeGet<int>(jsonConfig, "batch_size");
-		sceneMax = SafeGet<int>(jsonConfig, "scene_images");
-		maxImages = SafeGet<int>(jsonConfig, "max_images");
+		// Init blur detection settings
+		filterSettings.EdgeThreshold = SafeGet<float>(jsonConfig, "edge_threshold");
+		filterSettings.EdgeWeak = SafeGet<float>(jsonConfig, "edge_weak");
+		filterSettings.EdgeStrong = SafeGet<float>(jsonConfig, "edge_strong");
+		filterSettings.EdgeFactor = SafeGet<float>(jsonConfig, "edge_factor");
+		filterSettings.FrequencyFactor = SafeGet<float>(jsonConfig, "frequency_factor");
 
-		// Init distribution settings
+		// Init simulation settings
+		simSettings.SceneIterations = SafeGet<int>(jsonConfig, "scene_iterations");
+		simSettings.SimulationObjects = SafeGet<int>(jsonConfig, "simulation_objects");
+		simSettings.SimulationSteps = SafeGet<int>(jsonConfig, "simulation_steps");
+		simSettings.BatchSize = SafeGet<int>(jsonConfig, "batch_size");
+		simSettings.SceneLimit = SafeGet<int>(jsonConfig, "scene_limit");
+		simSettings.TotalLimit = SafeGet<int>(jsonConfig, "total_limit");
+
+		// Init spawning settings
 		rapidjson::Value minSpawn = SafeGetArray(jsonConfig, "spawn_min");
 		rapidjson::Value maxSpawn = SafeGetArray(jsonConfig, "spawn_max");
 		rapidjson::Value velocityMax = SafeGetArray(jsonConfig, "velocity_max");
 		rapidjson::Value torqueMax = SafeGetArray(jsonConfig, "torque_max");
-		spawnMin = SafeGetEigenVector<Eigen::Vector3f>(minSpawn);
-		spawnMax = SafeGetEigenVector<Eigen::Vector3f>(maxSpawn);
-		maxVelocity = SafeGetEigenVector<Eigen::Vector3f>(velocityMax).cwiseAbs();
-		maxTorque = SafeGetEigenVector<Eigen::Vector3f>(torqueMax).cwiseAbs();
-		applyProbability = SafeGet<float>(jsonConfig, "apply_probability");
+		spawnSettings.SpawnMin = SafeGetEigenVector<Eigen::Vector3f>(minSpawn);
+		spawnSettings.SpawnMax = SafeGetEigenVector<Eigen::Vector3f>(maxSpawn);
+		spawnSettings.VelocityMax = SafeGetEigenVector<Eigen::Vector3f>(velocityMax).cwiseAbs();
+		spawnSettings.TorqueMax = SafeGetEigenVector<Eigen::Vector3f>(torqueMax).cwiseAbs();
+		spawnSettings.ApplyProbability = SafeGet<float>(jsonConfig, "apply_probability");
 
 		// Init render settings
-		logLevel = SafeGet<const char*>(jsonConfig, "log_level");
-		storeBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		pluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "blenderseed_path")));
-		shaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_path"))));
-		renderScale = MAX(SafeGet<float>(jsonConfig, "render_scale"), 0.1);
+		engineSettings.LogLevel = SafeGet<const char*>(jsonConfig, "log_level");
+		engineSettings.StoreBlend = SafeGet<bool>(jsonConfig, "store_blend");
+		engineSettings.PluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "blenderseed_path")));
+		engineSettings.ShaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_path"))));
+		engineSettings.RenderScale = MAX(SafeGet<float>(jsonConfig, "render_scale"), 0.1);
 
 		// Init custom intrinsics
 		rapidjson::Value intrf = SafeGetArray(jsonConfig, "intrinsics_f");
 		rapidjson::Value intro = SafeGetArray(jsonConfig, "intrinsics_o");
 		rapidjson::Value intrr = SafeGetArray(jsonConfig, "intrinsics_r");
-		customIntrinsics.SetFocalLenght(SafeGetEigenVector<Eigen::Vector2f>(intrf));
-		customIntrinsics.SetPrincipalPoint(SafeGetEigenVector<Eigen::Vector2f>(intro));
-		customIntrinsics.SetResolution(SafeGetEigenVector<Eigen::Vector2i>(intrr));
+		engineSettings.CustomIntrinsics.SetFocalLenght(SafeGetEigenVector<Eigen::Vector2f>(intrf));
+		engineSettings.CustomIntrinsics.SetPrincipalPoint(SafeGetEigenVector<Eigen::Vector2f>(intro));
+		engineSettings.CustomIntrinsics.SetResolution(SafeGetEigenVector<Eigen::Vector2i>(intrr));
 
 		// Cleanup
 		SafeDeleteArray(minSpawn);

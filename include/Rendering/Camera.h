@@ -105,7 +105,7 @@ public:
 		if (SafeGet<bool>(settings.GetJSONConfig(), "custom_intrinsics"))
 		{
 			// Store provided ones
-			SetIntrinsics(settings.GetIntrinsics());
+			SetIntrinsics(settings.GetEngineSettings().CustomIntrinsics);
 		}
 		else
 		{

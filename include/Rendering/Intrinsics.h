@@ -47,14 +47,13 @@ public:
 	)
 	{
 		// File must exist
-		boost::filesystem::ifstream intrFileStream;
+		boost::filesystem::ifstream intrFileStream(intrFile);
 		if (!intrFileStream.good())
 		{
 			return;
 		}
 		else
 		{
-			intrFileStream.open(intrFile);
 			sourceFile = ModifiablePath(intrFile);
 		}
 

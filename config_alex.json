@@ -9,12 +9,18 @@
     "final_path": "../../Output/final",
     "temp_path": "../../Output/temp",
 
-    "blurry_threshold": 400.0,
+    "edge_threshold": 0.5,
+    "edge_weak": 150.0,
+    "edge_strong": 250.0,
+    "edge_factor": 4.0,
+    "frequency_factor": 0.85,
+
     "simulation_objects": 50,
     "simulation_steps": 2000,
     "scene_iterations": 1,
     "batch_size": 10,
-    "max_images": 100,
+    "scene_limit": 40,
+    "total_limit": 400,
     "render_scale": 1.0,
 
     "spawn_min" : [-0.75, 0.25, -0.75],
@@ -31,11 +37,6 @@
     "scene_unit": 1.0,
     "render_objs": [
         {
-            "mesh_path" : "obj_01.obj",
-            "mesh_class" : "buddha",
-            "mesh_unit" : 0.001
-        },
-        {
             "mesh_path" : "obj_02.obj",
             "mesh_class" : "wrench",
             "mesh_unit" : 0.001
@@ -46,53 +47,8 @@
             "mesh_unit" : 0.001
         },
         {
-            "mesh_path" : "obj_04.obj",
-            "mesh_class" : "camera",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_05.obj",
-            "mesh_class" : "can",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_06.obj",
-            "mesh_class" : "cat",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_07.obj",
-            "mesh_class" : "lamp",
-            "mesh_unit" : 0.001
-        },
-        {
             "mesh_path" : "obj_08.obj",
             "mesh_class" : "drill",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_09.obj",
-            "mesh_class" : "duck",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_10.obj",
-            "mesh_class" : "carton",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_11.obj",
-            "mesh_class" : "bottle",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_12.obj",
-            "mesh_class" : "stapler",
-            "mesh_unit" : 0.001
-        },
-        {
-            "mesh_path" : "obj_13.obj",
-            "mesh_class" : "iron",
             "mesh_unit" : 0.001
         }
     ]

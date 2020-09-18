@@ -119,18 +119,18 @@ std::vector<PxMeshConvex> SceneManager::X_PxCreateObjs(
 
 	// Simulation objects
 	std::vector<PxMeshConvex> newBodies;
-	newBodies.reserve(pRenderSettings->GetObjectsPerSimulation());
+	newBodies.reserve(pRenderSettings->GetSimulationSettings().SimulationObjects);
 
 	// Setup & fetch params
 	const PxVec3 sceneCenter = sceneMesh.GetGlobalBounds().getCenter();
 	const PxVec3 sceneExtends = sceneMesh.GetGlobalBounds().getExtents();
-	const PxVec3 spawnMin = eigenToPx(pRenderSettings->GetSpawnMin());
-	const PxVec3 spawnMax = eigenToPx(pRenderSettings->GetSpawnMax());
-	const PxVec3 velMax = eigenToPx(pRenderSettings->GetMaxVelocity());
-	const PxVec3 trqMax = eigenToPx(pRenderSettings->GetMaxTorque());
+	const PxVec3 spawnMin = eigenToPx(pRenderSettings->GetSpawnSettings().SpawnMin);
+	const PxVec3 spawnMax = eigenToPx(pRenderSettings->GetSpawnSettings().SpawnMax);
+	const PxVec3 velMax = eigenToPx(pRenderSettings->GetSpawnSettings().VelocityMax);
+	const PxVec3 trqMax = eigenToPx(pRenderSettings->GetSpawnSettings().TorqueMax);
 
 	// For each object
-	for (int i = 0; i < pRenderSettings->GetObjectsPerSimulation(); ++i)
+	for (int i = 0; i < pRenderSettings->GetSimulationSettings().SimulationObjects; ++i)
 	{
 		// Fetch random object & create instance with new id
 		int randObj = uniformRandInt(0, vecpPxMeshObjs.size() - 1);
@@ -148,7 +148,7 @@ std::vector<PxMeshConvex> SceneManager::X_PxCreateObjs(
 		currObj.AddRigidActor(simulation);
 
 		// Possibly add random velocity & torque impulses
-		if (applyForce(pRenderSettings->GetApplyProbability()))
+		if (applyForce(pRenderSettings->GetSpawnSettings().ApplyProbability))
 		{
 			currObj.AddVelocity(uniformRandVec(-velMax, velMax));
 			currObj.AddTorque(uniformRandVec(-trqMax, trqMax));
@@ -313,7 +313,7 @@ void SceneManager::X_BuildSceneDepth(
 
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetRenderScale();
+	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -380,7 +380,7 @@ void SceneManager::X_BuildObjectsDepth(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetRenderScale();
+	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -426,7 +426,7 @@ void SceneManager::X_BuildObjectsLabel(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetRenderScale();
+	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -473,7 +473,7 @@ void SceneManager::X_BuildObjectsPBR(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetRenderScale();
+	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -529,8 +529,10 @@ void SceneManager::X_BuildObjectsAO(
 	std::vector<Texture>& results
 ) const
 {
-	// Resolution should match real scene images
+	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
+	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
@@ -780,43 +782,154 @@ std::vector<Light> SceneManager::X_PlaceLights(
 }
 
 //---------------------------------------
-// Determine & return images to process
+// Computes prefiltered non-blurry image list
 //---------------------------------------
-std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
-	ReferencePath path,
-	float varThreshold
+void SceneManager::X_ComputeImagesToProcess(
+	ReferencePath dir
 ) const
 {
-	std::vector<SceneImage> clearImages;
-	// If path exists & directory
-	if (boost::filesystem::exists(path))
+	using namespace boost::filesystem;
+
+	// Try to read filtered image file
+	fstream filterFile(dir / "filteredList.txt", std::ios_base::in);
+
+	// If it exists
+	if (filterFile.good())
 	{
-		if (boost::filesystem::is_directory(path))
+		// Load parameters
+		float fileEdgeThreshold, fileEdgeWeak, fileEdgeStrong, fileEdgeFactor, fileFrequencyFactor;
+		filterFile >> fileEdgeThreshold >> fileEdgeWeak >> fileEdgeStrong >> fileEdgeFactor >> fileFrequencyFactor;
+
+		// If they match, the list still accurate
+		if (pRenderSettings->GetFilterSettings().EdgeThreshold == fileEdgeThreshold &&
+			pRenderSettings->GetFilterSettings().EdgeWeak == fileEdgeWeak &&
+			pRenderSettings->GetFilterSettings().EdgeStrong == fileEdgeStrong &&
+			pRenderSettings->GetFilterSettings().EdgeFactor == fileEdgeFactor &&
+			pRenderSettings->GetFilterSettings().FrequencyFactor == fileFrequencyFactor)
+		{
+			return;
+		}
+		else
+		{
+			// Otherwise close the file
+			filterFile.close();
+		}
+	}
+
+	// Clear file and store parameters
+	filterFile.open(dir / "filteredList.txt", std::ios_base::out | std::ios_base::trunc);
+	filterFile << pRenderSettings->GetFilterSettings().EdgeThreshold << " "
+		<< pRenderSettings->GetFilterSettings().EdgeWeak << " "
+		<< pRenderSettings->GetFilterSettings().EdgeStrong << " "
+		<< pRenderSettings->GetFilterSettings().EdgeFactor << " "
+		<< pRenderSettings->GetFilterSettings().FrequencyFactor << "\n";
+
+	// Used to track candidates
+	struct ClearCandidate
+	{
+		ModifiablePath Path;
+		float Frequency;
+		float EdgeWeight;
+	};
+
+	// Tracking variables
+	float avgFreq = 0.0f;
+	float avgEdge = 0.0f;
+	int totalImgs = 0;
+	int acceptedImgs = 0;
+
+	// Potential non-blurry images
+	std::vector<ClearCandidate> candidates;
+
+	// If path exists & directory
+	if (exists(dir))
+	{
+		if (is_directory(dir))
 		{
 			// For each file
-			for (auto entry : boost::filesystem::directory_iterator(path))
+			for (auto entry : directory_iterator(dir))
 			{
 				// If file is rgb image
 				if (boost::algorithm::contains(entry.path().filename().string(), "color"))
 				{
-					// Only use non-blurry images (= great variance)
-					if (ComputeVariance(entry.path()) > varThreshold)
+					ClearCandidate curr{ entry.path(), 0.0f, 0.0f };
+
+					// Compute blurriness
+					if (!ComputeIsBlurry(
+						cv::imread(curr.Path.string()),
+						pRenderSettings->GetFilterSettings().EdgeWeak,
+						pRenderSettings->GetFilterSettings().EdgeStrong,
+						pRenderSettings->GetFilterSettings().EdgeThreshold,
+						curr.EdgeWeight,
+						curr.Frequency
+					))
 					{
-						// Store path to real RGB image
-						SceneImage currImage;
-						currImage.SetScenePath(entry.path());
-						// Compute & store path to camera pose
-						std::string pose(entry.path().string());
-						boost::algorithm::replace_last(pose, "color.jpg", "pose.txt");
-						currImage.SetPosePath(ModifiablePath(pose));
-						// Place in output vector
-						clearImages.emplace_back(std::move(currImage));
+						// Mark as candidate if not obviously blurry
+						avgFreq += curr.Frequency;
+						candidates.push_back(curr);
 					}
+
+					// For average edge value
+					avgEdge += curr.EdgeWeight;
+					totalImgs++;
 				}
 			}
 		}
 	}
-	// Return images
+
+	// Calculate threshold values (average edge of all images, average frequency of candidates)
+	float normedEdge = ((1.0f - (static_cast<float>(candidates.size()) / totalImgs)) * avgEdge) / totalImgs;
+	float edgeThreshold = pRenderSettings->GetFilterSettings().EdgeFactor * normedEdge;
+	float freqThreshold = pRenderSettings->GetFilterSettings().FrequencyFactor * (avgFreq / candidates.size());
+
+	// Store non-blurry candidates in the filtered list file
+	for (const auto& curr : candidates)
+	{
+		if (curr.EdgeWeight >= edgeThreshold && curr.Frequency >= freqThreshold)
+		{
+			filterFile << curr.Path.lexically_normal().string() << "\n";
+			acceptedImgs++;
+		}
+	}
+
+	// Some logging & cleanup
+	std::cout << acceptedImgs << "/" << candidates.size()
+		<< " accepted (" << totalImgs << " total)" << std::endl;
+	filterFile.close();
+}
+
+//---------------------------------------
+// Loads real images from prefiltered list
+//---------------------------------------
+std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
+	ReferencePath dir
+) const
+{
+	std::vector<SceneImage> clearImages;
+
+	// Open the filter file
+	boost::filesystem::ifstream filterFile(dir / "filteredList.txt");
+
+	// Skip the first line (parameters)
+	std::string line;
+	std::getline(filterFile, line);
+
+	// For each non-blurry image
+	while (std::getline(filterFile, line))
+	{
+		// Store path to real RGB image
+		SceneImage currImage;
+		currImage.SetScenePath(line);
+		// Compute & store path to camera pose
+		std::string pose(line);
+		boost::algorithm::replace_last(pose, "color.jpg", "pose.txt");
+		currImage.SetPosePath(ModifiablePath(pose));
+		// Place in output vector
+		clearImages.emplace_back(std::move(currImage));
+	}
+
+	// Return image & pose paths
+	filterFile.close();
 	return clearImages;
 }
 
@@ -829,13 +942,15 @@ void SceneManager::X_ProcessThread(
 	int threadID
 )
 {
-	// Get non blurry images
-	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(
-		pRenderSettings->GetSceneRGBPath(),
-		SafeGet<float>(pRenderSettings->GetJSONConfig(), "blurry_threshold")
-	);
+	// Only the first thread computes non-blurry images
+	syncPoint->lock();
+	X_ComputeImagesToProcess(pRenderSettings->GetSceneRGBPath());
+	syncPoint->unlock();
 
-	// Make sure there are images
+	// Get non blurry images
+	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(pRenderSettings->GetSceneRGBPath());
+
+	// Make sure there are any images
 	if (sceneImages.empty())
 		return;
 
@@ -843,21 +958,21 @@ void SceneManager::X_ProcessThread(
 	camBlueprint.LoadIntrinsics(*pRenderSettings);
 
 	// Control params
-	int maxIters = pRenderSettings->GetIterationCount();
+	int maxIters = pRenderSettings->GetSimulationSettings().SceneIterations;
 	size_t poseCount = sceneImages.size();
-	size_t batchSize = pRenderSettings->GetRenderBatchSize();
+	size_t batchSize = pRenderSettings->GetSimulationSettings().BatchSize;
 	size_t batchMax = ceil(static_cast<float>(poseCount) / static_cast<float>(batchSize));
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetSceneImageCount(); ++iter)
+	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetSimulationSettings().SceneLimit; ++iter)
 	{
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 
 		// Create annotations manager
 		ModifiablePath annotationPath = pRenderSettings->GetFinalPath() / "annotations";
 		Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-		renderRes *= pRenderSettings->GetRenderScale();
+		renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
 		auto annotations = new AnnotationsManager(annotationPath, renderRes);
 
 		syncPoint->lock();
@@ -893,13 +1008,13 @@ void SceneManager::X_ProcessThread(
 		auto vecPxObjs = X_PxCreateObjs(randGen, pxMeshScene, simulation);
 
 		// Run the simulation
-		X_PxRunSim(simulation, 1.0f / 50.0f, pRenderSettings->GetStepsPerSimulation());
+		X_PxRunSim(simulation, 1.0f / 50.0f, pRenderSettings->GetSimulationSettings().SimulationSteps);
 
 		// Save results
 		auto vecObjs = X_PxSaveSimResults(vecPxObjs);
 
 		// For every batch
-		for (size_t batch = 0; batch < batchMax && imgCountUnoccluded < pRenderSettings->GetMaxImageCount(); ++batch)
+		for (size_t batch = 0; batch < batchMax && imgCountUnoccluded < pRenderSettings->GetSimulationSettings().SceneLimit; ++batch)
 		{
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
 			std::cout << "Scene\t" << scenePath << ":\tIteration\t" << iter + 1 << "/" << maxIters
@@ -966,7 +1081,7 @@ void SceneManager::X_ProcessThread(
 					unoccludedMasks.push_back(std::move(masks[check]));
 					unoccludedImages.push_back(std::move(currImages[check]));
 				}
-			}
+		}
 
 			// If batch contains useful images
 			if (!unoccludedImages.empty())
@@ -1002,12 +1117,12 @@ void SceneManager::X_ProcessThread(
 
 			// Update total count & output duration
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
-		}
+	}
 
 		// Done with iteration
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 		X_CleanupScene(simulation, annotations, renderer, threadID);
-	}
+}
 }
 
 //---------------------------------------
@@ -1027,7 +1142,7 @@ int SceneManager::ProcessNext(
 
 	// Create one thread / core
 	std::vector<boost::thread*> threads;
-	for(int i = 0; i < processCount; ++i)
+	for (int i = 0; i < processCount; ++i)
 	{
 		threads.push_back(new boost::thread(&SceneManager::X_ProcessThread, this, render, syncPoint, i));
 	}

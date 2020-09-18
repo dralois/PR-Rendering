@@ -189,11 +189,11 @@ void SimManager::RunSimulation()
 		pRenderSettings->SetScenePath(folder);
 		// Stop at max rendered images
 		currImageCount += sceneMgr.ProcessNext(currImageCount);
-		if (currImageCount >= pRenderSettings->GetMaxImageCount())
+		if (currImageCount >= pRenderSettings->GetSimulationSettings().TotalLimit)
 			break;
 		else
 			std::cout << "Switching scene, progress: " << currImageCount << "/"
-			<< pRenderSettings->GetMaxImageCount() << " images generated" << std::endl;
+			<< pRenderSettings->GetSimulationSettings().TotalLimit << " images generated" << std::endl;
 	}
 }
 

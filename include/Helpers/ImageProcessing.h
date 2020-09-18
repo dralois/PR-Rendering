@@ -3,6 +3,7 @@
 #pragma warning(push, 0)
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <Helpers/PathUtils.h>
 #pragma warning(pop)
@@ -19,34 +20,32 @@ static cv::Vec3b EncodeInt(
 }
 
 //---------------------------------------
-// Computes how blurry an image in memory is
+// Computes if image is blurry and outputs results
 //---------------------------------------
-static float ComputeVariance(
-	const cv::Mat& image
+static bool ComputeIsBlurry(
+	const cv::Mat& image,
+	float edgeWeakThreshold,
+	float edgeStrongThreshold,
+	float edgeMinThreshold,
+	float& edgeResult,
+	float& freqencyResult
 )
 {
-	cv::Mat gray;
-	cv::Mat laplacianImage;
-	cv::Scalar mean, deviation;
+	cv::Mat gray, edges, laplace;
+	cv::Scalar meanEdge, meanLaplace, devEdge, devLaplace;
 	// Convert to grayscale
 	cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-	// Create laplacian and calculate deviation
-	cv::Laplacian(gray, laplacianImage, CV_64F);
-	cv::meanStdDev(laplacianImage, mean, deviation, cv::Mat());
-	// Return variance
-	return deviation.val[0] * deviation.val[0];
-}
-
-//---------------------------------------
-// Computes how blurry an image on disk is
-//---------------------------------------
-static float ComputeVariance(
-	ReferencePath path
-)
-{
-	// Load image from path & compute variance
-	cv::Mat image = cv::imread(path.string());
-	return ComputeVariance(image);
+	// Edge detection & laplacian (frequency)
+	cv::Canny(gray, edges, edgeWeakThreshold, edgeStrongThreshold);
+	cv::Laplacian(gray, laplace, CV_64F);
+	// Calculate mean and standard deviation
+	cv::meanStdDev(edges, meanEdge, devEdge);
+	cv::meanStdDev(laplace, meanLaplace, devLaplace);
+	// Store edge mean and frequency deviation
+	edgeResult = static_cast<float>(fabs(meanEdge.val[0]));
+	freqencyResult = static_cast<float>(fabs(devLaplace.val[0]));
+	// Image is blurry if not enough edges were detected
+	return edgeResult < edgeMinThreshold;
 }
 
 //---------------------------------------

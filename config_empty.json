@@ -9,13 +9,18 @@
     "final_path": "",
     "temp_path": "",
 
-    "blurry_threshold": 0.0,
+    "edge_threshold": 0.0,
+    "edge_weak": 0.0,
+    "edge_strong": 0.0,
+    "edge_factor": 0.0,
+    "frequency_factor": 0.0,
+
     "simulation_objects": 0,
     "simulation_steps": 0,
     "scene_iterations": 0,
     "batch_size": 0,
-    "scene_images": 0,
-    "max_images": 0,
+    "scene_limit": 0,
+    "total_limit": 0,
     "render_scale": 1.0,
 
     "spawn_min" : [0.0, 0.0, 0.0],

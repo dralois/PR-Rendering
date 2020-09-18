@@ -61,22 +61,28 @@ private:
 	//---------------------------------------
 
 	// Scene mesh
+
 	RenderMesh X_CreateSceneMesh() const;
+	
 	PxMeshTriangle X_PxCreateSceneMesh() const;
 
 	// Simulation
+
 	physx::PxScene* X_PxCreateSimulation(
 		PxMeshTriangle& sceneMesh,
 		float& maxDist
 	) const;
+
 	std::vector<PxMeshConvex> X_PxCreateObjs(
 		std::default_random_engine& generator,
 		PxMeshTriangle& sceneMesh,
 		physx::PxScene* simulation
 	) const;
+
 	std::vector<RenderMesh> X_PxSaveSimResults(
 		std::vector<PxMeshConvex>& simulationObjs
 	) const;
+
 	void X_PxRunSim(
 		physx::PxScene* simulation,
 		float timestep,
@@ -84,12 +90,14 @@ private:
 	) const;
 
 	// Renderfile creation
+
 	void X_ConvertToRenderfile(
 		JSONWriterRef writer,
 		std::vector<RenderMesh>& meshes,
 		std::vector<Camera>& cams,
 		std::vector<Light>& lights
 	) const;
+
 	void X_BuildSceneDepth(
 		JSONWriterRef writer,
 		RenderMesh& sceneMesh,
@@ -99,6 +107,7 @@ private:
 		std::vector<Texture>& results,
 		float maxDist
 	) const;
+
 	void X_BuildObjectsDepth(
 		JSONWriterRef writer,
 		RenderMesh& sceneMesh,
@@ -108,6 +117,7 @@ private:
 		std::vector<Texture>& results,
 		float maxDist
 	) const;
+
 	void X_BuildObjectsLabel(
 		JSONWriterRef writer,
 		RenderMesh& sceneMesh,
@@ -116,6 +126,7 @@ private:
 		std::vector<Light>& lights,
 		std::vector<Texture>& results
 	) const;
+
 	void X_BuildObjectsPBR(
 		JSONWriterRef writer,
 		RenderMesh& sceneMesh,
@@ -124,6 +135,7 @@ private:
 		std::vector<Light>& lights,
 		std::vector<Texture>& results
 	) const;
+
 	void X_BuildObjectsAO(
 		JSONWriterRef writer,
 		RenderMesh& sceneMesh,
@@ -134,6 +146,7 @@ private:
 	) const;
 
 	// Blender rendering
+
 	std::vector<Mask> X_RenderDepthMasks(
 		Blender::BlenderRenderer* renderer,
 		int threadID,
@@ -144,6 +157,7 @@ private:
 		boost::mutex* syncPoint,
 		float maxDist
 	) const;
+
 	void X_RenderSegments(
 		Blender::BlenderRenderer* renderer,
 		int threadID,
@@ -154,6 +168,7 @@ private:
 		std::vector<Light>& lights,
 		std::vector<Mask>& masks
 	) const;
+
 	void X_RenderPBRBlend(
 		Blender::BlenderRenderer* renderer,
 		int threadID,
@@ -166,20 +181,27 @@ private:
 	) const;
 
 	// Other
+
 	void X_CleanupScene(
 		physx::PxScene* simulation,
 		AnnotationsManager* annotations,
 		Blender::BlenderRenderer* renderer,
 		int threadID
 	) const;
+
 	std::vector<Light> X_PlaceLights(
 		Eigen::Vector3f min,
 		Eigen::Vector3f max
 	) const;
-	std::vector<SceneImage> X_GetImagesToProcess(
-		ReferencePath dir,
-		float varThreshold
+
+	void X_ComputeImagesToProcess(
+		ReferencePath dir
 	) const;
+
+	std::vector<SceneImage> X_GetImagesToProcess(
+		ReferencePath dir
+	) const;
+
 	void X_ProcessThread(
 		Blender::BlenderRenderer* renderer,
 		boost::mutex* syncPoint,

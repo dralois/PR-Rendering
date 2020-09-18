@@ -62,9 +62,10 @@ cd build && make -j 16
 ## Configuration & Options
 - The config.json file contains options & settings
 - The paths in the first block need to be set to folders & files
-- Simulation & render output can be controlled in the second block
-- Object physics can be adjusted in the third block
-- Optionally, custom intrinsics can be set in the fourth block
+- Blurry image detection can be adjusted in the second block
+- Simulation & render output can be controlled in the third block
+- Object physics can be adjusted in the fourth block
+- Optionally, custom intrinsics can be set in the fifth block
 - Lastly, the objects that will be used in the simulation have to be defined
 
 ## Scene & Meshes Layout
