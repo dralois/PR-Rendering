@@ -606,9 +606,6 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	// Create & process renderfile
 	RENDERFILE_DEPTH(renderer, threadID, X_BuildObjectsDepth, sceneMesh, meshes, cams, lights, objectDepths, maxDist);
 
-	static boost::barrier sync(std::thread::hardware_concurrency() / 2);
-	sync.count_down_and_wait();
-
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
@@ -965,7 +962,7 @@ void SceneManager::X_ProcessThread(
 	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters && imgCountUnoccluded < pRenderSettings->GetSimulationSettings().SceneLimit; ++iter)
+	for (int iter = 0; iter < maxIters && imgCountScene < pRenderSettings->GetSimulationSettings().SceneLimit; ++iter)
 	{
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 
@@ -1014,7 +1011,7 @@ void SceneManager::X_ProcessThread(
 		auto vecObjs = X_PxSaveSimResults(vecPxObjs);
 
 		// For every batch
-		for (size_t batch = 0; batch < batchMax && imgCountUnoccluded < pRenderSettings->GetSimulationSettings().SceneLimit; ++batch)
+		for (size_t batch = 0; batch < batchMax && imgCountScene < pRenderSettings->GetSimulationSettings().SceneLimit; ++batch)
 		{
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
 			std::cout << "Scene\t" << scenePath << ":\tIteration\t" << iter + 1 << "/" << maxIters
@@ -1037,9 +1034,9 @@ void SceneManager::X_ProcessThread(
 			{
 				currCams[batchPose].LoadExtrinsics(currImages[batchPose].GetPosePath());
 				// Store & update image number atomically
-				imgMtx.lock();
+				syncPoint->lock();
 				currCams[batchPose].SetImageNum(++imgCountDepth);
-				imgMtx.unlock();
+				syncPoint->unlock();
 			}
 
 			// Render depths & masks
@@ -1066,9 +1063,9 @@ void SceneManager::X_ProcessThread(
 				if (!masks[check].Occluded())
 				{
 					// Store & update image number atomically
-					imgMtx.lock();
+					syncPoint->lock();
 					currCams[check].SetImageNum(++imgCountUnoccluded);
-					imgMtx.unlock();
+					syncPoint->unlock();
 					// Store the blended depth
 					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imgCountUnoccluded, true);
 #if STORE_DEBUG_TEX
@@ -1115,7 +1112,10 @@ void SceneManager::X_ProcessThread(
 				renderer->LogPerformance("PBR Render & Blend", threadID);
 			}
 
-			// Update total count & output duration
+			// Update scene limit & output duration
+			syncPoint->lock();
+			imgCountScene += unoccludedImages.size();
+			syncPoint->unlock();
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
 	}
 
@@ -1132,8 +1132,9 @@ int SceneManager::ProcessNext(
 	int imageCount
 )
 {
-	// Update total images so far
+	// Update total images & reset scene limit
 	imgCountUnoccluded = imageCount;
+	imgCountScene = 0;
 
 	// Create threaded renderer
 	auto syncPoint = new boost::mutex();
@@ -1175,6 +1176,7 @@ SceneManager::SceneManager(
 	vecpRenderMeshObjs(vecArnoldObjs),
 	pRenderSettings(settings),
 	imgCountDepth(0),
-	imgCountUnoccluded(0)
+	imgCountUnoccluded(0),
+	imgCountScene(0)
 {
 }

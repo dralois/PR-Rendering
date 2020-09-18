@@ -52,9 +52,9 @@ private:
 	Settings* pRenderSettings;
 
 	// Multithreading
-	boost::mutex imgMtx;
 	int imgCountDepth;
 	int imgCountUnoccluded;
+	int imgCountScene;
 
 	//---------------------------------------
 	// Methods
