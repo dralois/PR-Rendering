@@ -1,4 +1,3 @@
-import argparse
 import os
 import re
 
@@ -25,72 +24,82 @@ class NumberedEntry(object):
         newIndex = lastIndex + (self.num - minIndex + 1)
         return re.sub(r"\d+", "{0:06d}".format(newIndex), self.name)
 
-if __name__ == "__main__":
+requiredFolders = set(["annotations", "depth", "rgb", "segs"])
 
-    parse = argparse.ArgumentParser(description="Merges two datasets into one and removes invalid data points")
-    parse.add_argument("-o", "--original", required=True, type=str,
-        help="path to original dataset, must be a folder")
-    parse.add_argument("-m", "--merge", required=True, type=str,
-        help="path to the dataset to be merged, must be a folder")
-    args = vars(parse.parse_args())
+# Remove invalid data points from a dataset
+def CleanSet(dir):
+    # Open directory
+    with os.scandir(os.path.normpath(dir)) as clean:
 
-    requiredFolders = ["annotations", "depth", "rgb", "segs"]
+        # Parse contained folders into lists
+        cleanEntries = set([entry.name for entry in clean])
 
-    # Open both data sets
-    with os.scandir(args["original"]) as org:
-        with os.scandir(args["merge"]) as mrg:
+        # All folders of the data set structure must exist
+        if not requiredFolders <= cleanEntries:
+            print(f"Clean: Directory {dir} is not a valid dataset!")
+            return
 
-            # Parse contained folders into lists
-            orgEntries = [entry for entry in org]
-            mrgEntries = [entry for entry in mrg]
+        # Clean the data set to be merged
+        with os.scandir(os.path.join(dir, "annotations")) as (annotations
+            ), os.scandir(os.path.join(dir, "depth")) as (depth
+            ), os.scandir(os.path.join(dir, "rgb")) as (rgb
+            ), os.scandir(os.path.join(dir, "segs")) as segs:
 
-            # All folders of the data set structure must exist
-            if (not all(elem.path in requiredFolders for elem in orgEntries) or
-                not all(elem.path in requiredFolders for elem in mrgEntries)):
-                os.error("Either original or dataset to merge is not a valid dataset!")
+            # Store data point numbers contained in all folders
+            annotationFiles = set([NumberedEntry(entry) for entry in annotations])
+            depthFiles = set([NumberedEntry(entry) for entry in depth])
+            rgbFiles = set([NumberedEntry(entry) for entry in rgb])
+            segsFiles = set([NumberedEntry(entry) for entry in segs])
 
-            # Find last entry number in original
-            lastEntry = [int(s) for s in re.findall(r"\d+", max(
-                os.scandir(os.path.join(args["original"], "rgb")), key=
-                    lambda x : [int(s) for s in re.findall(r"\d+", x.name)][0]).name)][0]
+            # Build intersection
+            validPoints = annotationFiles & depthFiles & rgbFiles & segsFiles
 
-            # Clean the data set to be merged
-            with os.scandir(os.path.join(args["merge"], "annotations")) as (annotations
-                ), os.scandir(os.path.join(args["merge"], "depth")) as (depth
-                ), os.scandir(os.path.join(args["merge"], "rgb")) as (rgb
-                ), os.scandir(os.path.join(args["merge"], "segs")) as segs:
+            # Reduce to invalid data points
+            annotationRemove = annotationFiles - validPoints
+            depthRemove = depthFiles - validPoints
+            rgbRemove = rgbFiles - validPoints
+            segsRemove = segsFiles - validPoints
+            annotationFiles -= annotationRemove
+            depthFiles -= depthRemove
+            rgbFiles -= rgbRemove
+            segsFiles -= segsRemove
 
-                # Store data point numbers contained in all folders
-                annotationFiles = set([NumberedEntry(entry) for entry in annotations])
-                depthFiles = set([NumberedEntry(entry) for entry in depth])
-                rgbFiles = set([NumberedEntry(entry) for entry in rgb])
-                segsFiles = set([NumberedEntry(entry) for entry in segs])
+            # Remove all invalid data points from all folders
+            [print(entry.path) for entry in annotationRemove]
+            [os.remove(entry.path) for entry in annotationRemove]
+            [print(entry.path) for entry in depthRemove]
+            [os.remove(entry.path) for entry in depthRemove]
+            [print(entry.path) for entry in rgbRemove]
+            [os.remove(entry.path) for entry in rgbRemove]
+            [print(entry.path) for entry in segsRemove]
+            [os.remove(entry.path) for entry in segsRemove]
 
-                # Build intersection
-                validPoints = annotationFiles & depthFiles & rgbFiles & segsFiles
+            # Return valid data
+            return annotationFiles, depthFiles, rgbFiles, segsFiles
 
-                # Reduce to invalid data points
-                annotationRemove = annotationFiles - validPoints
-                depthRemove = depthFiles - validPoints
-                rgbRemove = rgbFiles - validPoints
-                segsRemove = segsFiles - validPoints
-                annotationFiles -= annotationRemove
-                depthFiles -= depthRemove
-                rgbFiles -= rgbRemove
-                segsFiles -= segsRemove
+# Merge two datasets into one
+def MergeSets(dir, merge):
+    # Open directory
+    with os.scandir(os.path.normpath(dir)) as org:
 
-                # Remove all invalid data points from all folders
-                [print(entry.path) for entry in annotationRemove]
-                [os.remove(entry.path) for entry in annotationRemove]
-                [print(entry.path) for entry in depthRemove]
-                [os.remove(entry.path) for entry in depthRemove]
-                [print(entry.path) for entry in rgbRemove]
-                [os.remove(entry.path) for entry in rgbRemove]
-                [print(entry.path) for entry in segsRemove]
-                [os.remove(entry.path) for entry in segsRemove]
+        # Parse contained folders into lists
+        orgEntries = set([entry.name for entry in org])
 
-                # Copy to original set with new names
-                [os.rename(entry.path, os.path.join(args["original"], "annotations", entry.Renamed(lastEntry, min(annotationFiles).num))) for entry in annotationFiles]
-                [os.rename(entry.path, os.path.join(args["original"], "depth", entry.Renamed(lastEntry, min(depthFiles).num))) for entry in depthFiles]
-                [os.rename(entry.path, os.path.join(args["original"], "rgb", entry.Renamed(lastEntry, min(rgbFiles).num))) for entry in rgbFiles]
-                [os.rename(entry.path, os.path.join(args["original"], "segs", entry.Renamed(lastEntry, min(segsFiles).num))) for entry in segsFiles]
+        # All folders of the data set structure must exist
+        if not requiredFolders <= orgEntries:
+            print(f"Merge: Directory {dir} is not a valid dataset!")
+            return
+
+        # Find last entry number in original
+        lastEntry = [int(s) for s in re.findall(r"\d+", max(
+            os.scandir(os.path.join(dir, "rgb")), key=
+                lambda x : [int(s) for s in re.findall(r"\d+", x.name)][0]).name)][0]
+
+        # Clean merging dataset
+        annotationFiles, depthFiles, rgbFiles, segsFiles = CleanSet(merge)
+
+        # Copy to original set with new names
+        [os.rename(entry.path, os.path.join(dir, "annotations", entry.Renamed(lastEntry, min(annotationFiles).num))) for entry in annotationFiles]
+        [os.rename(entry.path, os.path.join(dir, "depth", entry.Renamed(lastEntry, min(depthFiles).num))) for entry in depthFiles]
+        [os.rename(entry.path, os.path.join(dir, "rgb", entry.Renamed(lastEntry, min(rgbFiles).num))) for entry in rgbFiles]
+        [os.rename(entry.path, os.path.join(dir, "segs", entry.Renamed(lastEntry, min(segsFiles).num))) for entry in segsFiles]

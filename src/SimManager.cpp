@@ -8,7 +8,7 @@
 //---------------------------------------
 void SimManager::X_LoadConfig(ReferencePath configPath)
 {
-	std::cout << "Reading config file:\t" << boost::filesystem::relative(configPath) << std::endl;
+	std::cout << "Reading config file:\t" << configPath << std::endl;
 	// Open file in binary mode
 	FILE* pFile = fopen(configPath.string().c_str(), "rb");
 	// Determine size

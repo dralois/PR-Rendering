@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 	}
 
 	// Config file path in args
-	ModifiablePath configPath(argv[1]);
+	ModifiablePath configPath = boost::filesystem::absolute(argv[1]);
 
 	// Create simulation manager
 	SimManager simulation(configPath);
