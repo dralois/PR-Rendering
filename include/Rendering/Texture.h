@@ -99,7 +99,7 @@ public:
 #pragma warning(default:26812)
 
 		// Convert image into correct format if lambda is provided
-		if(converter)
+		if(converter && !loadedImage.empty())
 		{
 			loadedImage = converter(loadedImage);
 		}
