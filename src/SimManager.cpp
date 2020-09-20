@@ -103,7 +103,7 @@ void SimManager::X_LoadMeshes()
 				// Mesh file must exist
 				if (!exists(meshPath))
 				{
-					std::cout << "\r\33[2K" << "Mesh missing:\t" << meshPath.relative_path() << ", skipping" << std::endl;
+					std::cout << "\33[2K\r" << "Mesh missing:\t" << meshPath.relative_path() << ", skipping" << std::endl;
 					continue;
 				}
 

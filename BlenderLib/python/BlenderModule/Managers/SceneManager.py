@@ -97,6 +97,7 @@ class Scene(object):
         ctx.appleseed.use_embree = True
         ctx.appleseed.threads_auto = False
         ctx.appleseed.threads = 2
+        ctx.appleseed.tex_cache = 512
         # Sampling method & quality (If data: Trace rays through center of pixel)
         if camera.CameraDataOnly:
             ctx.appleseed.pixel_sampler = "uniform"
@@ -155,6 +156,8 @@ class Scene(object):
         bpy.context.scene.render.engine = "APPLESEED_RENDER"
         # Change appleseed debug output level to match own logger
         bpy.context.preferences.addons["blenderseed"].preferences.log_level = GetLevel()
+        # Limit cache to 1GB
+        bpy.context.preferences.system.memory_cache_limit = 1024
 
     # Get camera manager
     @property

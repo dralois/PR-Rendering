@@ -43,16 +43,16 @@ void PxMeshTriangle::X_CookMesh()
 		PxDefaultFileOutputStream writeOutBuffer(cookPath.string().c_str());
 		if (!PxManager::GetInstance().GetCooker()->cookTriangleMesh(triangleDesc, writeOutBuffer, &result))
 		{
-			std::cout << "\r\33[2K" << GetName() << " cooking error:\t" << result << std::endl;
+			std::cout << "\33[2K\r" << GetName() << " cooking error:\t" << result << std::endl;
 		}
 		else
 		{
-			std::cout << "\r\33[2K" << GetName() << " cooked to:\t" << boost::filesystem::relative(cookPath) << std::flush;
+			std::cout << "\33[2K\r" << GetName() << " cooked to:\t" << boost::filesystem::relative(cookPath) << std::flush;
 		}
 	}
 	else
 	{
-		std::cout << "\r\33[2K" << GetName() << " loaded from:\t" << boost::filesystem::relative(cookPath) << std::flush;
+		std::cout << "\33[2K\r" << GetName() << " loaded from:\t" << boost::filesystem::relative(cookPath) << std::flush;
 	}
 
 	// Create buffer

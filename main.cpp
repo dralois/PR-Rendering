@@ -25,6 +25,13 @@ int main(int argc, char** argv)
 	// Config file path in args
 	ModifiablePath configPath = boost::filesystem::absolute(argv[1]);
 
+	// Config file must exist of course
+	if (!boost::filesystem::exists(configPath))
+	{
+		std::cout << "Config file " << configPath << " not found, exiting." << std::endl;
+		return -1;
+	}
+
 	// Create simulation manager
 	SimManager simulation(configPath);
 

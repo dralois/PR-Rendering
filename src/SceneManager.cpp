@@ -205,7 +205,8 @@ void SceneManager::X_PxRunSim(
 	}
 
 	// Some status logging
-	std::cout << "Done simulating (" << timestep << "s steps, " << timestep * stepCount << "s total)" << std::endl;
+	std::cout << "\33[2K\r" << "Done simulating (" << timestep << "s steps, "
+		<< timestep * stepCount << "s total)" << std::endl;
 }
 
 //---------------------------------------

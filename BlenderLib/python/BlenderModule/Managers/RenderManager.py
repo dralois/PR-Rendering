@@ -23,7 +23,7 @@ class TimeoutQueue(JoinableQueue):
 class RenderProcess(mp.Process):
 
     def __init__(self, fileQueue, closeEvent, importPaths):
-        super().__init__(target=self.RenderLoop, args=importPaths, daemon=True)
+        super().__init__(target=self.RenderLoop, args=importPaths)
         self.__fileQueue : TimeoutQueue
         self.__fileQueue = fileQueue
         self.__closeEvent : mp.Event
@@ -80,8 +80,8 @@ class RenderManager(object):
             self.__CreateProcess(i)
 
     def __del__(self):
-        for i in range(self.__maxWorkers):
-            self.__RemoveProcess(i)
+        for pc in mp.active_children():
+            pc.terminate()
 
     # Process renderfile multithreaded
     def ProcessRenderfile(self, renderfile, timeout, thread):
@@ -134,6 +134,7 @@ class RenderManager(object):
                 # Create, start & save render process
                 renderPrc = RenderProcess(fileQueue, closeEvent, GetPaths())
                 self.__workers.insert(index, (renderPrc, fileQueue, closeEvent))
+                renderPrc.daemon = True
                 renderPrc.start()
                 return True
         # Creation failed

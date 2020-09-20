@@ -29,17 +29,17 @@ bool MeshBase::X_LoadFile()
 	// Error handling
 	if (!scene)
 	{
-		std::cout << "\r\33[2K" << "Mesh load error:\t" << importer.GetErrorString() << std::endl;
+		std::cout << "\33[2K\r" << "Mesh load error:\t" << importer.GetErrorString() << std::endl;
 		return false;
 	}
 	else if (!scene->HasMeshes())
 	{
-		std::cout << "\r\33[2K" << "Mesh load error:\t" << boost::filesystem::relative(meshPath) << " has no mesh" << std::endl;
+		std::cout << "\33[2K\r" << "Mesh load error:\t" << boost::filesystem::relative(meshPath) << " has no mesh" << std::endl;
 		return false;
 	}
 	else
 	{
-		std::cout << "\r\33[2K" << "Imported mesh:\t" << boost::filesystem::relative(meshPath) << std::flush;
+		std::cout << "\33[2K\r" << "Imported mesh:\t" << boost::filesystem::relative(meshPath) << std::flush;
 	}
 
 	const aiMesh* mesh = scene->mMeshes[0];
@@ -181,7 +181,7 @@ void MeshBase::X_StoreFile(const std::string& ext) const
 
 	// Export created mesh to path
 	exporter.Export(&scene, "obj", savePath.string());
-	std::cout << "\r\33[2K" << "Exported mesh:\t" << boost::filesystem::relative(savePath) << std::flush;
+	std::cout << "\33[2K\r" << "Exported mesh:\t" << boost::filesystem::relative(savePath) << std::flush;
 	exporter.FreeBlob();
 }
 
