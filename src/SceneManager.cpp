@@ -579,7 +579,7 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 	objectDepths.reserve(cams.size());
 	sceneDepths.reserve(cams.size());
 
-	// Only the first thread renders scene depth
+	// Only one thread at a time renders scene depth
 	syncPoint->lock();
 
 	RENDERFILE_DEPTH(renderer, threadID, X_BuildSceneDepth, sceneMesh, meshes, cams, lights, sceneDepths, maxDist);
@@ -938,8 +938,11 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 		clearImages.emplace_back(std::move(currImage));
 	}
 
-	// Return image & pose paths
+	// Return shuffled images & pose file
 	filterFile.close();
+	std::random_device rd;
+	std::default_random_engine gen(rd());
+	std::shuffle(clearImages.begin(), clearImages.end(), gen);
 	return clearImages;
 }
 
