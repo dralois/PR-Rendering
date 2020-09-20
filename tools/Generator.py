@@ -12,15 +12,18 @@ def RunGenerator(exe, config, out, maxtime, repeat):
     for i in range(repeat):
         try:
             # Generate new dataset
-            subprocess.run([exe, config], stdout=sys.stdout, stderr=sys.stderr, timeout=(maxtime * 360.0), check=True)
+            subprocess.run([exe, config], stdout=sys.stdout, stderr=sys.stderr, timeout=(maxtime * 3600.0), check=True)
             # Merge dataset into specified output dir
             MergeSets(out, finalDir)
         except subprocess.TimeoutExpired:
             # Timeouts are acceptable
-            pass
+            continue
         except subprocess.CalledProcessError:
             # Errors during generation may be problematic
-            exit(-1)
+            break
+        finally:
+            # Logging
+            print(sys.exc_info())
 
 def cleanFunc(args):
     print(f'Cleaning {args["directory"]}')
