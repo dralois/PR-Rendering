@@ -3,7 +3,7 @@ import subprocess
 import json
 import sys
 
-from DatasetMerger import MergeSets, CleanSet
+from DatasetMerger import MergeSets, EnumerateSet
 
 def RunGenerator(exe, config, out, maxtime, repeat):
     # Determine generator output dir
@@ -14,20 +14,20 @@ def RunGenerator(exe, config, out, maxtime, repeat):
             # Generate new dataset
             subprocess.run([exe, config], stdout=sys.stdout, stderr=sys.stderr, timeout=(maxtime * 3600.0), check=True)
             # Merge dataset into specified output dir
+            print(f"Done generating {i + 1} / {repeat} times")
             MergeSets(out, finalDir)
         except subprocess.TimeoutExpired:
             # Timeouts are acceptable
+            print(sys.exc_info())
             continue
         except subprocess.CalledProcessError:
             # Errors during generation may be problematic
-            break
-        finally:
-            # Logging
             print(sys.exc_info())
+            break
 
 def cleanFunc(args):
     print(f'Cleaning {args["directory"]}')
-    CleanSet(args["directory"])
+    EnumerateSet(args["directory"])
 def mergeFunc(args):
     print(f'Merging {args["other"]} into {args["directory"]}')
     MergeSets(args["directory"], args["other"])

@@ -1,6 +1,11 @@
 import os
 import re
 
+requiredFolders = set(["annotations", "depth", "rgb", "segs"])
+
+startNum = 1
+startMap = {}
+
 class NumberedEntry(object):
 
     def __init__(self, entry : os.DirEntry):
@@ -20,11 +25,12 @@ class NumberedEntry(object):
     def __lt__(self, cmp):
         return self.num < cmp.num
 
+    def Renumbered(self, newNum):
+        return re.sub(r"\d+", "{0:06d}".format(newNum), self.name)
+
     def Renamed(self, lastIndex, minIndex):
         newIndex = lastIndex + (self.num - minIndex + 1)
-        return re.sub(r"\d+", "{0:06d}".format(newIndex), self.name)
-
-requiredFolders = set(["annotations", "depth", "rgb", "segs"])
+        return self.Renumbered(newIndex)
 
 # Remove invalid data points from a dataset
 def CleanSet(dir):
@@ -77,6 +83,33 @@ def CleanSet(dir):
             # Return valid data
             return annotationFiles, depthFiles, rgbFiles, segsFiles
 
+# Enumerates set to fill gaps
+def EnumerateSet(dir):
+
+    # Enumeration function
+    def GetNumber(num):
+        global startMap, startNum
+        # Generate mapping if no mapping exists
+        if not num in startMap:
+            startMap[num] = startNum
+            startNum += 1
+        # Return mapped number
+        return startMap[num]
+
+    # Clean the set
+    annotationFiles, depthFiles, rgbFiles, segsFiles = CleanSet(dir)
+
+    # Enumerate each folder (keeps correct mapping)
+    [os.rename(entry.path, os.path.join(dir, "annotations", entry.Renumbered(GetNumber(entry.num)))) for entry in annotationFiles]
+    [os.rename(entry.path, os.path.join(dir, "depth", entry.Renumbered(GetNumber(entry.num)))) for entry in depthFiles]
+    [os.rename(entry.path, os.path.join(dir, "rgb", entry.Renumbered(GetNumber(entry.num)))) for entry in rgbFiles]
+    [os.rename(entry.path, os.path.join(dir, "segs", entry.Renumbered(GetNumber(entry.num)))) for entry in segsFiles]
+
+    # Reset
+    global startMap, startNum
+    startNum = 1
+    startMap = {}
+
 # Merge two datasets into one
 def MergeSets(dir, merge):
     # Open directory
@@ -103,3 +136,6 @@ def MergeSets(dir, merge):
         [os.rename(entry.path, os.path.join(dir, "depth", entry.Renamed(lastEntry, min(depthFiles).num))) for entry in depthFiles]
         [os.rename(entry.path, os.path.join(dir, "rgb", entry.Renamed(lastEntry, min(rgbFiles).num))) for entry in rgbFiles]
         [os.rename(entry.path, os.path.join(dir, "segs", entry.Renamed(lastEntry, min(segsFiles).num))) for entry in segsFiles]
+
+        # Enumerate merged set correctly
+        EnumerateSet(dir)
