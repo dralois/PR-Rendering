@@ -1,7 +1,7 @@
 #include <SceneManager.h>
 
 #if _DEBUG || DEBUG
-#define STORE_DEBUG_TEX 0
+#define STORE_DEBUG_TEX 1
 #endif //_DEBUG || DEBUG
 
 #define USE_AO 1
@@ -1085,7 +1085,7 @@ void SceneManager::X_ProcessThread(
 					// Store the blended depth
 					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imgCountUnoccluded, true);
 #if STORE_DEBUG_TEX
-					masks[i].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
+					masks[check].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
 #else
 					masks[check].StoreBlendedDepth(depthPath);
 #endif
