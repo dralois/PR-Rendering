@@ -359,7 +359,8 @@ void SceneManager::X_BuildSceneDepth(
 	if (toRender.size() > 0)
 	{
 		// Add configured scene to renderfile
-		X_ConvertToRenderfile(writer, std::vector<RenderMesh>{sceneMesh}, toRender, lights);
+		std::vector<RenderMesh> scene = {sceneMesh};
+		X_ConvertToRenderfile(writer, scene, toRender, lights);
 	}
 
 	// Mark indirect again
