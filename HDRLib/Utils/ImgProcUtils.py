@@ -13,3 +13,10 @@ def load_extr(file) -> np.ndarray:
 def load_intr(string) -> np.ndarray:
     arr = np.fromstring(string, dtype = "f", sep = " ")
     return np.reshape(arr, (4, 4))
+
+def uv_coords(p, intr):
+    return (0.5 - ((p[0] * intr[0]) / (p[2] * intr[4])) - intr[2],
+            0.5 + ((p[1] * intr[1]) / (p[2] * intr[5])) - intr[3])
+
+def pixels(uv, intr):
+    return (int(intr[5] * uv[1]), int((intr[4] * uv[0])))
