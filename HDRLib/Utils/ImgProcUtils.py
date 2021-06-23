@@ -7,6 +7,13 @@ def adjust_gamma(image, gamma=1.0):
         for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 
+def gradient_map(image, maxGrad=100.0):
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    dx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    dy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    combined = np.maximum(np.absolute(dx), np.absolute(dy))
+    return np.greater(combined, maxGrad)
+
 def load_extr(file) -> np.ndarray:
     return np.loadtxt(file, dtype="f", delimiter=" ")
 

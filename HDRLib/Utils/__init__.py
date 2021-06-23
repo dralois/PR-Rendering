@@ -1,1 +1,1 @@
-__all__ = ["ImgProcUtils", "MeshUtils"]
+__all__ = ["ImgProcUtils", "MeshUtils", "SolverUtils"]

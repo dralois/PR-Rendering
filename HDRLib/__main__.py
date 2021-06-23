@@ -1,5 +1,6 @@
 from .Utils.ImgProcUtils import *
 from .Utils.MeshUtils import *
+from .Utils.SolverUtils import *
 
 from plotoptix import NpOptiX
 from plotoptix.materials import m_flat
@@ -13,7 +14,7 @@ import random
 
 # 1) Import all images, inverse gamma correct them (y = 2.2)
 
-# RGB, depth, extrinsics matrix, eye pos
+# RGB, depth, gradients, extrinsics matrix, eye pos
 frames = {}
 mesh = None
 intr = (0, 0, 0, 0, 0, 0)
@@ -47,6 +48,7 @@ with os.scandir(".\\HDRLib\\Test\\1") as dir:
                     cv2.COLOR_BGR2RGB)
                 depth = cv2.imread(os.path.join(direntry.path, base + ".depth.pgm"), cv2.IMREAD_ANYDEPTH)
                 extr = load_extr(os.path.join(direntry.path, base + ".pose.txt"))
+                grads = gradient_map(rgb)
                 # Extract camera position
                 eye = extr[0:3, 3:4]
                 # Convert camera2world -> world2camera
@@ -56,7 +58,7 @@ with os.scandir(".\\HDRLib\\Test\\1") as dir:
                                 [ 0,  0,  0,  1]])
                 extr = np.linalg.inv(np.matmul(extr, flip))
                 # Store
-                frames[base] = (rgb, depth, extr, eye)
+                frames[base] = (rgb, depth, grads, extr, eye)
         # Load mesh
         elif direntry.is_file() and direntry.name == "mesh.refined.v2.obj":
             mesh = load_mesh(direntry.path, "obj")
@@ -65,9 +67,11 @@ with os.scandir(".\\HDRLib\\Test\\1") as dir:
 # 2.1) Raytrace all vertices -> all cameras, locate pixel if not occluded
 
 size = math.ceil(math.sqrt(len(mesh.vertices)))
+vertexPixels = [[] for _ in range(len(mesh.vertices))]
 
 # TODO: Remove
 renderDone = threading.Event()
+renderSem = threading.Semaphore()
 
 # Locates hit pixels
 def build_hit_image(rt: NpOptiX) -> None:
@@ -77,26 +81,43 @@ def build_hit_image(rt: NpOptiX) -> None:
     pid &= 0xC0000000
     pid >>= 30
 
+    # Prevents multiple hits
+    hitMap = {}
+
+    # Only one mesh at a time
+    renderSem.acquire()
+
     for idx, x in np.ndenumerate(fid):
         # If face was hit (-> has index)
         if x < 0xFFFFFFFF:
             # Calculate vertex index
             hitFace = mesh.faces[x]
             hitVertex = hitFace[pid[idx]]
-            # If original vertex matches hit position
-            if np.allclose(mesh.vertices[hitVertex], data[idx][:3]):
-                # Calculate camera space position
-                campos = np.matmul(extr, np.append(data[idx][:3], 1))[:3]
-                # In front of the camera?
-                if campos[2] < 0.0:
-                    # Calculate uv coords
-                    uvs = uv_coords(campos, intr)
-                    # Within camera frame?
-                    if min(uvs) >= 0 and max(uvs) <= 1.0:
-                        # Hit, load & store pixel
-                        col = rgb[pixels(uvs, intr)]
-                        hits[idx] = col
-                        set_vertex_color(mesh, hitVertex, col)
+            # Prevent multiple hits for one vertex per image
+            if hash(mesh.vertices[hitVertex]) in hitMap:
+                continue
+            else:
+                # If original vertex matches hit position
+                if np.allclose(mesh.vertices[hitVertex], data[idx][:3]):
+                    # Calculate camera space position
+                    campos = np.matmul(extr, np.append(data[idx][:3], 1))[:3]
+                    # In front of the camera?
+                    if campos[2] < 0.0:
+                        # Calculate uv coords
+                        uvs = uv_coords(campos, intr)
+                        # Within camera frame?
+                        if min(uvs) >= 0 and max(uvs) <= 1.0:
+                            # Vertex hit, compute pixel
+                            px = pixels(uvs, intr)
+                            # Pixel not on strong gradient?
+                            if not grads[px]:
+                                # Hit, load & store pixel
+                                col = rgb[px]
+                                hitMap[hash(mesh.vertices[hitVertex])] = True
+                                vertexPixels[hitVertex].append((col, idx))
+                                set_vertex_color(mesh, hitVertex, col)
+
+    renderSem.release()
 
     # TODO: Remove
     renderDone.set()
@@ -121,8 +142,7 @@ rt.start()
 # Raytrace all frames
 for frame, vals in frames.items():
     # Load current frame values & update camera position
-    rgb, _, extr, eye_pos = vals
-    hits = np.zeros((size, size, 3), dtype=np.int8)
+    rgb, _, grads, extr, eye_pos = vals
     rt.update_camera("cam", eye=eye_pos)
     rt.refresh_scene()
 
