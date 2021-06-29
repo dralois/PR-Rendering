@@ -11,6 +11,7 @@ import math
 import os
 import threading
 import random
+import pickle
 
 # 1) Import all images, inverse gamma correct them (y = 2.2)
 
@@ -19,12 +20,17 @@ frames = {}
 mesh = None
 intr = (0, 0, 0, 0, 0, 0)
 frames_folder = "rgbd"
+store_debug_mesh = False
+solve_max_verts = 200000
+curr_path = ""
 
 # TODO: For each scene
 with os.scandir(".\\HDRLib\\Test\\1") as dir:
     for direntry in dir:
         # Frames dir?
         if direntry.is_dir() and direntry.name == frames_folder:
+            # Required to store intermediate results
+            curr_path = os.path.join(direntry.path, os.pardir)
             # Load info file
             info = {}
             for line in open(os.path.join(direntry.path, "_info.txt"), "r").readlines():
@@ -67,11 +73,10 @@ with os.scandir(".\\HDRLib\\Test\\1") as dir:
 # 2.1) Raytrace all vertices -> all cameras, locate pixel if not occluded
 
 size = math.ceil(math.sqrt(len(mesh.vertices)))
-vertexPixels = [[] for _ in range(len(mesh.vertices))]
+vertexPixels = {fr : [None for _ in range(len(mesh.vertices))] for fr in frames}
 
-# TODO: Remove
+# Necessary to only process one frame at a time
 renderDone = threading.Event()
-renderSem = threading.Semaphore()
 
 # Locates hit pixels
 def build_hit_image(rt: NpOptiX) -> None:
@@ -81,45 +86,33 @@ def build_hit_image(rt: NpOptiX) -> None:
     pid &= 0xC0000000
     pid >>= 30
 
-    # Prevents multiple hits
-    hitMap = {}
-
-    # Only one mesh at a time
-    renderSem.acquire()
-
     for idx, x in np.ndenumerate(fid):
         # If face was hit (-> has index)
         if x < 0xFFFFFFFF:
             # Calculate vertex index
             hitFace = mesh.faces[x]
             hitVertex = hitFace[pid[idx]]
-            # Prevent multiple hits for one vertex per image
-            if hash(mesh.vertices[hitVertex]) in hitMap:
-                continue
-            else:
-                # If original vertex matches hit position
-                if np.allclose(mesh.vertices[hitVertex], data[idx][:3]):
-                    # Calculate camera space position
-                    campos = np.matmul(extr, np.append(data[idx][:3], 1))[:3]
-                    # In front of the camera?
-                    if campos[2] < 0.0:
-                        # Calculate uv coords
-                        uvs = uv_coords(campos, intr)
-                        # Within camera frame?
-                        if min(uvs) >= 0 and max(uvs) <= 1.0:
-                            # Vertex hit, compute pixel
-                            px = pixels(uvs, intr)
-                            # Pixel not on strong gradient?
-                            if not grads[px]:
-                                # Hit, load & store pixel
-                                col = rgb[px]
-                                hitMap[hash(mesh.vertices[hitVertex])] = True
-                                vertexPixels[hitVertex].append((col, idx))
+            # If original vertex matches hit position
+            if np.allclose(mesh.vertices[hitVertex], data[idx][:3]):
+                # Calculate camera space position
+                campos = np.matmul(extr, np.append(data[idx][:3], 1))[:3]
+                # In front of the camera?
+                if campos[2] < 0.0:
+                    # Calculate uv coords
+                    uvs = uv_coords(campos, intr)
+                    # Within camera frame?
+                    if min(uvs) >= 0 and max(uvs) <= 1.0:
+                        # Vertex hit, compute pixel
+                        px = pixels(uvs, intr)
+                        # Pixel not on strong gradient?
+                        if not grads[px]:
+                            # Hit, load & store pixel
+                            col = rgb[px]
+                            vertexPixels[frame][hitVertex] = col
+                            # Potentially set vertex color in mesh
+                            if store_debug_mesh:
                                 set_vertex_color(mesh, hitVertex, col)
-
-    renderSem.release()
-
-    # TODO: Remove
+    # Next frame can be processed
     renderDone.set()
 
 # Load farmework
@@ -137,24 +130,39 @@ rt.setup_material("flat", m_flat)
 rt.setup_camera("cam", cam_type="CustomProjXYZ", textures=["target"])
 rt.set_mesh("mesh", mesh.vertices, mesh.faces, mat="flat")
 
+# Start raytracing
 rt.start()
 
-# Raytrace all frames
-for frame, vals in frames.items():
-    # Load current frame values & update camera position
-    rgb, _, grads, extr, eye_pos = vals
-    rt.update_camera("cam", eye=eye_pos)
-    rt.refresh_scene()
+# Try loading intermediate results
+try:
+    with open(os.path.join(curr_path, "RTResults.pkl"), mode="r+b") as stream:
+        vertexPixels = pickle.load(stream)
+except OSError:
+    # Raytrace all frames
+    for frame, vals in frames.items():
+        # Load current frame values & update camera position
+        rgb, _, grads, extr, eye_pos = vals
+        rt.update_camera("cam", eye=eye_pos)
+        rt.refresh_scene()
 
-    print(f"Progress: {frame}")
+        # One frame at a time
+        renderDone.wait()
+        renderDone.clear()
 
-    # TODO: Remove
-    renderDone.wait()
-    renderDone.clear()
-    store_mesh(f".\\HDRLib\\Test\\1\\{frames_folder}\\{frame}_mesh.glb", mesh)
+        # Potentially store colored mesh
+        if store_debug_mesh:
+            store_mesh(f".\\HDRLib\\Test\\1\\{frames_folder}\\{frame}_mesh.glb", mesh)
 
-rt.close()
+    # Store intermediate results
+    with open(os.path.join(curr_path, "RTResults.pkl"), mode="x+b") as stream:
+        pickle.dump(vertexPixels, stream)
 
 # Select random subset of max 200.000 verts
-vert_idx = random.sample(range(min(len(mesh.vertices), 200000)), min(len(mesh.vertices), 200000))
-verts = mesh.vertices.take(vert_idx, axis=0)
+vert_idx = random.sample(range(min(len(mesh.vertices), solve_max_verts)), min(len(mesh.vertices), solve_max_verts))
+selection = np.array([np.take(pixels, vert_idx) for _, pixels in vertexPixels.items()], dtype=object).transpose()
+
+# Solve for exposure
+exposure = SolveExposure(selection)
+
+# Done raytracing
+rt.close()

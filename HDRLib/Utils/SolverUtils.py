@@ -1,29 +1,46 @@
 import numpy as np
 import PyCeres
 
-# TODO: Remove test
+def SolveExposure(vertRadiancePerFrame : np.generic):
+    # Input is matrix of vertices / frames -> radiance
+    vertexCount = vertRadiancePerFrame.shape[0]
+    frameCount = vertRadiancePerFrame.shape[1]
+    # Prefill output arrays
+    exposures = np.ones((frameCount, 4), dtype=np.double)
+    radiance = np.ones((vertexCount, 3), dtype=np.double)
 
-# The variable to solve for with its initial value.
-initial_x=5.0
-x=np.array([initial_x]) # Requires the variable to be in a numpy array
+    # Create solver
+    problem = PyCeres.Problem()
 
-# Here we create the problem as in normal Ceres
-problem=PyCeres.Problem()
+    # For each vertex / frame pair with value
+    for i in range(0, vertexCount):
+        for j in range(0, frameCount):
+            if vertRadiancePerFrame[i][j] is not None:
+                # Create cost & loss functions
+                cost_function = PyCeres.CreateExposureCostFunction(vertRadiancePerFrame[i][j][0], vertRadiancePerFrame[i][j][1], vertRadiancePerFrame[i][j][2])
+                loss_function = PyCeres.HuberLoss(1.0)
+                # Add block
+                problem.AddResidualBlock(cost_function, loss_function, exposures[j], radiance[i])
 
-# Creates the CostFunction. This example uses a C++ wrapped function which 
-# returns the Autodiffed cost function used in the C++ example
-cost_function=PyCeres.CreateHelloWorldCostFunction()
+    # First frame is constant to resolve ambiguity
+    problem.SetParameterBlockConstant(exposures[0])
 
-# Add the costfunction and the parameter numpy array to the problem
-problem.AddResidualBlock(cost_function,None,x) 
+    # Sparse schur solver
+    options = PyCeres.SolverOptions()
+    options.linear_solver_type = PyCeres.LinearSolverType.SPARSE_SCHUR
+    options.minimizer_progress_to_stdout = True
+    options.use_inner_iterations = True
+    options.use_nonmonotonic_steps = True
+    options.max_num_iterations = 1000
+    options.function_tolerance = 1e-9
+    options.num_threads = 16
 
-# Setup the solver options as in normal ceres
-options=PyCeres.SolverOptions()
-# Ceres enums live in PyCeres and require the enum Type
-options.linear_solver_type=PyCeres.LinearSolverType.DENSE_QR
-options.minimizer_progress_to_stdout=True
-summary=PyCeres.Summary()
-# Solve as you would normally
-PyCeres.Solve(options,problem,summary)
-print(summary.BriefReport() + " \n")
-print( "x : " + str(initial_x) + " -> " + str(x) + "\n")
+    # Solve for exposure
+    summary = PyCeres.Summary()
+    PyCeres.Solve(options, problem, summary)
+
+    # TODO: Remove
+    print(summary.BriefReport() + " \n")
+
+    # Only exposure is of interest
+    return exposures
