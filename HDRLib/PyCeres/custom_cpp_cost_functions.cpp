@@ -29,7 +29,7 @@ public:
 	}
 
 	//---------------------------------------
-	// exposures: Exposure t_j, White-balance W_j^(R,G,B)
+	// exposures: Exposure t_j^(R,G,B)
 	// radiance: Vertex radiance b_i^(R,G,B)
 	// predictions: Calculated vertex color X_ij
 	//---------------------------------------
@@ -41,15 +41,14 @@ public:
 	)
 	{
 		// Fetch values
-		const T &t_j = exposures[0];
-		const T &W_jR = exposures[1];
-		const T &W_jG = exposures[2];
-		const T &W_jB = exposures[3];
+		const T &t_jR = exposures[0];
+		const T &t_jG = exposures[1];
+		const T &t_jB = exposures[2];
 
 		// Calculate per channel predicted pixel color
-		predictions[0] = t_j * W_jR * radiance[0];
-		predictions[1] = t_j * W_jG * radiance[1];
-		predictions[2] = t_j * W_jB * radiance[2];
+		predictions[0] = t_jR * radiance[0];
+		predictions[1] = t_jG * radiance[1];
+		predictions[2] = t_jB * radiance[2];
 
 		return true;
 	}
@@ -60,7 +59,7 @@ public:
 		const double vert_b
 	)
 	{
-		return (new ceres::AutoDiffCostFunction<ExposureFunctor, 3, 4, 3>(
+		return (new ceres::AutoDiffCostFunction<ExposureFunctor, 3, 3, 3>(
 			new ExposureFunctor(vert_r, vert_g, vert_b)));
 	}
 

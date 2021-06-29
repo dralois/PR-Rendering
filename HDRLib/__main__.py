@@ -22,10 +22,11 @@ intr = (0, 0, 0, 0, 0, 0)
 frames_folder = "rgbd"
 store_debug_mesh = False
 solve_max_verts = 200000
+test_path = ".\\HDRLib\\Test\\1"
 curr_path = ""
 
 # TODO: For each scene
-with os.scandir(".\\HDRLib\\Test\\1") as dir:
+with os.scandir(test_path) as dir:
     for direntry in dir:
         # Frames dir?
         if direntry.is_dir() and direntry.name == frames_folder:
@@ -151,7 +152,7 @@ except OSError:
 
         # Potentially store colored mesh
         if store_debug_mesh:
-            store_mesh(f".\\HDRLib\\Test\\1\\{frames_folder}\\{frame}_mesh.glb", mesh)
+            store_mesh(f"{test_path}\\{frames_folder}\\{frame}_mesh.glb", mesh)
 
     # Store intermediate results
     with open(os.path.join(curr_path, "RTResults.pkl"), mode="x+b") as stream:

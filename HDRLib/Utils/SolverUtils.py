@@ -6,7 +6,7 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     vertexCount = vertRadiancePerFrame.shape[0]
     frameCount = vertRadiancePerFrame.shape[1]
     # Prefill output arrays
-    exposures = np.ones((frameCount, 4), dtype=np.double)
+    exposures = np.ones((frameCount, 3), dtype=np.double)
     radiance = np.ones((vertexCount, 3), dtype=np.double)
 
     # Create solver
@@ -21,6 +21,7 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
                 loss_function = PyCeres.HuberLoss(1.0)
                 # Add block
                 problem.AddResidualBlock(cost_function, loss_function, exposures[j], radiance[i])
+                problem.SetParameterLowerBound(exposures[j], 0, 0.0)
 
     # First frame is constant to resolve ambiguity
     problem.SetParameterBlockConstant(exposures[0])
