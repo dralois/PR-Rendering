@@ -13,15 +13,14 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     problem = PyCeres.Problem()
 
     # For each vertex / frame pair with value
-    for i in range(0, vertexCount):
-        for j in range(0, frameCount):
-            if vertRadiancePerFrame[i][j] is not None:
-                # Create cost & loss functions
-                cost_function = PyCeres.CreateExposureCostFunction(vertRadiancePerFrame[i][j][0], vertRadiancePerFrame[i][j][1], vertRadiancePerFrame[i][j][2])
-                loss_function = PyCeres.HuberLoss(1.0)
-                # Add block
-                problem.AddResidualBlock(cost_function, loss_function, exposures[j], radiance[i])
-                problem.SetParameterLowerBound(exposures[j], 0, 0.0)
+    for idx in np.ndindex(vertexCount, frameCount):
+        if not np.any(np.isnan(vertRadiancePerFrame[idx])):
+            # Create cost & loss functions
+            cost_function = PyCeres.CreateExposureCostFunction(vertRadiancePerFrame[idx][0], vertRadiancePerFrame[idx][1], vertRadiancePerFrame[idx][2])
+            loss_function = PyCeres.HuberLoss(1.0)
+            # Add block
+            problem.AddResidualBlock(cost_function, loss_function, exposures[idx[1]], radiance[idx[0]])
+            problem.SetParameterLowerBound(exposures[idx[1]], 0, 0.0)
 
     # First frame is constant to resolve ambiguity
     problem.SetParameterBlockConstant(exposures[0])

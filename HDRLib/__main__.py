@@ -23,7 +23,7 @@ frames_folder = "rgbd"
 store_debug_mesh = False
 solve_max_verts = 200000
 test_path = ".\\HDRLib\\Test\\1"
-curr_path = ""
+temp_path = ""
 
 # TODO: For each scene
 with os.scandir(test_path) as dir:
@@ -31,7 +31,8 @@ with os.scandir(test_path) as dir:
         # Frames dir?
         if direntry.is_dir() and direntry.name == frames_folder:
             # Required to store intermediate results
-            curr_path = os.path.join(direntry.path, os.pardir)
+            temp_path = os.path.join(direntry.path, os.pardir, "temp")
+            os.makedirs(temp_path, exist_ok=True)
             # Load info file
             info = {}
             for line in open(os.path.join(direntry.path, "_info.txt"), "r").readlines():
@@ -48,16 +49,15 @@ with os.scandir(test_path) as dir:
             for i in range(0, max(1, int("".join(filter(str.isdigit, os.listdir(direntry.path)[-2]))))):
                 # Read frame, depth, pose
                 base = "frame-{0:06d}".format(i)
-                rgb = cv2.cvtColor(
-                        adjust_gamma(
-                            cv2.imread(os.path.join(direntry.path, base + ".color.jpg"), cv2.IMREAD_COLOR),
-                        2.2),
-                    cv2.COLOR_BGR2RGB)
+                org = cv2.cvtColor(
+                        cv2.imread(os.path.join(direntry.path, base + ".color.jpg"), cv2.IMREAD_COLOR),
+                        cv2.COLOR_BGR2RGB)
+                rgb = adjust_gamma(org, 2.2)
                 depth = cv2.imread(os.path.join(direntry.path, base + ".depth.pgm"), cv2.IMREAD_ANYDEPTH)
                 extr = load_extr(os.path.join(direntry.path, base + ".pose.txt"))
                 grads = gradient_map(rgb)
                 # Extract camera position
-                eye = extr[0:3, 3:4]
+                eye = np.reshape(extr[0:3, 3:4], (3))
                 # Convert camera2world -> world2camera
                 flip = np.array([[ 1,  0,  0,  0],
                                 [ 0, -1,  0,  0],
@@ -65,7 +65,7 @@ with os.scandir(test_path) as dir:
                                 [ 0,  0,  0,  1]])
                 extr = np.linalg.inv(np.matmul(extr, flip))
                 # Store
-                frames[base] = (rgb, depth, grads, extr, eye)
+                frames[base] = (org, rgb, depth, grads, extr, eye)
         # Load mesh
         elif direntry.is_file() and direntry.name == "mesh.refined.v2.obj":
             mesh = load_mesh(direntry.path, "obj")
@@ -74,7 +74,7 @@ with os.scandir(test_path) as dir:
 # 2.1) Raytrace all vertices -> all cameras, locate pixel if not occluded
 
 size = math.ceil(math.sqrt(len(mesh.vertices)))
-vertexPixels = {fr : [None for _ in range(len(mesh.vertices))] for fr in frames}
+vertexPixels = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
 
 # Necessary to only process one frame at a time
 renderDone = threading.Event()
@@ -91,16 +91,16 @@ def build_hit_image(rt: NpOptiX) -> None:
         # If face was hit (-> has index)
         if x < 0xFFFFFFFF:
             # Calculate vertex index
-            hitFace = mesh.faces[x]
-            hitVertex = hitFace[pid[idx]]
+            hitVertex = mesh.faces[x][pid[idx]]
+            hitPoint = mesh.triangles[x][pid[idx]]
             # If original vertex matches hit position
-            if np.allclose(mesh.vertices[hitVertex], data[idx][:3]):
+            if np.allclose(hitPoint, data[idx][:3]):
                 # Calculate camera space position
-                campos = np.matmul(extr, np.append(data[idx][:3], 1))[:3]
+                camPos = np.matmul(extr, np.append(hitPoint, 1))[:3]
                 # In front of the camera?
-                if campos[2] < 0.0:
+                if camPos[2] < 0.0:
                     # Calculate uv coords
-                    uvs = uv_coords(campos, intr)
+                    uvs = uv_coords(camPos, intr)
                     # Within camera frame?
                     if min(uvs) >= 0 and max(uvs) <= 1.0:
                         # Vertex hit, compute pixel
@@ -136,13 +136,13 @@ rt.start()
 
 # Try loading intermediate results
 try:
-    with open(os.path.join(curr_path, "RTResults.pkl"), mode="r+b") as stream:
+    with open(os.path.join(temp_path, "VertexPixels.pkl"), mode="r+b") as stream:
         vertexPixels = pickle.load(stream)
 except OSError:
     # Raytrace all frames
     for frame, vals in frames.items():
         # Load current frame values & update camera position
-        rgb, _, grads, extr, eye_pos = vals
+        _, rgb, _, grads, extr, eye_pos = vals
         rt.update_camera("cam", eye=eye_pos)
         rt.refresh_scene()
 
@@ -155,15 +155,114 @@ except OSError:
             store_mesh(f"{test_path}\\{frames_folder}\\{frame}_mesh.glb", mesh)
 
     # Store intermediate results
-    with open(os.path.join(curr_path, "RTResults.pkl"), mode="x+b") as stream:
+    with open(os.path.join(temp_path, "VertexPixels.pkl"), mode="x+b") as stream:
         pickle.dump(vertexPixels, stream)
+
+# 2.2) Solve for exposure & radiance
 
 # Select random subset of max 200.000 verts
 vert_idx = random.sample(range(min(len(mesh.vertices), solve_max_verts)), min(len(mesh.vertices), solve_max_verts))
-selection = np.array([np.take(pixels, vert_idx) for _, pixels in vertexPixels.items()], dtype=object).transpose()
+selection = np.array([np.take(pixels, vert_idx, axis=0) for _, pixels in vertexPixels.items()]).transpose(1, 0, 2)
 
-# Solve for exposure
-exposure = SolveExposure(selection)
+# Try loading intermediate results
+try:
+    with open(os.path.join(temp_path, "Exposures.pkl"), mode="r+b") as stream:
+        exposure = pickle.load(stream)
+except OSError:
+    # Solve for exposure
+    exposure = SolveExposure(selection)
+    # Store intermediate results
+    with open(os.path.join(temp_path, "Exposures.pkl"), mode="x+b") as stream:
+        pickle.dump(exposure, stream)
+
+# 3) Reproject radiance
+
+# Stores weighted radiance samples
+vertexRadiance = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
+
+# Radiometric calibration
+def reproject_radiance(rt: NpOptiX) -> None:
+    # Load hit data (fid: hit face indices, pid: hit vertex index)
+    fid = rt._geo_id[:,:,1].reshape(rt._width, rt._height)
+    pid = rt._geo_id[:,:,0].reshape(rt._width, rt._height)
+    pid &= 0xC0000000
+    pid >>= 30
+
+    for idx, x in np.ndenumerate(fid):
+        # If face was hit (-> has index)
+        if x < 0xFFFFFFFF:
+            # Calculate hitpoint
+            hitVertex = mesh.faces[x][pid[idx]]
+            hitPoint = mesh.triangles[x][pid[idx]]
+            hitNormal = mesh.face_normals[x]
+            # If original vertex matches hit position
+            if np.allclose(hitPoint, data[idx][:3]):
+                # Calculate camera space position
+                camPos = np.matmul(extr, np.append(hitPoint, 1))[:3]
+                # In front of the camera?
+                if camPos[2] < 0.0:
+                    # Calculate uv coords
+                    uvs = uv_coords(camPos, intr)
+                    # Within camera frame?
+                    if min(uvs) >= 0 and max(uvs) <= 1.0:
+                        # Vertex hit, compute & load pixel
+                        px = pixels(uvs, intr)
+                        sample = rgb[px] / exposure[currFrame]
+                        # Compute confidence value
+                        c = confidence(org[px])
+                        # Compute geometry factor g_ij
+                        v_ij = hitPoint - eye_pos
+                        v_ij_len = np.linalg.norm(v_ij)
+                        v_ij_norm = v_ij / v_ij_len
+                        g_ij = (np.dot(np.dot(-v_ij_norm, hitNormal),
+                                np.dot(v_ij_norm, optical_axis)) /
+                                math.pow(v_ij_len, 2.0))
+                        # Store weighted sample (normal is sometimes flipped, hence the use of abs)
+                        vertexRadiance[frame][hitVertex] = c * abs(g_ij) * sample
+
+    # Next frame can be processed
+    renderDone.set()
+
+# Update raytracing function
+rt.set_accum_done_cb(reproject_radiance)
+
+# Try loading intermediate results
+try:
+    with open(os.path.join(temp_path, "Reprojection.pkl"), mode="r+b") as stream:
+        vertexRadiance = pickle.load(stream)
+except OSError:
+    # Raytrace all frames again
+    for frame, vals in frames.items():
+        # Load current frame values & update camera position
+        currFrame = int("".join(filter(str.isdigit, frame)))
+        org, rgb, _, _, extr, eye_pos = vals
+        optical_axis = np.matmul(np.linalg.inv(extr), np.array([0.0, 0.0, -1.0, 0.0]))[:3]
+        rt.update_camera("cam", eye=eye_pos)
+        rt.refresh_scene()
+
+        # One frame at a time
+        renderDone.wait()
+        renderDone.clear()
+
+    # Store intermediate results
+    with open(os.path.join(temp_path, "Reprojection.pkl"), mode="x+b") as stream:
+        pickle.dump(vertexRadiance, stream)
+
+# Generate mesh texture
+samples = np.array([vertices for _, vertices in vertexRadiance.items()]).transpose((1, 0, 2))
+
+# Store reprojected colors
+for i in range (0, len(mesh.vertices)):
+    median = np.nanmedian(samples[i], axis = 0)
+    if not np.any(np.isnan(median)):
+        # TODO: Own buffer (trimesh is uint8)
+        set_vertex_color(mesh, i, median)
+
+# Output
+if store_debug_mesh:
+    store_mesh(os.path.join(temp_path, "hdr_mesh"), mesh)
+
+# 4) TODO
 
 # Done raytracing
 rt.close()

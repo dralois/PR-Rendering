@@ -27,3 +27,16 @@ def uv_coords(p, intr):
 
 def pixels(uv, intr):
     return (int(intr[5] * uv[1]), int((intr[4] * uv[0])))
+
+def uv_to_pixel(uv, image):
+    x = (uv[0] * (image.size[0] - 1))
+    y = ((1 - uv[1]) * (image.size[1] - 1))
+    return (x.round().astype(np.int32) % image.size[0],
+            y.round().astype(np.int32) % image.size[1])
+
+def confidence(color):
+    px = np.mean(color)
+    if px > 127.0:
+        return (256.0 - px) / 127.0
+    else:
+        return px / 127.0
