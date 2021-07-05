@@ -1,0 +1,127 @@
+#version 430
+
+struct hit_data_t
+{
+    uint fid;
+    uint pid;
+};
+
+struct mesh_t
+{
+    uvec4 face;
+    vec4 triangle[3];
+};
+
+layout(binding = 1) buffer HITDATA
+{
+    hit_data_t hit_data[];
+};
+
+layout(binding = 2) buffer MESH
+{
+    mesh_t mesh[];
+};
+
+layout(binding = 3) buffer TARGETS
+{
+    vec4 targets[];
+};
+
+layout(binding = 4) buffer CAM
+{
+    mat4 extr;
+    vec2 f;
+    vec2 o;
+    vec2 dims;
+};
+
+layout(binding = 5) buffer IMAGE
+{
+    uvec4 image[];
+};
+
+layout(binding = 6) buffer OUT
+{
+    ivec4 vertexPixels[];
+};
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+// Equivalent function for np.allclose
+bool allclose(vec3 a, vec3 b)
+{
+    float atol = 1e-8;
+    float rtol = 1e-5;
+
+    // Values should not be inf / nan
+    bvec3 valA = not(isinf(a) || isnan(a));
+    bvec3 valB = not(isinf(b) || isnan(b));
+
+    // If no infs / nans
+    if(any(valA) || any(valB))
+    {
+        // Otherwise check for closeness (like math.isclose does)
+        return all(lessThanEqual(abs(a-b), max(rtol * max(abs(a), abs(b)), atol)));
+    }
+
+    // Otherwise not close
+    return false;
+}
+
+// Calculates uv coordinates from camera space point & camera intrinsics
+vec2 uv_coords(vec3 p)
+{
+    return vec2(0.5 - ((p.x * f.x) / (p.z * dims.x)) - o.x,
+                0.5 + ((p.y * f.y) / (p.z * dims.y)) - o.y);
+}
+
+// Calculates pixels from uv coordinates & camera intrinsics
+uvec2 pixel_coords(vec2 uv)
+{
+    return uvec2(uint(dims.y * uv.y), uint(dims.x * uv.x));
+}
+
+// Actual compute shader
+void main()
+{
+    // Determine compute idx
+    uint idx = gl_GlobalInvocationID.x;
+
+    // Determine hit face & primitive id
+    uint fid = hit_data[idx].fid;
+    uint pid = hit_data[idx].pid;
+
+    // If face was hit (-> has index)
+    if(fid < 0xFFFFFFFF)
+    {
+        // Load hit vertex (id) & actual point
+        uint hitVertex = mesh[fid].face[pid];
+        vec4 hitPoint = mesh[fid].triangle[pid];
+
+        // If original vertex matches hit
+        if(allclose(hitPoint.xyz, targets[idx].xyz))
+        {
+            // Calculate camera space position
+            vec3 camPos = (extr * vec4(hitPoint.xyz, 1.0)).xyz;
+
+            // If in front of camera
+            if(camPos.z < 0.0)
+            {
+                // Calculate uv coordinates
+                vec2 uvs = uv_coords(camPos);
+
+                // If within camera frame
+                if( (uvs.x >= 0.0 && uvs.x <= 1.0) &&
+                    (uvs.y >= 0.0 && uvs.y <= 1.0))
+                {
+                    // Calculate pixel coordinates
+                    uvec2 px = pixel_coords(uvs);
+                    // Load corresponding rgb + gradient value
+                    uvec4 rgbg = image[(px.x * uint(dims.x)) + px.y];
+                    // Store either pixel color or -1
+                    vertexPixels[hitVertex] = rgbg.w == 0 ? ivec4(rgbg.xyz, 1) : ivec4(-1);
+                }
+            }
+        }
+    }
+}

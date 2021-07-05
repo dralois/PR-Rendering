@@ -1,6 +1,7 @@
 from .Utils.ImgProcUtils import *
 from .Utils.MeshUtils import *
 from .Utils.SolverUtils import *
+from .Utils.ShaderUtils import *
 
 from plotoptix import NpOptiX
 from plotoptix.materials import m_flat
@@ -80,39 +81,7 @@ vertexPixels = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
 renderDone = threading.Event()
 
 # Locates hit pixels
-def build_hit_image(rt: NpOptiX) -> None:
-    # Load hit data (fid: hit face indices, pid: hit vertex index)
-    fid = rt._geo_id[:,:,1].reshape(rt._width, rt._height)
-    pid = rt._geo_id[:,:,0].reshape(rt._width, rt._height)
-    pid &= 0xC0000000
-    pid >>= 30
-
-    for idx, x in np.ndenumerate(fid):
-        # If face was hit (-> has index)
-        if x < 0xFFFFFFFF:
-            # Calculate vertex index
-            hitVertex = mesh.faces[x][pid[idx]]
-            hitPoint = mesh.triangles[x][pid[idx]]
-            # If original vertex matches hit position
-            if np.allclose(hitPoint, data[idx][:3]):
-                # Calculate camera space position
-                camPos = np.matmul(extr, np.append(hitPoint, 1))[:3]
-                # In front of the camera?
-                if camPos[2] < 0.0:
-                    # Calculate uv coords
-                    uvs = uv_coords(camPos, intr)
-                    # Within camera frame?
-                    if min(uvs) >= 0 and max(uvs) <= 1.0:
-                        # Vertex hit, compute pixel
-                        px = pixels(uvs, intr)
-                        # Pixel not on strong gradient?
-                        if not grads[px]:
-                            # Hit, load & store pixel
-                            col = rgb[px]
-                            vertexPixels[frame][hitVertex] = col
-                            # Potentially set vertex color in mesh
-                            if store_debug_mesh:
-                                set_vertex_color(mesh, hitVertex, col)
+def build_hit_image(rt: NpOptiX):
     # Next frame can be processed
     renderDone.set()
 
@@ -121,10 +90,10 @@ rt = NpOptiX(on_rt_accum_done=build_hit_image, width=size, height=size, start_no
 rt.set_param(min_accumulation_step=1, max_accumulation_frames=1)
 
 # Build ray targets texture
-data = np.full((size*size, 4), -1.0, dtype=np.float32)
-data[:mesh.vertices.shape[0],:3] = mesh.vertices[:,:3]
-data = data.reshape(size, size, 4)
-rt.set_texture_2d("target", data)
+targets = np.full((size*size, 4), -1.0, dtype=np.float32)
+targets[:mesh.vertices.shape[0],:3] = mesh.vertices[:,:3]
+targets = targets.reshape(size, size, 4)
+rt.set_texture_2d("target", targets)
 
 # Create camera & mesh
 rt.setup_material("flat", m_flat)
@@ -139,24 +108,72 @@ try:
     with open(os.path.join(temp_path, "VertexPixels.pkl"), mode="r+b") as stream:
         vertexPixels = pickle.load(stream)
 except OSError:
-    # Raytrace all frames
-    for frame, vals in frames.items():
-        # Load current frame values & update camera position
-        _, rgb, _, grads, extr, eye_pos = vals
-        rt.update_camera("cam", eye=eye_pos)
-        rt.refresh_scene()
+    # Create compute shader
+    with ShaderManager(".\\HDRLib\\Shader\\VertexHitmap.comp") as compute:
 
-        # One frame at a time
-        renderDone.wait()
-        renderDone.clear()
+        # Mesh buffer (constant): struct{uvec4, vec4[3]}
+        faces = np.int32(np.hstack((mesh.faces, np.zeros((mesh.faces.shape[0], 1), dtype=np.int64))))
+        triangles = np.float32(np.dstack((mesh.triangles, np.ones((mesh.triangles.shape[0], mesh.triangles.shape[1], 1), dtype=np.float64))))
+        meshdata = np.concatenate((faces.view("float32"), triangles.reshape(-1, 12)), axis=1)
+        compute.SetData(2, meshdata)
 
-        # Potentially store colored mesh
-        if store_debug_mesh:
-            store_mesh(f"{test_path}\\{frames_folder}\\{frame}_mesh.glb", mesh)
+        # Target buffer (constant): uvec4
+        targetdata = targets.reshape((-1, 4))
+        compute.SetData(3, targetdata)
 
-    # Store intermediate results
-    with open(os.path.join(temp_path, "VertexPixels.pkl"), mode="x+b") as stream:
-        pickle.dump(vertexPixels, stream)
+        # Raytrace all frames
+        for frame, vals in frames.items():
+            # Load current frame values & update camera position
+            _, rgb, _, grads, extr, eye_pos = vals
+            rt.update_camera("cam", eye=eye_pos)
+            rt.refresh_scene()
+
+            # One frame at a time
+            renderDone.wait()
+
+            # Load hit targets (fid: hit face indices, pid: hit vertex index)
+            fid = rt._geo_id[:,:,1].reshape(rt._height * rt._width)
+            pid = rt._geo_id[:,:,0].reshape(rt._height * rt._width)
+            pid &= 0xC0000000
+            pid >>= 30
+
+            # Hit targets buffer: struct{uint, uint}
+            hitData = np.vstack((fid, pid)).transpose()
+            compute.SetData(1, hitData)
+
+            # Camera variables: mat4, vec2, vec2, vec2
+            camVars = np.concatenate((np.float32(extr.transpose().flatten()), np.array(intr, dtype=np.float32)))
+            compute.SetData(4, camVars)
+
+            # Image data: uvec4 - RGB + gradient (0/1)
+            imageData = np.uint32(np.dstack((rgb, np.uint8(grads)))).reshape(-1, 4)
+            compute.SetData(5, imageData)
+
+            # Output buffer: uvec2
+            output = np.full((len(mesh.vertices), 4), -1, dtype=np.int32)
+            compute.SetData(6, output)
+
+            # Calculate in shader
+            compute.StartCompute(math.ceil(hitData.shape[0] / 128))
+            result = compute.GetData(6)[:,:3]
+            vertexPixels[frame] = np.where(result >= 0.0, result, result * np.nan)
+
+            # Potentially store colored mesh
+            if store_debug_mesh:
+                # Set computed colors
+                for x in range(0, len(mesh.vertices)):
+                    col = vertexPixels[frame][x]
+                    if not np.any(np.isnan(col)):
+                        set_vertex_color(mesh, x, col)
+                # Store
+                store_mesh(f"{test_path}\\{frames_folder}\\{frame}_mesh.glb", mesh)
+
+            # Next frame
+            renderDone.clear()
+
+        # Store intermediate results
+        with open(os.path.join(temp_path, "VertexPixels.pkl"), mode="x+b") as stream:
+            pickle.dump(vertexPixels, stream)
 
 # 2.2) Solve for exposure & radiance
 
@@ -182,7 +199,7 @@ vertexRadiance = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames
 
 # Radiometric calibration
 def reproject_radiance(rt: NpOptiX) -> None:
-    # Load hit data (fid: hit face indices, pid: hit vertex index)
+    # Load hit targets (fid: hit face indices, pid: hit vertex index)
     fid = rt._geo_id[:,:,1].reshape(rt._width, rt._height)
     pid = rt._geo_id[:,:,0].reshape(rt._width, rt._height)
     pid &= 0xC0000000
@@ -196,7 +213,7 @@ def reproject_radiance(rt: NpOptiX) -> None:
             hitPoint = mesh.triangles[x][pid[idx]]
             hitNormal = mesh.face_normals[x]
             # If original vertex matches hit position
-            if np.allclose(hitPoint, data[idx][:3]):
+            if np.allclose(hitPoint, targets[idx][:3]):
                 # Calculate camera space position
                 camPos = np.matmul(extr, np.append(hitPoint, 1))[:3]
                 # In front of the camera?
