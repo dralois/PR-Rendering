@@ -96,13 +96,13 @@ void main()
     {
         // Load hit vertex (id) & actual point
         uint hitVertex = mesh[fid].face[pid];
-        vec4 hitPoint = mesh[fid].triangle[pid];
+        vec3 hitPoint = mesh[fid].triangle[pid].xyz;
 
         // If original vertex matches hit
-        if(allclose(hitPoint.xyz, targets[idx].xyz))
+        if(allclose(hitPoint, targets[idx].xyz))
         {
             // Calculate camera space position
-            vec3 camPos = (extr * vec4(hitPoint.xyz, 1.0)).xyz;
+            vec3 camPos = (extr * vec4(hitPoint, 1.0)).xyz;
 
             // If in front of camera
             if(camPos.z < 0.0)

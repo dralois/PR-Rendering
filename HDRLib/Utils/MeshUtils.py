@@ -1,3 +1,5 @@
+import numpy as np
+
 import trimesh
 import trimesh.visual
 
@@ -12,4 +14,10 @@ def store_mesh(path, mesh: trimesh.Trimesh):
     mesh.visual = trimesh.visual.ColorVisuals(mesh, None, (0,0,0))
 
 def set_vertex_color(mesh: trimesh.Trimesh, index, color):
-    mesh.visual.vertex_colors[index][:3] = color
+    mesh.visual.vertex_colors[index] = max_to_white(color)
+
+def max_to_white(col):
+    if np.max(col) > np.iinfo(np.uint8).max:
+        return np.full((4), 255, dtype=np.uint8)
+    else:
+        return np.append(col, 255)

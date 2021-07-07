@@ -1,5 +1,9 @@
+from .OutputMuter import FullMute
+
 import numpy as np
+
 import PyCeres
+import sys
 
 def SolveExposure(vertRadiancePerFrame : np.generic):
     # Input is matrix of vertices / frames -> radiance
@@ -42,11 +46,12 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     options.num_threads = 16
 
     # Solve for exposure
-    summary = PyCeres.Summary()
-    PyCeres.Solve(options, problem, summary)
+    with FullMute(sys.stderr), FullMute(sys.stdout):
+        summary = PyCeres.Summary()
+        PyCeres.Solve(options, problem, summary)
 
-    # TODO: Remove
-    print(summary.BriefReport() + " \n")
+    # Summary of solving
+    print(summary.BriefReport())
 
     # Only exposure is of interest
     return exposures

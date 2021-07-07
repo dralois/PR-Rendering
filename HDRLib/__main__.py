@@ -74,19 +74,19 @@ with os.scandir(test_path) as dir:
 # 2) Project onto scene geometry
 # 2.1) Raytrace all vertices -> all cameras, locate pixel if not occluded
 
+# Used for target data texture
 size = math.ceil(math.sqrt(len(mesh.vertices)))
-vertexPixels = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
 
 # Necessary to only process one frame at a time
 renderDone = threading.Event()
 
 # Locates hit pixels
-def build_hit_image(rt: NpOptiX):
+def RenderDone(rt: NpOptiX):
     # Next frame can be processed
     renderDone.set()
 
 # Load farmework
-rt = NpOptiX(on_rt_accum_done=build_hit_image, width=size, height=size, start_now=False)
+rt = NpOptiX(on_rt_accum_done=RenderDone, width=size, height=size, start_now=False)
 rt.set_param(min_accumulation_step=1, max_accumulation_frames=1)
 
 # Build ray targets texture
@@ -102,6 +102,9 @@ rt.set_mesh("mesh", mesh.vertices, mesh.faces, mat="flat")
 
 # Start raytracing
 rt.start()
+
+# Stores unobstructed pixels
+vertexPixels = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
 
 # Try loading intermediate results
 try:
@@ -197,77 +200,83 @@ except OSError:
 # Stores weighted radiance samples
 vertexRadiance = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
 
-# Radiometric calibration
-def reproject_radiance(rt: NpOptiX) -> None:
-    # Load hit targets (fid: hit face indices, pid: hit vertex index)
-    fid = rt._geo_id[:,:,1].reshape(rt._width, rt._height)
-    pid = rt._geo_id[:,:,0].reshape(rt._width, rt._height)
-    pid &= 0xC0000000
-    pid >>= 30
-
-    for idx, x in np.ndenumerate(fid):
-        # If face was hit (-> has index)
-        if x < 0xFFFFFFFF:
-            # Calculate hitpoint
-            hitVertex = mesh.faces[x][pid[idx]]
-            hitPoint = mesh.triangles[x][pid[idx]]
-            hitNormal = mesh.face_normals[x]
-            # If original vertex matches hit position
-            if np.allclose(hitPoint, targets[idx][:3]):
-                # Calculate camera space position
-                camPos = np.matmul(extr, np.append(hitPoint, 1))[:3]
-                # In front of the camera?
-                if camPos[2] < 0.0:
-                    # Calculate uv coords
-                    uvs = uv_coords(camPos, intr)
-                    # Within camera frame?
-                    if min(uvs) >= 0 and max(uvs) <= 1.0:
-                        # Vertex hit, compute & load pixel
-                        px = pixels(uvs, intr)
-                        sample = rgb[px] / exposure[currFrame]
-                        # Compute confidence value
-                        c = confidence(org[px])
-                        # Compute geometry factor g_ij
-                        v_ij = hitPoint - eye_pos
-                        v_ij_len = np.linalg.norm(v_ij)
-                        v_ij_norm = v_ij / v_ij_len
-                        g_ij = (np.dot(np.dot(-v_ij_norm, hitNormal),
-                                np.dot(v_ij_norm, optical_axis)) /
-                                math.pow(v_ij_len, 2.0))
-                        # Store weighted sample (normal is sometimes flipped, hence the use of abs)
-                        vertexRadiance[frame][hitVertex] = c * abs(g_ij) * sample
-
-    # Next frame can be processed
-    renderDone.set()
-
-# Update raytracing function
-rt.set_accum_done_cb(reproject_radiance)
-
 # Try loading intermediate results
 try:
     with open(os.path.join(temp_path, "Reprojection.pkl"), mode="r+b") as stream:
         vertexRadiance = pickle.load(stream)
 except OSError:
-    # Raytrace all frames again
-    for frame, vals in frames.items():
-        # Load current frame values & update camera position
-        currFrame = int("".join(filter(str.isdigit, frame)))
-        org, rgb, _, _, extr, eye_pos = vals
-        optical_axis = np.matmul(np.linalg.inv(extr), np.array([0.0, 0.0, -1.0, 0.0]))[:3]
-        rt.update_camera("cam", eye=eye_pos)
-        rt.refresh_scene()
+    # Create compute shader
+    with ShaderManager(".\\HDRLib\\Shader\\RadianceReproject.comp") as compute:
 
-        # One frame at a time
-        renderDone.wait()
-        renderDone.clear()
+        # Mesh buffer (constant): struct{uvec4, vec4, vec4[3]}
+        faces = np.int32(np.hstack((mesh.faces, np.zeros((mesh.faces.shape[0], 1), dtype=np.int64))))
+        triangles = np.float32(np.dstack((mesh.triangles, np.ones((mesh.triangles.shape[0], mesh.triangles.shape[1], 1), dtype=np.float64))))
+        normals = np.float32(np.hstack((mesh.face_normals, np.zeros((mesh.faces.shape[0], 1), dtype=np.float64))))
+        meshdata = np.concatenate((faces.view("float32"), normals, triangles.reshape(-1, 12)), axis=1)
+        compute.SetData(2, meshdata)
 
-    # Store intermediate results
-    with open(os.path.join(temp_path, "Reprojection.pkl"), mode="x+b") as stream:
-        pickle.dump(vertexRadiance, stream)
+        # Target buffer (constant): uvec4
+        targetdata = targets.reshape((-1, 4))
+        compute.SetData(3, targetdata)
+
+        # Raytrace all frames again
+        for frame, vals in frames.items():
+            # Load current frame values & update camera position
+            org, rgb, _, _, extr, eye_pos = vals
+            rt.update_camera("cam", eye=eye_pos)
+            rt.refresh_scene()
+
+            # Calculate optical axis & load exposure
+            eye = np.float32(np.append(eye_pos, 1.0))
+            oj = np.float32(np.matmul(np.linalg.inv(extr), np.array([0.0, 0.0, -1.0, 0.0])))
+            ex = np.float32(np.append(exposure[int("".join(filter(str.isdigit, frame)))], 0.0))
+
+            # One frame at a time
+            renderDone.wait()
+
+            # Load hit targets (fid: hit face indices, pid: hit vertex index)
+            fid = rt._geo_id[:,:,1].reshape(rt._height * rt._width)
+            pid = rt._geo_id[:,:,0].reshape(rt._height * rt._width)
+            pid &= 0xC0000000
+            pid >>= 30
+
+            # Hit targets buffer: struct{uint, uint}
+            hitData = np.vstack((fid, pid)).transpose()
+            compute.SetData(1, hitData)
+
+            # Camera variables: mat4, vec2, vec2, vec2, padding, vec4, vec4, vec4
+            camVars = np.concatenate((np.float32(extr.transpose().flatten()),
+                np.array(intr, dtype=np.float32), np.zeros((2), dtype=np.float32), eye, oj, ex))
+            compute.SetData(4, camVars)
+
+            # Image data: uvec4
+            rgbData = np.uint32(np.dstack((rgb, np.zeros((rgb.shape[0], rgb.shape[1], 1), dtype=np.uint8)))).reshape(-1, 4)
+            compute.SetData(5, rgbData)
+
+            # Original image data: uvec4
+            orgData = np.uint32(np.dstack((org, np.zeros((org.shape[0], org.shape[1], 1), dtype=np.uint8)))).reshape(-1, 4)
+            compute.SetData(6, orgData)
+
+            # Output buffer: vec4
+            output = np.full((len(mesh.vertices), 4), -1, dtype=np.float32)
+            compute.SetData(7, output)
+
+            # Calculate in shader
+            compute.StartCompute(math.ceil(hitData.shape[0] / 128))
+            result = compute.GetData(7)[:,:3]
+            vertexRadiance[frame] = np.where(result >= 0.0, result, result * np.nan)
+
+            # Next frame
+            renderDone.clear()
+
+        # Store intermediate results
+        with open(os.path.join(temp_path, "Reprojection.pkl"), mode="x+b") as stream:
+            pickle.dump(vertexRadiance, stream)
 
 # Generate mesh texture
 samples = np.array([vertices for _, vertices in vertexRadiance.items()]).transpose((1, 0, 2))
 
+# TODO: Make faster
 # Store reprojected colors
 for i in range (0, len(mesh.vertices)):
     median = np.nanmedian(samples[i], axis = 0)
@@ -276,8 +285,7 @@ for i in range (0, len(mesh.vertices)):
         set_vertex_color(mesh, i, median)
 
 # Output
-if store_debug_mesh:
-    store_mesh(os.path.join(temp_path, "hdr_mesh"), mesh)
+store_mesh(os.path.join(temp_path, os.pardir, "hdr_mesh.glb"), mesh)
 
 # 4) TODO
 
