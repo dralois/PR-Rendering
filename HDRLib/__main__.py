@@ -273,21 +273,23 @@ except OSError:
         with open(os.path.join(temp_path, "Reprojection.pkl"), mode="x+b") as stream:
             pickle.dump(vertexRadiance, stream)
 
-# Generate mesh texture
+# Generate median vertex color samples
 samples = np.array([vertices for _, vertices in vertexRadiance.items()]).transpose((1, 0, 2))
+samples = np.nanmedian(samples[:,:,:3], axis=1)
+samples = np.where(np.isnan(samples), np.zeros_like(samples), samples / 255.0)
 
-# TODO: Make faster
-# Store reprojected colors
-for i in range (0, len(mesh.vertices)):
-    median = np.nanmedian(samples[i], axis = 0)
-    if not np.any(np.isnan(median)):
-        # TODO: Own buffer (trimesh is uint8)
-        set_vertex_color(mesh, i, median)
+# Update raytracing mesh
+rt.set_mesh("mesh", mesh.vertices, mesh.faces, mat="flat", c=samples)
 
-# Output
-store_mesh(os.path.join(temp_path, os.pardir, "hdr_mesh.glb"), mesh)
+# Potentially store "HDR" mesh
+if store_debug_mesh:
+    # Store & output reprojected colors
+    set_vertex_colors(mesh, samples * 255.0)
+    store_mesh(os.path.join(temp_path, os.pardir, "hdr_mesh.glb"), mesh)
 
 # 4) TODO
+
+
 
 # Done raytracing
 rt.close()
