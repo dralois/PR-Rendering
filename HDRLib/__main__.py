@@ -5,6 +5,8 @@ from .Utils.ShaderUtils import *
 
 from plotoptix import NpOptiX
 from plotoptix.materials import m_flat
+from plotoptix.enums import ChannelDepth, ChannelOrder, Camera
+
 import numpy as np
 
 import cv2
@@ -16,7 +18,7 @@ import pickle
 
 # 1) Import all images, inverse gamma correct them (y = 2.2)
 
-# RGB, depth, gradients, extrinsics matrix, eye pos
+# Original, RGB, depth, gradients, extrinsics matrix, eye pos
 frames = {}
 mesh = None
 intr = (0, 0, 0, 0, 0, 0)
@@ -97,7 +99,7 @@ rt.set_texture_2d("target", targets)
 
 # Create camera & mesh
 rt.setup_material("flat", m_flat)
-rt.setup_camera("cam", cam_type="CustomProjXYZ", textures=["target"])
+rt.setup_camera("cam", cam_type=Camera.CustomProjXYZ, textures=["target"])
 rt.set_mesh("mesh", mesh.vertices, mesh.faces, mat="flat")
 
 # Start raytracing
@@ -160,16 +162,6 @@ except OSError:
             compute.StartCompute(math.ceil(hitData.shape[0] / 128))
             result = compute.GetData(6)[:,:3]
             vertexPixels[frame] = np.where(result >= 0.0, result, result * np.nan)
-
-            # Potentially store colored mesh
-            if store_debug_mesh:
-                # Set computed colors
-                for x in range(0, len(mesh.vertices)):
-                    col = vertexPixels[frame][x]
-                    if not np.any(np.isnan(col)):
-                        set_vertex_color(mesh, x, col)
-                # Store
-                store_mesh(f"{test_path}\\{frames_folder}\\{frame}_mesh.glb", mesh)
 
             # Next frame
             renderDone.clear()
@@ -287,9 +279,27 @@ if store_debug_mesh:
     set_vertex_colors(mesh, samples * 255.0)
     store_mesh(os.path.join(temp_path, os.pardir, "hdr_mesh.glb"), mesh)
 
-# 4) TODO
+# 4) Render HDR panorama
 
+# Determine the best camera position of the frames (to avoid being stuck in geometry)
+center = mesh.bounding_box.centroid
+eye_points = np.array([eye for _, _, _, _, _, eye in frames.values()])
+best_candidate = eye_points[np.linalg.norm(np.abs(eye_points - center), ord=2, axis=1).argmin()]
 
+# Setup raytracer for 360* panorama capute
+rt.resize(7768, 3884)
+rt.set_param(min_accumulation_step=100, max_accumulation_frames=300)
+rt.setup_camera("pano", cam_type=Camera.Panoramic, eye=best_candidate, target=[0, 0, -1], up=[0, 0, 1])
+rt.set_current_camera("pano")
+rt.refresh_scene()
+
+# Wait for convergence
+renderDone.clear()
+renderDone.wait()
+
+# Write the HDR panorama to disk
+hdr_pan = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
+cv2.imwrite(os.path.join(temp_path, os.pardir, "hdr_panorama.hdr"), hdr_pan)
 
 # Done raytracing
 rt.close()

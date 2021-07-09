@@ -21,9 +21,3 @@ def load_extr(file) -> np.ndarray:
 def load_intr(string) -> np.ndarray:
     arr = np.fromstring(string, dtype = "f", sep = " ")
     return np.reshape(arr, (4, 4))
-
-def uv_to_pixel(uv, image):
-    x = (uv[0] * (image.size[0] - 1))
-    y = ((1 - uv[1]) * (image.size[1] - 1))
-    return (x.round().astype(np.int32) % image.size[0],
-            y.round().astype(np.int32) % image.size[1])

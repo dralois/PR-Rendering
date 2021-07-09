@@ -25,11 +25,10 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     for i in range(0, residuals.shape[0]):
         # Fetch index
         idx = (residuals[i][0], residuals[i][1])
-        # Create cost & loss functions
+        # Create the cost function
         cost_function = PyCeres.CreateExposureCostFunction(vertRadiancePerFrame[idx][0], vertRadiancePerFrame[idx][1], vertRadiancePerFrame[idx][2])
-        loss_function = PyCeres.HuberLoss(1.0)
         # Add residual block
-        problem.AddResidualBlock(cost_function, loss_function, exposures[idx[1]], radiance[idx[0]])
+        problem.AddResidualBlock(cost_function, None, exposures[idx[1]], radiance[idx[0]])
         problem.SetParameterLowerBound(exposures[idx[1]], 0, 0.0)
 
     # First frame is constant to resolve ambiguity
@@ -41,7 +40,7 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     options.minimizer_progress_to_stdout = True
     options.use_inner_iterations = True
     options.use_nonmonotonic_steps = True
-    options.max_num_iterations = 1000
+    options.max_num_iterations = 100
     options.function_tolerance = 1e-9
     options.num_threads = 16
 
