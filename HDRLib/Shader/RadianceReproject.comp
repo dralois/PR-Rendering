@@ -41,17 +41,12 @@ layout(binding = 4) buffer CAM
     vec4 ex;
 };
 
-layout(binding = 5) buffer RGB
-{
-    uvec4 rgb[];
-};
-
-layout(binding = 6) buffer ORG
+layout(binding = 5) buffer ORG
 {
     uvec4 org[];
 };
 
-layout(binding = 7) buffer OUT
+layout(binding = 6) buffer OUT
 {
     vec4 vertexRadiance[];
 };
@@ -125,7 +120,6 @@ void main()
         uint hitVertex = mesh[fid].face[pid];
         vec3 hitPoint = mesh[fid].triangle[pid].xyz;
         vec3 hitNormal = mesh[fid].normal.xyz;
-
         // If original vertex matches hit
         if(allclose(hitPoint, targets[idx].xyz))
         {
@@ -145,15 +139,16 @@ void main()
                     // Calculate pixel coordinates
                     uvec2 px = pixel_coords(uvs);
                     // Load corresponding exposure corrected rgb value
-                    vec3 xij = vec3(rgb[(px.x * uint(dims.x)) + px.y].rgb) / ex.xyz;
+                    vec3 xij = vec3(org[(px.x * uint(dims.x)) + px.y].rgb);
+                    vec3 pxcol = xij / ex.xyz;
                     // Compute confidence value
-                    float c = confidence(org[(px.x * uint(dims.x)) + px.y].rgb);
+                    float c = confidence(uvec3(xij));
                     // Compute geometry factor gij
                     vec3 vij = hitPoint - eye.xyz;
                     vec3 vij_n = normalize(vij);
                     float gij = (dot(-vij_n, hitNormal) * dot(vij_n, oj.xyz)) / pow(length(vij), 2.0);
-                    // Store weighted sample (normal is sometimes flipped, hence abs(gij))
-                    vertexRadiance[hitVertex] = vec4(c * abs(gij) * xij, 1.0);
+                    // Store sample and sample weight
+                    vertexRadiance[hitVertex] = vec4(pxcol, c * step(0.0, gij) * gij);
                 }
             }
         }

@@ -3,6 +3,7 @@ from .Utils.MeshUtils import *
 from .Utils.SolverUtils import *
 from .Utils.ShaderUtils import *
 
+from shutil import rmtree
 from plotoptix import NpOptiX
 from plotoptix.materials import m_flat
 from plotoptix.enums import ChannelDepth, ChannelOrder, Camera
@@ -22,9 +23,12 @@ import pickle
 frames = {}
 mesh = None
 intr = (0, 0, 0, 0, 0, 0)
-frames_folder = "rgbd"
-store_debug_mesh = False
+
+gamma_correct = True
+store_debug_mesh = True
+randomize_samples = False
 solve_max_verts = 200000
+
 test_path = ".\\HDRLib\\Test\\1"
 temp_path = ""
 
@@ -32,7 +36,7 @@ temp_path = ""
 with os.scandir(test_path) as dir:
     for direntry in dir:
         # Frames dir?
-        if direntry.is_dir() and direntry.name == frames_folder:
+        if direntry.is_dir() and direntry.name == "rgbd":
             # Required to store intermediate results
             temp_path = os.path.join(direntry.path, os.pardir, "temp")
             os.makedirs(temp_path, exist_ok=True)
@@ -55,7 +59,7 @@ with os.scandir(test_path) as dir:
                 org = cv2.cvtColor(
                         cv2.imread(os.path.join(direntry.path, base + ".color.jpg"), cv2.IMREAD_COLOR),
                         cv2.COLOR_BGR2RGB)
-                rgb = adjust_gamma(org, 2.2)
+                rgb = org if not gamma_correct else adjust_gamma(org, 2.2)
                 depth = cv2.imread(os.path.join(direntry.path, base + ".depth.pgm"), cv2.IMREAD_ANYDEPTH)
                 extr = load_extr(os.path.join(direntry.path, base + ".pose.txt"))
                 grads = gradient_map(rgb)
@@ -173,7 +177,8 @@ except OSError:
 # 2.2) Solve for exposure & radiance
 
 # Select random subset of max 200.000 verts
-vert_idx = random.sample(range(min(len(mesh.vertices), solve_max_verts)), min(len(mesh.vertices), solve_max_verts))
+vert_idx = ([i for i in range(min(len(mesh.vertices), solve_max_verts))] if not randomize_samples else
+    random.sample(range(min(len(mesh.vertices), solve_max_verts)), min(len(mesh.vertices), solve_max_verts)))
 selection = np.array([np.take(pixels, vert_idx, axis=0) for _, pixels in vertexPixels.items()]).transpose(1, 0, 2)
 
 # Try loading intermediate results
@@ -241,21 +246,17 @@ except OSError:
                 np.array(intr, dtype=np.float32), np.zeros((2), dtype=np.float32), eye, oj, ex))
             compute.SetData(4, camVars)
 
-            # Image data: uvec4
-            rgbData = np.uint32(np.dstack((rgb, np.zeros((rgb.shape[0], rgb.shape[1], 1), dtype=np.uint8)))).reshape(-1, 4)
-            compute.SetData(5, rgbData)
-
             # Original image data: uvec4
             orgData = np.uint32(np.dstack((org, np.zeros((org.shape[0], org.shape[1], 1), dtype=np.uint8)))).reshape(-1, 4)
-            compute.SetData(6, orgData)
+            compute.SetData(5, orgData)
 
             # Output buffer: vec4
             output = np.full((len(mesh.vertices), 4), -1, dtype=np.float32)
-            compute.SetData(7, output)
+            compute.SetData(6, output)
 
             # Calculate in shader
             compute.StartCompute(math.ceil(hitData.shape[0] / 128))
-            result = compute.GetData(7)[:,:3]
+            result = compute.GetData(6)
             vertexRadiance[frame] = np.where(result >= 0.0, result, result * np.nan)
 
             # Next frame
@@ -303,3 +304,6 @@ cv2.imwrite(os.path.join(temp_path, os.pardir, "hdr_panorama.hdr"), hdr_pan)
 
 # Done raytracing
 rt.close()
+
+# Cleanup
+rmtree(temp_path)
