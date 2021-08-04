@@ -219,7 +219,7 @@ except OSError:
         # Raytrace all frames again
         for frame, vals in frames.items():
             # Load current frame values & update camera position
-            org, rgb, _, _, extr, eye_pos = vals
+            org, _, _, _, extr, eye_pos = vals
             rt.update_camera("cam", eye=eye_pos)
             rt.refresh_scene()
 
@@ -268,7 +268,9 @@ except OSError:
 
 # Generate median vertex color samples
 samples = np.array([vertices for _, vertices in vertexRadiance.items()]).transpose((1, 0, 2))
-samples = np.nanmedian(samples[:,:,:3], axis=1)
+weightedsum = np.nansum(samples[:,:,:3] * samples[:,:,3:4], axis=1)
+weightsum = np.nansum(samples[:,:,3:4], axis=1)
+samples = weightedsum / weightsum
 samples = np.where(np.isnan(samples), np.zeros_like(samples), samples / 255.0)
 
 # Update raytracing mesh
