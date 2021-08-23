@@ -77,6 +77,7 @@ class Scene(object):
         ctx.render.use_sequencer = False
         ctx.render.use_compositing = False
         ctx.view_settings.view_transform = ("Standard", "Raw")[camera.CameraDataOnly]
+        ctx.view_settings.exposure = (camera.CameraExposure, 0.0)[camera.CameraDataOnly]
         # Output format
         ctx.render.filepath = FullPath(camera.CameraResultFile)
         ctx.render.image_settings.file_format = ("PNG", "OPEN_EXR")[camera.CameraDataOnly]

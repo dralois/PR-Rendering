@@ -81,6 +81,7 @@ class CameraInstance(ObjectWrapper):
         self.__aaSamples = 16
         self.__rayBounces = -1
         self.__shadingOverride = ""
+        self.__exposure = 0.0
 
     # Get camera data
     @property
@@ -147,6 +148,16 @@ class CameraInstance(ObjectWrapper):
     def CameraShadingOverride(self, value):
         self.__shadingOverride = value
 
+    # Get camera exposure value
+    @property
+    def CameraExposure(self):
+        return self.__exposure
+
+    # Set camera exposure value
+    @CameraExposure.setter
+    def CameraExposure(self, value):
+        self.__exposure = value
+
     # Override: Create from json data
     def CreateFromJSON(self, data : dict):
         assert data is not None
@@ -157,3 +168,4 @@ class CameraInstance(ObjectWrapper):
         self.CameraAASamples = data.get("aaSamples", 16)
         self.CameraRayBounces = data.get("rayBounces", -1)
         self.CameraShadingOverride = data.get("shadingOverride", "")
+        self.CameraExposure = data.get("exposure", 0.0)

@@ -16,6 +16,7 @@ import os
 import threading
 import random
 import pickle
+import json
 
 # 1) Import all images, inverse gamma correct them (y = 2.2)
 
@@ -29,7 +30,7 @@ store_debug_mesh = True
 randomize_samples = False
 solve_max_verts = 200000
 
-test_path = ".\\HDRLib\\Test\\1"
+test_path = ".\\HDRLib\\Test\\3"
 temp_path = ""
 
 # TODO: For each scene
@@ -191,6 +192,10 @@ except OSError:
     # Store intermediate results
     with open(os.path.join(temp_path, "Exposures.pkl"), mode="x+b") as stream:
         pickle.dump(exposure, stream)
+    # Store solved exposure for future use
+    with open(os.path.join(test_path, "exposures.json"), mode="x") as stream:
+        exposures = dict(zip(frames.keys(), exposure.tolist()))
+        json.dump(exposures, stream, indent=1)
 
 # 3) Reproject radiance
 
@@ -289,10 +294,10 @@ center = mesh.bounding_box.centroid
 eye_points = np.array([eye for _, _, _, _, _, eye in frames.values()])
 best_candidate = eye_points[np.linalg.norm(np.abs(eye_points - center), ord=2, axis=1).argmin()]
 
-# Setup raytracer for 360* panorama capute
+# Setup raytracer for 360* panorama capture
 rt.resize(7768, 3884)
 rt.set_param(min_accumulation_step=100, max_accumulation_frames=300)
-rt.setup_camera("pano", cam_type=Camera.Panoramic, eye=best_candidate, target=[0, 0, -1], up=[0, 0, 1])
+rt.setup_camera("pano", cam_type=Camera.Panoramic, eye=best_candidate, target=[0, -1, 0], up=[0, 0, 1])
 rt.set_current_camera("pano")
 rt.refresh_scene()
 
@@ -300,9 +305,28 @@ rt.refresh_scene()
 renderDone.clear()
 renderDone.wait()
 
-# Write the HDR panorama to disk
-hdr_pan = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
-cv2.imwrite(os.path.join(temp_path, os.pardir, "hdr_panorama.hdr"), hdr_pan)
+# Write the HDR panorama to disk (color + depth)
+pan_hdr = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
+pan_depth = rt._hit_pos[:,:,3:4]
+cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_hdr.hdr"), pan_hdr)
+cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_depth.hdr"), pan_depth)
+
+# Calculate raw luminance
+lum = raw_luminance(pan_hdr)
+
+# Create compute shader
+with ShaderManager(".\\HDRLib\\Shader\\Luminance.comp") as compute:
+    # Set data
+    compute.SetData(1, lum.flatten())
+    compute.SetData(2, np.array([lum.shape[1], lum.shape[0]]))
+    output = np.zeros_like(lum, dtype=np.float32)
+    compute.SetData(3, output.flatten())
+    # Compute illuminance
+    compute.StartCompute(math.ceil(lum.shape[0] * lum.shape[1] / 128))
+    illum = compute.GetData(3).reshape(lum.shape)
+
+# Write illuminance to disk
+cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lum.hdr"), illum)
 
 # Done raytracing
 rt.close()

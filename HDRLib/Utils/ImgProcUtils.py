@@ -21,3 +21,10 @@ def load_extr(file) -> np.ndarray:
 def load_intr(string) -> np.ndarray:
     arr = np.fromstring(string, dtype = "f", sep = " ")
     return np.reshape(arr, (4, 4))
+
+def raw_luminance(img):
+    return (img[:,:,0] * 0.2126 + img[:,:,1] * 0.7152 + img[:,:,2] * 0.0722) * 179.0
+
+def illuminance_to_ev(il):
+    import math
+    return math.log2(il / 2.5)
