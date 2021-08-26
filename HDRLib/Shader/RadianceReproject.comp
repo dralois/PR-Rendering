@@ -38,7 +38,7 @@ layout(binding = 4) buffer CAM
     vec2 padding;
     vec4 eye;
     vec4 oj;
-    vec4 ex;
+    float ex;
 };
 
 layout(binding = 5) buffer ORG
@@ -140,7 +140,7 @@ void main()
                     uvec2 px = pixel_coords(uvs);
                     // Load corresponding exposure corrected rgb value
                     vec3 xij = vec3(org[(px.x * uint(dims.x)) + px.y].rgb);
-                    vec3 pxcol = xij / ex.xyz;
+                    vec3 pxcol = xij / ex;
                     // Compute confidence value
                     float c = confidence(uvec3(xij));
                     // Compute geometry factor gij

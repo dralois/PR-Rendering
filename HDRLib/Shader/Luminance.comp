@@ -19,9 +19,11 @@ layout(binding = 3) buffer OUT
 // Calculates solid angle for pixel in equirectangular panorama
 float solid_angle_pixel(vec2 pixel, vec2 size)
 {
+    // Calculate pixel longitude / latitude rectangle
     float temp = 0.5 + pixel.y - (size.y / 2.0);
     vec2 lat = vec2(temp - 0.5, temp + 0.5) * PI / size.y;
     vec2 lng = vec2(pixel.x, pixel.x + 1.0)  * 2.0 * PI / size.x;
+    // See https://en.wikipedia.org/wiki/Solid_angle#Latitude-longitude_rectangle
     return (sin(lat.y) - sin(lat.x)) * (lng.y - lng.x);
 }
 

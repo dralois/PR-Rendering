@@ -23,7 +23,8 @@ The renderfile format specifies a scene to be rendered. These scenes are organiz
             "dataOnly" : bool,
             "aaSamples" : int,
             "rayBounces" : int,
-            "shadingOverride" : string
+            "shadingOverride" : string,
+            "exposure" : float
         },
         ...
     ],

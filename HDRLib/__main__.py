@@ -27,6 +27,7 @@ intr = (0, 0, 0, 0, 0, 0)
 
 gamma_correct = True
 store_debug_mesh = True
+store_debug_panorama = True
 randomize_samples = False
 solve_max_verts = 200000
 
@@ -192,9 +193,9 @@ except OSError:
     # Store intermediate results
     with open(os.path.join(temp_path, "Exposures.pkl"), mode="x+b") as stream:
         pickle.dump(exposure, stream)
-    # Store solved exposure for future use
-    with open(os.path.join(test_path, "exposures.json"), mode="x") as stream:
-        exposures = dict(zip(frames.keys(), exposure.tolist()))
+    # Store solved exposure (convert to EV -> logarithmic) for future use
+    with open(os.path.join(temp_path, os.pardir, "exposures.json"), mode="w") as stream:
+        exposures = dict(zip(frames.keys(), np.log2(exposure).tolist()))
         json.dump(exposures, stream, indent=1)
 
 # 3) Reproject radiance
@@ -293,11 +294,12 @@ if store_debug_mesh:
 center = mesh.bounding_box.centroid
 eye_points = np.array([eye for _, _, _, _, _, eye in frames.values()])
 best_candidate = eye_points[np.linalg.norm(np.abs(eye_points - center), ord=2, axis=1).argmin()]
+cam_target = best_candidate + np.array([0, -1, 0])
 
 # Setup raytracer for 360* panorama capture
 rt.resize(7768, 3884)
 rt.set_param(min_accumulation_step=100, max_accumulation_frames=300)
-rt.setup_camera("pano", cam_type=Camera.Panoramic, eye=best_candidate, target=[0, -1, 0], up=[0, 0, 1])
+rt.setup_camera("pano", cam_type=Camera.Panoramic, eye=best_candidate, target=cam_target, up=[0, 0, 1])
 rt.set_current_camera("pano")
 rt.refresh_scene()
 
@@ -305,11 +307,9 @@ rt.refresh_scene()
 renderDone.clear()
 renderDone.wait()
 
-# Write the HDR panorama to disk (color + depth)
+# Get HDR panorama (color + depth)
 pan_hdr = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
 pan_depth = rt._hit_pos[:,:,3:4]
-cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_hdr.hdr"), pan_hdr)
-cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_depth.hdr"), pan_depth)
 
 # Calculate raw luminance
 lum = raw_luminance(pan_hdr)
@@ -325,8 +325,52 @@ with ShaderManager(".\\HDRLib\\Shader\\Luminance.comp") as compute:
     compute.StartCompute(math.ceil(lum.shape[0] * lum.shape[1] / 128))
     illum = compute.GetData(3).reshape(lum.shape)
 
-# Write illuminance to disk
-cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lum.hdr"), illum)
+# Variables for light source detection & output
+maxPeak = 0.0
+mask = np.zeros((illum.shape[0] + 2, illum.shape[1] + 2), dtype=np.uint8)
+rng = np.random.default_rng(0)
+lightMap = np.copy(pan_hdr)
+lightInfo = []
+
+# Number of lights is unknown
+while True:
+    # Find the brightest spot
+    filtered, peak, peakIdx = find_brightest_spot(illum, mask[1:-1, 1:-1], 21)
+    # Find the corresponding light source & parameters
+    mask, lightPixels, lightIntensity, lightEllipse = find_light_source(filtered, mask, peakIdx)
+    # Update peak
+    maxPeak = (maxPeak, peak)[peak > maxPeak]
+    # Stop if not at least as bright as 80% of the peak
+    if peak < 0.8  * maxPeak:
+        break
+    else:
+        # Mark light source in panorama
+        lightMap = cv2.ellipse(lightMap, lightEllipse, rng.random(3).tolist(), -1)
+        # Calculate center of mass of light source pixels
+        lightPixel = np.uint32(np.mean(lightPixels, axis=0))
+        # Calculate mean depth & color
+        meanDepth = np.mean(pan_depth[lightPixels[:,1], lightPixels[:,0]])
+        meanColor = np.mean(pan_hdr[lightPixels[:,1], lightPixels[:,0]], axis=0)
+        meanColor /= pan_hdr[peakIdx[1], peakIdx[0]]
+        # Backproject to find its position
+        lightPos = pan_depth_to_point(meanDepth, lightPixel, pan_depth.shape, best_candidate)
+        # Append to json output
+        lightInfo.append({
+            "position" : lightPos.tolist(),
+            "color" : meanColor.tolist(),
+            "exposure" : illuminance_to_ev(lightIntensity)
+        })
+
+# Store light source information as json
+with open(os.path.join(temp_path, os.pardir, "lights.json"), mode="w") as stream:
+    json.dump(lightInfo, stream, indent=1)
+
+# Possibly store debug info
+if store_debug_panorama:
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_hdr.hdr"), pan_hdr)
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_depth.hdr"), pan_depth)
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lum.hdr"), illum)
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lights.hdr"), lightMap)
 
 # Done raytracing
 rt.close()

@@ -10,7 +10,7 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     vertexCount = vertRadiancePerFrame.shape[0]
     frameCount = vertRadiancePerFrame.shape[1]
     # Prefill output arrays
-    exposures = np.ones((frameCount, 3), dtype=np.double)
+    exposures = np.ones((frameCount, 1), dtype=np.double)
     radiance = np.ones((vertexCount, 3), dtype=np.double)
 
     # Create solver
