@@ -14,6 +14,7 @@ Most of the required libraries are automatically downloaded, compiled and instal
 - Setup the build pipeline accordingly for [Windows](https://wiki.blender.org/wiki/Building_Blender/Windows) or [Linux](https://wiki.blender.org/wiki/Building_Blender/Linux)
 - Blender has to be built as described [here](https://wiki.blender.org/wiki/Building_Blender/Other/BlenderAsPyModule), since there is no official release for the python module version
 - An unofficial prebuilt version is provided & installed automatically
+- The 2.82 folder needs to be put into the python install directory
 
 ### [Blenderseed 2.0](https://github.com/appleseedhq/blenderseed/releases)
 - Blenderseed just needs to be downloaded, as it is a Blender plugin 
@@ -26,6 +27,21 @@ Most of the required libraries are automatically downloaded, compiled and instal
 - On Windows it is necessary to install / build boost
 - Boost is statically linked, build / install accordingly
 - The required modules are **System, Thread, Filesystem, Python (3.7, may have to be built manually!)**
+#### Boost build instructions
+- Build bjam / b2 using bootstrap
+- Create a user-config.jam in the same directory
+- Adjust and add the following:
+```
+using python : 3.7 
+  : Path-to-Python-dir\\python.exe
+  : Path-to-Python-dir\\include
+  : Path-to-Python-dir\\libs ;
+```
+- Execute b2 two times:
+```
+./b2 --with-python --with-filesystem --with-thread --with-system stage
+./b2 --with-python --with-filesystem --with-thread --with-system install
+```
 
 ### [3D Scan Dataset](https://waldjohannau.github.io/RIO/)
 - Download script is also provided in data/3Rscan. It requires python2 to run smoothly

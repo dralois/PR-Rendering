@@ -35,6 +35,7 @@
     "intrinsics_r": [0, 0],
 
     "scene_unit": 1.0,
+    "scene_mesh": "mesh.refined.v2.obj",
     "render_objs": [
         {
             "mesh_path" : "",

@@ -16,9 +16,10 @@ using namespace physx;
 RenderMesh SceneManager::X_CreateSceneMesh() const
 {
 	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
+	std::string sceneMesh(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scene_mesh"));
 	// Create mesh file path
 	ModifiablePath meshPath(pRenderSettings->GetScenePath());
-	meshPath.append("mesh.refined.obj");
+	meshPath.append(sceneMesh);
 	// Create & return mesh
 	RenderMesh meshScene(meshPath, "scene", 0, true);
 	meshScene.SetScale(Eigen::Vector3f().setConstant(toMeters));
@@ -31,9 +32,10 @@ RenderMesh SceneManager::X_CreateSceneMesh() const
 PxMeshTriangle SceneManager::X_PxCreateSceneMesh() const
 {
 	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
+	std::string sceneMesh(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scene_mesh"));
 	// Create mesh file path
 	ModifiablePath meshPath(pRenderSettings->GetScenePath());
-	meshPath.append("mesh.refined.obj");
+	meshPath.append(sceneMesh);
 	// Create physx mesh of scan scene
 	PxMeshTriangle pxMeshScene(meshPath, "scene", 0);
 	pxMeshScene.CreateMesh();

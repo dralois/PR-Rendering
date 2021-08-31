@@ -4,8 +4,8 @@
 
     "blenderseed_path": "../BlenderLib/python/blenderseed.zip",
     "shaders_path": "../BlenderLib/python/BlenderModule/shaders",
-    "meshes_path": "../../Bodies",
-    "scenes_path": "../../Scenes",
+    "meshes_path": "../../Objects",
+    "scenes_path": "../../3RScan",
     "final_path": "../../Output/final",
     "temp_path": "../../Output/temp",
 
@@ -35,6 +35,7 @@
     "intrinsics_r": [640, 480],
 
     "scene_unit": 1.0,
+    "scene_mesh": "mesh.refined.v2.obj",
     "render_objs": [
         {
             "mesh_path" : "obj_02.obj",
