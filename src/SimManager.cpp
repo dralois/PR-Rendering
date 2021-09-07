@@ -96,9 +96,11 @@ void SimManager::X_LoadMeshes()
 				ModifiablePath basePath(SafeGet<const char*>(currVal, "mesh_path"));
 				ModifiablePath meshPath = basePath.has_parent_path() ?
 					basePath : pRenderSettings->GetMeshesPath() / basePath;
-				ModifiablePath texturePath = (basePath.has_parent_path() ?
-					basePath.parent_path() : pRenderSettings->GetMeshesPath()) / basePath.stem();
-				texturePath.concat("_color.png");
+				// Texture path has a default option if no path is given
+				auto texPath = SafeGet<const char*>(currVal, "mesh_texture");
+				ModifiablePath texturePath(texPath ? 
+					(basePath.has_parent_path() ? basePath : pRenderSettings->GetMeshesPath()) / texPath :
+					((basePath.has_parent_path() ? basePath.parent_path() : pRenderSettings->GetMeshesPath()) / basePath.stem()) += "_color.png");
 
 				// Mesh file must exist
 				if (!exists(meshPath))
@@ -108,21 +110,21 @@ void SimManager::X_LoadMeshes()
 				}
 
 				// Extract other infos
-				float meshScale = SafeGet<float>(currVal, "mesh_unit");
+				float meshScl = SafeGet<float>(currVal, "mesh_unit");
 				std::string meshClass(SafeGet<const char*>(currVal, "mesh_class"));
 
 				// Create and save physx mesh
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, meshClass, i);
 				pxCurr->SetObjId(0);
 				pxCurr->CreateMesh();
-				pxCurr->SetScale(physx::PxVec3(meshScale));
+				pxCurr->SetScale(physx::PxVec3(meshScl));
 				vecpPxMesh.push_back(pxCurr);
 
 				// Create and save render mesh
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, meshClass, i);
 				renderCurr->SetObjId(0);
 				renderCurr->CreateMesh();
-				renderCurr->SetScale(Eigen::Vector3f().setConstant(meshScale));
+				renderCurr->SetScale(Eigen::Vector3f().setConstant(meshScl));
 				vecpRenderMesh.push_back(renderCurr);
 
 				// Copy the mesh to final folder

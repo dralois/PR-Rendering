@@ -80,11 +80,16 @@ public:
 		// Compute bounding box
 		cv::Rect bbox = ComputeBoundingBox(objectMask);
 
-		// FIXME position / scale wrong?
-		// Compute world space pose of object
-		Eigen::Vector3f pos(currBody.GetPosition());
-		Eigen::Quaternionf rot(currBody.GetRotation());
-		Eigen::Vector3f scl(currBody.GetScale());
+		// Compute camera space pose of object
+		Eigen::Matrix4f bodyTrans = currBody.GetTransform();
+		Eigen::Affine3f bodyToCam(renderCam.ToCameraSpace(bodyTrans));
+		// Compute current values
+		Eigen::Affine3f::LinearMatrixType rotation, scale;
+		bodyToCam.computeRotationScaling(&rotation, &scale);
+		// Update internals
+		Eigen::Vector3f pos(bodyToCam.translation().eval());
+		Eigen::Quaternionf rot(rotation);
+		Eigen::Vector3f scl(scale.diagonal());
 
 		// Add formatted info to annotation file
 		osAnnotations << bbox.x << sep << bbox.y << sep << bbox.width << sep << bbox.height << sep

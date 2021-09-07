@@ -29,6 +29,8 @@ function(AddAssimp TO_TARGET INSTALL_PATH)
                         ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT=OFF
                         ASSIMP_BUILD_OBJ_EXPORTER=ON
                         ASSIMP_BUILD_OBJ_IMPORTER=ON
+                        ASSIMP_BUILD_PLY_IMPORTER=ON
+                        ASSIMP_BUILD_GLTF_IMPORTER=ON
                         ASSIMP_BUILD_ASSIMP_TOOLS=OFF
                         ASSIMP_BUILD_TESTS=OFF
                         ASSIMP_INSTALL=OFF

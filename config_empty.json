@@ -1,6 +1,7 @@
 {
     "log_level": "error",
     "store_blend": false,
+    "mem_available": 0,
 
     "blenderseed_path": "",
     "shaders_path": "",
@@ -39,6 +40,7 @@
     "render_objs": [
         {
             "mesh_path" : "",
+            "mesh_texture" : "",
             "mesh_class" : "",
             "mesh_unit" : 0.0
         }

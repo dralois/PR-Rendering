@@ -1,6 +1,7 @@
 {
     "log_level": "warning",
     "store_blend": false,
+    "mem_available": 16,
 
     "blenderseed_path": "../BlenderLib/python/blenderseed.zip",
     "shaders_path": "../BlenderLib/python/BlenderModule/shaders",

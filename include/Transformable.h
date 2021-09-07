@@ -14,7 +14,7 @@ protected:
 	Trans meshTrans;
 	Vec meshPos;
 	Quat meshRot;
-	Vec meshScale;
+	Vec meshScl;
 
 	Transformable(
 		Trans initTrans,
@@ -25,7 +25,7 @@ protected:
 		meshTrans(initTrans),
 		meshPos(initPos),
 		meshRot(initRot),
-		meshScale(initScale)
+		meshScl(initScale)
 	{
 	}
 
@@ -33,7 +33,7 @@ protected:
 		meshTrans(copy.meshTrans),
 		meshPos(copy.meshPos),
 		meshRot(copy.meshRot),
-		meshScale(copy.meshScale)
+		meshScl(copy.meshScl)
 	{
 	}
 
@@ -42,7 +42,7 @@ protected:
 		std::swap(meshTrans, other.meshTrans);
 		std::swap(meshPos, other.meshPos);
 		std::swap(meshRot, other.meshRot);
-		std::swap(meshScale, other.meshScale);
+		std::swap(meshScl, other.meshScl);
 	}
 
 	virtual ~Transformable()

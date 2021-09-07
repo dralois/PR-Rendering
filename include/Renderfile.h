@@ -56,40 +56,30 @@ private:
 	inline void X_SetPosRotScale(
 		const Eigen::Vector3f* pos,
 		const Eigen::Quaternionf* rot,
-		const Eigen::Vector3f* scale
+		const Eigen::Vector3f* scl
 	)
 	{
-		Eigen::Affine3f trans(GetTransform());
-		// Compute current values
-		Eigen::Affine3f::VectorType position = trans.translation();
-		Eigen::Affine3f::LinearMatrixType rotation, scaling;
-		trans.computeRotationScaling(&rotation, &scaling);
-		// Update with new / current values
-		trans.fromPositionOrientationScale(
-			pos ? *pos : position,
-			rot ? *rot : Eigen::Quaternionf(rotation),
-			scale ? *scale : scaling.diagonal()
-		);
-		// Update transform
-		SetTransform(trans.matrix());
-		// Update actual values
-		X_GetPosRotScale(meshPos, meshRot, meshScale);
-	}
+		Eigen::Matrix4f mat;
 
-	inline void X_GetPosRotScale(
-		Eigen::Vector3f& pos,
-		Eigen::Quaternionf& rot,
-		Eigen::Vector3f& scl
-	) const
-	{
-		Eigen::Affine3f trans(GetTransform());
-		// Compute current values
-		Eigen::Affine3f::LinearMatrixType rotation, scale;
-		trans.computeRotationScaling(&rotation, &scale);
 		// Update internals
-		pos = trans.translation().eval();
-		rot = Eigen::Quaternionf(rotation);
-		scl = scale.diagonal();
+		meshPos = pos ? *pos : meshPos;
+		meshRot = rot ? *rot : meshRot;
+		meshScl = scl ? *scl : meshScl;
+
+		// Convert to matrices
+		Eigen::Matrix3f rotMat = meshRot.normalized().toRotationMatrix();
+		Eigen::Matrix3f sclMat = meshScl.asDiagonal();
+
+		// Set position
+		mat.block<3, 1>(0, 3) = meshPos;
+		// Set rotation & scale
+		mat.block<3, 3>(0, 0) = rotMat * sclMat;
+		// Make affine
+		mat.block<1, 3>(3, 0).setZero();
+		mat.coeffRef(3, 3) = 1.0f;
+
+		// Update transform
+		meshTrans = mat;
 	}
 
 protected:
@@ -133,22 +123,25 @@ public:
 	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override
 	{
+		// Set transform
 		meshTrans = trans;
-		// Update actual values
-		X_GetPosRotScale(meshPos, meshRot, meshScale);
+		Eigen::Affine3f affine(trans);
+		// Compute current values
+		Eigen::Affine3f::LinearMatrixType rotation, scale;
+		affine.computeRotationScaling(&rotation, &scale);
+		// Update internals
+		meshPos = affine.translation().eval();
+		meshRot = Eigen::Quaternionf(rotation);
+		meshScl = scale.diagonal();
 	}
 
 	// Position
 	inline const Eigen::Vector3f GetPosition() const
 	{
-		Eigen::Vector3f pos, scl;
-		Eigen::Quaternionf rot;
-		X_GetPosRotScale(pos, rot, scl);
-		return pos;
+		return meshPos;
 	}
 	virtual const Eigen::Vector3f GetPosition() override
 	{
-		X_GetPosRotScale(meshPos, meshRot, meshScale);
 		return meshPos;
 	}
 	virtual void SetPosition(Eigen::Vector3f pos) override
@@ -159,14 +152,10 @@ public:
 	// Rotation
 	inline const Eigen::Quaternionf GetRotation() const
 	{
-		Eigen::Vector3f pos, scl;
-		Eigen::Quaternionf rot;
-		X_GetPosRotScale(pos, rot, scl);
-		return rot;
+		return meshRot;
 	}
 	virtual const Eigen::Quaternionf GetRotation() override
 	{
-		X_GetPosRotScale(meshPos, meshRot, meshScale);
 		return meshRot;
 	}
 	virtual void SetRotation(Eigen::Quaternionf rot) override
@@ -177,15 +166,11 @@ public:
 	// Scale
 	inline const Eigen::Vector3f GetScale() const
 	{
-		Eigen::Vector3f pos, scl;
-		Eigen::Quaternionf rot;
-		X_GetPosRotScale(pos, rot, scl);
-		return scl;
+		return meshScl;
 	}
 	virtual const Eigen::Vector3f GetScale() override
 	{
-		X_GetPosRotScale(meshPos, meshRot, meshScale);
-		return meshScale;
+		return meshScl;
 	}
 	virtual void SetScale(Eigen::Vector3f scale) override
 	{

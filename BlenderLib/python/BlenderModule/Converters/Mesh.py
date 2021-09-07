@@ -55,8 +55,10 @@ class MeshData(DataWrapper):
             # Loading depends on extension
             if meshType == ".obj":
                 self.__LoadMeshObj()
-            elif meshType == ".glb":
+            elif meshType == ".glb" or meshType == ".gltf":
                 self.__LoadMeshGLTF()
+            elif meshType == ".ply":
+                self.__LoadMeshPly()
             else:
                 logger.error(f"Mesh format {meshType} not supported!")
                 self.__MakeCube()
@@ -76,22 +78,27 @@ class MeshData(DataWrapper):
         # Load mesh to active scene & store from selection
         with StdMute():
             bpy.ops.import_scene.obj(filepath=self.__filePath, axis_forward="Y", axis_up="Z")
-        # Delete potentially loaded materials
-        loader : bpy.types.Object = bpy.context.selected_objects[0]
-        bpy.data.batch_remove([slot.material for slot in loader.material_slots])
-        # Update internals
-        newMesh = loader.data
-        self._Update(newMesh)
-        self.__mesh = newMesh
-        # Delete creator object
-        bpy.data.objects.remove(loader)
+        # Cleanup loader & store mesh
+        self.__LoadFinish()
 
-    # TODO: Test if this works
-    # Load mesh from glTF file
+    # Load mesh from glTF (2.0) file
     def __LoadMeshGLTF(self):
         # Load mesh to active scene & store from selection
         with StdMute():
             bpy.ops.import_scene.gltf(filepath = self.__filePath)
+        # Change renderer back to appleseed
+        bpy.context.scene.render.engine = "APPLESEED_RENDER"
+        # Cleanup loader & store mesh
+        self.__LoadFinish()
+
+    def __LoadMeshPly(self):
+        # Load mesh to active scene & store from selection
+        with StdMute():
+            bpy.ops.import_mesh.ply(filepath = self.__filePath)
+        # Cleanup loader & store mesh
+        self.__LoadFinish()
+
+    def __LoadFinish(self):
         # Delete potentially loaded materials
         loader : bpy.types.Object = bpy.context.selected_objects[0]
         bpy.data.batch_remove([slot.material for slot in loader.material_slots])

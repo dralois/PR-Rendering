@@ -138,7 +138,7 @@ const PxVec3 PxMesh::GetScale()
 {
 	// Shape has to exist
 	if (!pPxShape)
-		return meshScale;
+		return meshScl;
 
 	PxGeometryHolder geom = pPxShape->getGeometry();
 	// Update scale depending on geometry type
@@ -146,12 +146,12 @@ const PxVec3 PxMesh::GetScale()
 	{
 	case PxGeometryType::eCONVEXMESH:
 	{
-		meshScale = pPxShape->getGeometry().convexMesh().scale.scale;
+		meshScl = pPxShape->getGeometry().convexMesh().scale.scale;
 		break;
 	}
 	case PxGeometryType::eTRIANGLEMESH:
 	{
-		meshScale = pPxShape->getGeometry().triangleMesh().scale.scale;
+		meshScl = pPxShape->getGeometry().triangleMesh().scale.scale;
 		break;
 	}
 	default:
@@ -161,7 +161,7 @@ const PxVec3 PxMesh::GetScale()
 	}
 	}
 	// Return updated scale
-	return meshScale;
+	return meshScl;
 }
 
 //---------------------------------------
@@ -170,9 +170,9 @@ const PxVec3 PxMesh::GetScale()
 void PxMesh::SetScale(PxVec3 scale)
 {
 	// Update bounds & scale
-	bounds.scaleFast(1.0f / meshScale.magnitude());
+	bounds.scaleFast(1.0f / meshScl.magnitude());
 	bounds.scaleFast(scale.magnitude());
-	meshScale = scale;
+	meshScl = scale;
 
 	// Shape has to exist
 	if (!pPxShape)
@@ -187,7 +187,7 @@ void PxMesh::SetScale(PxVec3 scale)
 		// Retrieve convex mesh & change scale
 		if (pPxShape->getConvexMeshGeometry(geom))
 		{
-			geom.scale = PxMeshScale(meshScale);
+			geom.scale = PxMeshScale(meshScl);
 			pPxShape->setGeometry(geom);
 		}
 		break;
@@ -198,7 +198,7 @@ void PxMesh::SetScale(PxVec3 scale)
 		// Retrieve triangle mesh & change scale
 		if (pPxShape->getTriangleMeshGeometry(geom))
 		{
-			geom.scale = PxMeshScale(meshScale);
+			geom.scale = PxMeshScale(meshScl);
 			pPxShape->setGeometry(geom);
 		}
 		break;
@@ -275,7 +275,7 @@ PxMesh::PxMesh(const PxMesh& copy) :
 		copy.meshTrans,
 		copy.meshPos,
 		copy.meshRot,
-		copy.meshScale
+		copy.meshScl
 	)
 {
 }

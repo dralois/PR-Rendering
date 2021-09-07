@@ -21,6 +21,7 @@ private:
 
 	Intrinsics cameraIntrinsics;
 	ModifiablePath sourceFile;
+	Eigen::Matrix4f extrInv;
 
 	Eigen::Vector3f aspectFOV;
 	Eigen::Vector2f lensShift;
@@ -30,6 +31,7 @@ private:
 	int rayBounces;
 	int aaSamples;
 	std::string shadingOverride;
+	float exposure;
 
 	int imageNum;
 
@@ -62,6 +64,9 @@ private:
 
 		writer.Key("shadingOverride");
 		AddString(writer, shadingOverride);
+
+		writer.Key("exposure");
+		AddFloat(writer, exposure);
 	}
 
 public:
@@ -88,7 +93,8 @@ public:
 		bool rendersData,
 		int sampleCount,
 		int maxRayBounces,
-		const std::string& shading
+		const std::string& shading,
+		float sceneExposure
 	)
 	{
 		resultFile = outputFile;
@@ -97,6 +103,7 @@ public:
 		aaSamples = sampleCount;
 		rayBounces = maxRayBounces;
 		shadingOverride = shading;
+		exposure = sceneExposure;
 	}
 
 	inline void LoadIntrinsics(const Settings& settings)
@@ -115,6 +122,30 @@ public:
 			// Store in camera
 			SetIntrinsics(fromFile);
 		}
+
+		// Calculate fov
+		float fovx = 2.0f * atan(cameraIntrinsics.GetResolution().x() / (2.0f * cameraIntrinsics.GetFocalLenght().x()));
+		float fovy = 2.0f * atan(cameraIntrinsics.GetResolution().y() / (2.0f * cameraIntrinsics.GetFocalLenght().y()));
+
+		// Calculate aspect ratio
+		float aspect = (cameraIntrinsics.GetFocalLenght().y() / cameraIntrinsics.GetFocalLenght().x()) *
+			(static_cast<float>(cameraIntrinsics.GetResolution().x()) / static_cast<float>(cameraIntrinsics.GetResolution().y()));
+
+		// Find max(width, height) (so shift is equal in x/y)
+		float resMax = static_cast<float>(cameraIntrinsics.GetResolution().x() > cameraIntrinsics.GetResolution().y() ?
+			cameraIntrinsics.GetResolution().x() : cameraIntrinsics.GetResolution().y());
+
+		// Calculate lens shift (Blender specific)
+		float shiftx = (cameraIntrinsics.GetPrincipalPoint().x() - (0.5f * cameraIntrinsics.GetResolution().x())) /
+			cameraIntrinsics.GetResolution().x();
+		shiftx *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().x()) / resMax);
+		float shifty = (cameraIntrinsics.GetPrincipalPoint().y() - (0.5f * cameraIntrinsics.GetResolution().y())) /
+			cameraIntrinsics.GetResolution().y();
+		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().y()) / resMax);
+
+		// Store in Camera
+		aspectFOV = Eigen::Vector3f(aspect, fovx, fovy);
+		lensShift = Eigen::Vector2f(shiftx, shifty);
 	}
 
 	inline void LoadExtrinsics(ReferencePath extrFile)
@@ -143,29 +174,13 @@ public:
 		SetTransform(matTrans);
 		SetScale(Eigen::Vector3f(1.0f, -1.0f, -1.0f));
 
-		// Calculate fov
-		float fovx = 2.0f * atan(cameraIntrinsics.GetResolution().x() / (2.0f * cameraIntrinsics.GetFocalLenght().x()));
-		float fovy = 2.0f * atan(cameraIntrinsics.GetResolution().y() / (2.0f * cameraIntrinsics.GetFocalLenght().y()));
+		// Store camera to world transform
+		extrInv = GetTransform().inverse();
+	}
 
-		// Calculate aspect ratio
-		float aspect = (cameraIntrinsics.GetFocalLenght().y() / cameraIntrinsics.GetFocalLenght().x()) *
-			(static_cast<float>(cameraIntrinsics.GetResolution().x()) / static_cast<float>(cameraIntrinsics.GetResolution().y()));
-
-		// Find max(width, height) (so shift is equal in x/y)
-		float resMax = static_cast<float>(cameraIntrinsics.GetResolution().x() > cameraIntrinsics.GetResolution().y() ?
-			cameraIntrinsics.GetResolution().x() : cameraIntrinsics.GetResolution().y());
-
-		// Calculate lens shift (Blender specific)
-		float shiftx = (cameraIntrinsics.GetPrincipalPoint().x() - (0.5f * cameraIntrinsics.GetResolution().x())) /
-			cameraIntrinsics.GetResolution().x();
-		shiftx *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().x()) / resMax);
-		float shifty = (cameraIntrinsics.GetPrincipalPoint().y() - (0.5f * cameraIntrinsics.GetResolution().y())) /
-			cameraIntrinsics.GetResolution().y();
-		shifty *= -0.5f * (static_cast<float>(cameraIntrinsics.GetResolution().y()) / resMax);
-
-		// Store in Camera
-		aspectFOV = Eigen::Vector3f(aspect, fovx, fovy);
-		lensShift = Eigen::Vector2f(shiftx, shifty);
+	inline Eigen::Matrix4f ToCameraSpace(const Eigen::Matrix4f& worldSpace) const
+	{
+		return extrInv * worldSpace;
 	}
 
 	//---------------------------------------
@@ -175,6 +190,7 @@ public:
 	Camera() :
 		cameraIntrinsics(),
 		sourceFile("None"),
+		extrInv(Eigen::Matrix4f::Identity()),
 		aspectFOV(Eigen::Vector3f(1.5f, 0.6911f, 0.4711f)),
 		lensShift(Eigen::Vector2f(0.0f, 0.0f)),
 		resultFile(""),
@@ -183,6 +199,7 @@ public:
 		rayBounces(-1),
 		aaSamples(16),
 		shadingOverride(""),
+		exposure(0.0f),
 		imageNum(0)
 	{
 	}
@@ -191,6 +208,7 @@ public:
 		RenderfileObject(copy),
 		cameraIntrinsics(copy.cameraIntrinsics),
 		sourceFile(copy.sourceFile),
+		extrInv(copy.extrInv),
 		aspectFOV(copy.aspectFOV),
 		lensShift(copy.lensShift),
 		resultFile(copy.resultFile),
@@ -199,6 +217,7 @@ public:
 		rayBounces(copy.rayBounces),
 		aaSamples(copy.aaSamples),
 		shadingOverride(copy.shadingOverride),
+		exposure(copy.exposure),
 		imageNum(copy.imageNum)
 	{
 	}
@@ -208,6 +227,7 @@ public:
 	{
 		cameraIntrinsics = std::exchange(other.cameraIntrinsics, Intrinsics());
 		sourceFile = std::exchange(other.sourceFile, "");
+		extrInv = std::exchange(other.extrInv, Eigen::Matrix4f());
 		aspectFOV = std::exchange(other.aspectFOV, Eigen::Vector3f());
 		lensShift = std::exchange(other.lensShift, Eigen::Vector2f());
 		resultFile = std::exchange(other.resultFile, ModifiablePath());
@@ -216,6 +236,7 @@ public:
 		rayBounces = std::exchange(other.rayBounces, 0);
 		aaSamples = std::exchange(other.aaSamples, 0);
 		shadingOverride = std::exchange(other.shadingOverride, "");
+		exposure = std::exchange(other.exposure, 0.0f);
 		imageNum = std::exchange(other.imageNum, 0);
 	}
 

@@ -343,7 +343,8 @@ void SceneManager::X_BuildSceneDepth(
 				true,
 				1,
 				0,
-				"depth"
+				"depth",
+				0.0f
 			);
 			// Mark for rendering
 			toRender.push_back(std::move(currCam));
@@ -399,7 +400,8 @@ void SceneManager::X_BuildObjectsDepth(
 			true,
 			1,
 			0,
-			"depth"
+			"depth",
+			0.0f
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currDepth));
@@ -445,7 +447,8 @@ void SceneManager::X_BuildObjectsLabel(
 			true,
 			1,
 			0,
-			""
+			"",
+			0.0f
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currLabel));
@@ -486,13 +489,15 @@ void SceneManager::X_BuildObjectsPBR(
 		Texture currPBR(false, false);
 		currPBR.SetPath(pRenderSettings->GetImagePath("body_rgb", cams[curr].GetImageNum()), false);
 		// Setup rendering params
+		// TODO: Exposure
 		cams[curr].SetupRendering(
 			currPBR.GetPath(),
 			renderRes,
 			false,
 			4,
 			-1,
-			""
+			"",
+			0.0f
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currPBR));
@@ -550,7 +555,8 @@ void SceneManager::X_BuildObjectsAO(
 			false,
 			2,
 			-1,
-			"ambient_occlusion"
+			"ambient_occlusion",
+			0.0f
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currAO));
@@ -692,7 +698,7 @@ void SceneManager::X_RenderSegments(
 				currMesh,
 				objectLabels[curr].GetTexture(),
 				segResult.GetTexture(),
-				camBlueprint
+				cams[curr]
 			);
 		}
 		// Store & close
@@ -702,6 +708,7 @@ void SceneManager::X_RenderSegments(
 
 //---------------------------------------
 // Render synthetic objects & create blend
+// TODO!
 //---------------------------------------
 void SceneManager::X_RenderPBRBlend(
 	Blender::BlenderRenderer* renderer,
@@ -766,6 +773,7 @@ void SceneManager::X_RenderPBRBlend(
 
 //---------------------------------------
 // Places lights according to scene dims
+// TODO!
 //---------------------------------------
 std::vector<Light> SceneManager::X_PlaceLights(
 	Eigen::Vector3f min,
@@ -1155,9 +1163,11 @@ int SceneManager::ProcessNext(
 	imgCountUnoccluded = imageCount;
 	imgCountScene = 0;
 
-	// Create threaded renderer
+	// Create threaded renderer (Each process needs ~4GB!)
 	auto syncPoint = new boost::mutex();
-	auto processCount = std::thread::hardware_concurrency() / 2;
+	auto cpuCount = std::thread::hardware_concurrency() / 2U;
+	auto memCount = (SafeGet<int>(pRenderSettings->GetJSONConfig(), "mem_available") - 1U) / 4U;
+	auto processCount = std::min(cpuCount, memCount);
 	auto render = new Blender::BlenderRenderer(processCount);
 
 	// Create one thread / core

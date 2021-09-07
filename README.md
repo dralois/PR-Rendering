@@ -42,6 +42,7 @@ using python : 3.7
 ./b2 --with-python --with-filesystem --with-thread --with-system stage
 ./b2 --with-python --with-filesystem --with-thread --with-system install
 ```
+- Potentially add and set BOOST_ROOT entry in cmake
 
 ### [3D Scan Dataset](https://waldjohannau.github.io/RIO/)
 - Download script is also provided in data/3Rscan. It requires python2 to run smoothly
@@ -77,23 +78,25 @@ cd build && make -j 16
 
 ## Configuration & Options
 - The config.json file contains options & settings
-- The paths in the first block need to be set to folders & files
-- Blurry image detection can be adjusted in the second block
-- Simulation & render output can be controlled in the third block
-- Object physics can be adjusted in the fourth block
-- Optionally, custom intrinsics can be set in the fifth block
+- General settings are in the first block, available memory needs to be set
+- The paths in the second block need to be set to folders & files
+- Blurry image detection can be adjusted in the third block
+- Simulation & render output can be controlled in the fourth block
+- Object physics can be adjusted in the fifth block
+- Optionally, custom intrinsics can be set in the sixth block
 - Lastly, the objects that will be used in the simulation have to be defined
 
 ## Scene & Meshes Layout
 
 ### Meshes
-- Meshes need to be either of _.obj_ or _glTF_ format
+- Meshes need to be of _.obj_, _.ply_ or _glTF 2.0 (.glb / .gltf)_ format
 - Used meshes need to be listed in the corresponding array in the config file (_render\_objs_)
 - Each mesh has three properties but only the path is required
     - Each file path (_mesh\_path_) can be either relative to the base directory (_meshes\_path_) or an absolute path
+    - The optional diffuse albedo texture (_mesh\_texture_) needs to be in the same directory as the mesh
     - The classification (_mesh\_class_) can be any arbitrary string
     - The scaling factor (_mesh\_unit_) needs to be set so 1 unit = 1 meter
-- If available, the diffuse albedo texture needs to be named objectname\__color.png_ and in the same directory as the mesh
+- If no texture path is given, the program attempts to use a default diffuse albedo texture (_meshdir\objectname\_color.png_)
 - The meshes are read with the assumption that _Y=forward, Z=up_
 
 ### Scenes
