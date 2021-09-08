@@ -343,7 +343,7 @@ void SceneManager::X_BuildSceneDepth(
 				1,
 				0,
 				"depth",
-				0.0f
+				false
 			);
 			// Mark for rendering
 			toRender.push_back(std::move(currCam));
@@ -361,7 +361,7 @@ void SceneManager::X_BuildSceneDepth(
 	if (toRender.size() > 0)
 	{
 		// Add configured scene to renderfile
-		std::vector<RenderMesh> scene = {sceneMesh};
+		std::vector<RenderMesh> scene = { sceneMesh };
 		X_ConvertToRenderfile(writer, scene, toRender, lights);
 	}
 
@@ -400,7 +400,7 @@ void SceneManager::X_BuildObjectsDepth(
 			1,
 			0,
 			"depth",
-			0.0f
+			false
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currDepth));
@@ -447,7 +447,7 @@ void SceneManager::X_BuildObjectsLabel(
 			1,
 			0,
 			"",
-			0.0f
+			false
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currLabel));
@@ -467,7 +467,6 @@ void SceneManager::X_BuildObjectsLabel(
 
 //---------------------------------------
 // Build objects PBR renderfile
-// TODO
 //---------------------------------------
 void SceneManager::X_BuildObjectsPBR(
 	JSONWriterRef writer,
@@ -497,7 +496,7 @@ void SceneManager::X_BuildObjectsPBR(
 			4,
 			-1,
 			"",
-			0.0f
+			true
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currPBR));
@@ -556,7 +555,7 @@ void SceneManager::X_BuildObjectsAO(
 			2,
 			-1,
 			"ambient_occlusion",
-			0.0f
+			false
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currAO));
@@ -772,7 +771,6 @@ void SceneManager::X_RenderPBRBlend(
 
 //---------------------------------------
 // Places lights according to scene dims
-// TODO
 //---------------------------------------
 std::vector<Light> SceneManager::X_PlaceLights(
 	Eigen::Vector3f min,
@@ -781,9 +779,30 @@ std::vector<Light> SceneManager::X_PlaceLights(
 {
 	std::vector<Light> newLights;
 
-	// TODO
-	ModifiablePath lights = renderSettings.GetScenePath();
-	lights.concat("lights.json");
+	// Try to read estimated lights
+	rapidjson::Document lights;
+	bool hasLights = CanReadJSONFile(renderSettings.GetScenePath() / "lights.json", lights);
+
+	// If light source estimation exists
+	if (hasLights)
+	{
+		if (lights.IsArray())
+		{
+			// For each light json object
+			for (auto& currLight : lights.GetArray())
+			{
+				// Create a point light
+				PointLightParams* params = new PointLightParams();
+				Light addLight(params, currLight);
+				newLights.push_back(std::move(addLight));
+			}
+			// Return lights if any were created
+			if (newLights.size() > 0)
+			{
+				return newLights;
+			}
+		}
+	}
 
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -802,6 +821,7 @@ std::vector<Light> SceneManager::X_PlaceLights(
 		newLights.push_back(std::move(addLight));
 	}
 
+	// Return predicted / default lights
 	return newLights;
 }
 
@@ -944,6 +964,9 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 		// Store path to real RGB image
 		SceneImage currImage;
 		currImage.SetScenePath(line);
+		// Compute & store frame name
+		ModifiablePath path(line);
+		currImage.SetFrame(path.stem().stem().string());
 		// Compute & store path to camera pose
 		std::string pose(line);
 		boost::algorithm::replace_last(pose, "color.jpg", "pose.txt");
@@ -962,7 +985,6 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 
 //---------------------------------------
 // Processing is done multithreaded
-// TODO
 //---------------------------------------
 void SceneManager::X_ProcessThread(
 	Blender::BlenderRenderer* renderer,
@@ -1014,10 +1036,11 @@ void SceneManager::X_ProcessThread(
 		float maxDist = 0.0f;
 		auto simulation = X_PxCreateSimulation(pxMeshScene, maxDist);
 
-		// TODO load scene exposures
+		// Load scene exposures
+		rapidjson::Document exposures;
+		bool hasExposure = CanReadJSONFile(renderSettings.GetScenePath() / "exposures.json", exposures);
 
-		// Create lights according to scene size
-		// TODO
+		// Create lights according to scene size (or from estimations)
 		auto vecLights = X_PlaceLights(
 			Eigen::Vector3f(
 				pxMeshScene.GetGlobalBounds().minimum.x,
@@ -1067,6 +1090,11 @@ void SceneManager::X_ProcessThread(
 			for (size_t batchPose = 0; batchPose < currImages.size(); ++batchPose)
 			{
 				currCams[batchPose].LoadExtrinsics(currImages[batchPose].GetPosePath());
+				// Load exposure if it exists
+				if (hasExposure)
+				{
+					currCams[batchPose].SetExposure(SafeGet<float>(exposures, currImages[batchPose].GetFrame()));
+				}
 				// Store & update image number atomically
 				syncPoint->lock();
 				currCams[batchPose].SetImageNum(++imgCountDepth);
@@ -1112,7 +1140,7 @@ void SceneManager::X_ProcessThread(
 					unoccludedMasks.push_back(std::move(masks[check]));
 					unoccludedImages.push_back(std::move(currImages[check]));
 				}
-		}
+			}
 
 			// If batch contains useful images
 			if (!unoccludedImages.empty())
@@ -1151,12 +1179,12 @@ void SceneManager::X_ProcessThread(
 			imgCountScene += unoccludedImages.size();
 			syncPoint->unlock();
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
-	}
+		}
 
 		// Done with iteration
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 		X_CleanupScene(simulation, annotations, renderer, threadID);
-}
+	}
 }
 
 //---------------------------------------

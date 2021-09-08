@@ -102,46 +102,6 @@ protected:
 
 public:
 	//---------------------------------------
-	// Methods
-	//---------------------------------------
-
-	void CreateFromJSON(const rapidjson::Value& origin)
-	{
-		const rapidjson::Value* posVal;
-		const rapidjson::Value* colVal;
-		const rapidjson::Value* expVal;
-		const rapidjson::Value* intVal;
-		const rapidjson::Value* indVal;
-
-		// Fetch & store values from document if they exists
-
-		if(SafeHasMember(origin, "position", posVal))
-		{
-			SetPosition(SafeGetEigenVector<Eigen::Vector3f>(*posVal));
-		}
-
-		if (SafeHasMember(origin, "color", colVal))
-		{
-			color = SafeGetEigenVector<Eigen::Vector3f>(*colVal);
-		}
-			
-		if (SafeHasMember(origin, "exposure", expVal))
-		{
-			exposure = SafeGetValue<float>(*expVal);
-		}
-
-		if (SafeHasMember(origin, "intensity", intVal))
-		{
-			intensity = SafeGetValue<float>(*intVal);
-		}
-
-		if (SafeHasMember(origin, "castsIndirect", indVal))
-		{
-			castsIndirect = SafeGetValue<bool>(*indVal);
-		}
-	}
-
-	//---------------------------------------
 	// Constructors
 	//---------------------------------------
 
@@ -158,6 +118,50 @@ public:
 		exposure(exposure),
 		castsIndirect(castsIndirect)
 	{
+	}
+
+	Light(
+		LightParamsBase* params,
+		const rapidjson::Value& origin
+	) :
+		params(params),
+		color(Eigen::Vector3f().setOnes()),
+		intensity(1.0f),
+		exposure(0.0f),
+		castsIndirect(true)
+	{
+		const rapidjson::Value* posVal;
+		const rapidjson::Value* colVal;
+		const rapidjson::Value* expVal;
+		const rapidjson::Value* intVal;
+		const rapidjson::Value* indVal;
+
+		// Fetch & store values from document if they exists
+
+		if (SafeHasMember(origin, "position", posVal))
+		{
+			SetPosition(SafeGetEigenVector<Eigen::Vector3f>(*posVal));
+		}
+
+		if (SafeHasMember(origin, "color", colVal))
+		{
+			color = SafeGetEigenVector<Eigen::Vector3f>(*colVal);
+		}
+
+		if (SafeHasMember(origin, "exposure", expVal))
+		{
+			exposure = SafeGetValue<float>(*expVal);
+		}
+
+		if (SafeHasMember(origin, "intensity", intVal))
+		{
+			intensity = SafeGetValue<float>(*intVal);
+		}
+
+		if (SafeHasMember(origin, "castsIndirect", indVal))
+		{
+			castsIndirect = SafeGetValue<bool>(*indVal);
+		}
 	}
 
 	Light(const Light& copy) :

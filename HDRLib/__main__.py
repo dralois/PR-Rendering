@@ -26,12 +26,12 @@ mesh = None
 intr = (0, 0, 0, 0, 0, 0)
 
 gamma_correct = True
-store_debug_mesh = True
-store_debug_panorama = True
-randomize_samples = False
+store_debug_mesh = False
+store_debug_panorama = False
+randomize_samples = True
 solve_max_verts = 200000
 
-test_path = ".\\HDRLib\\Test\\3"
+test_path = ".\\HDRLib\\Test\\1"
 temp_path = ""
 
 # TODO: For each scene
@@ -195,7 +195,7 @@ except OSError:
         pickle.dump(exposure, stream)
     # Store solved exposure (convert to EV -> logarithmic) for future use
     with open(os.path.join(temp_path, os.pardir, "exposures.json"), mode="w") as stream:
-        exposures = dict(zip(frames.keys(), np.log2(exposure).tolist()))
+        exposures = dict(zip(frames.keys(), np.log2(exposure)[:,0].tolist()))
         json.dump(exposures, stream, indent=1)
 
 # 3) Reproject radiance
@@ -309,7 +309,7 @@ renderDone.wait()
 
 # Get HDR panorama (color + depth)
 pan_hdr = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
-pan_depth = rt._hit_pos[:,:,3:4]
+pan_depth = np.ma.array(rt._hit_pos[:,:,3:4], mask=rt._hit_pos[:,:,3:4]>1e+9)
 
 # Calculate raw luminance
 lum = raw_luminance(pan_hdr)
@@ -350,8 +350,7 @@ while True:
         lightPixel = np.uint32(np.mean(lightPixels, axis=0))
         # Calculate mean depth & color
         meanDepth = np.mean(pan_depth[lightPixels[:,1], lightPixels[:,0]])
-        meanColor = np.mean(pan_hdr[lightPixels[:,1], lightPixels[:,0]], axis=0)
-        meanColor /= pan_hdr[peakIdx[1], peakIdx[0]]
+        meanColor = np.mean(np.ma.array(pan_hdr, mask=pan_depth.mask * [1,1,1])[lightPixels[:,1], lightPixels[:,0]], axis=0)
         # Backproject to find its position
         lightPos = pan_depth_to_point(meanDepth, lightPixel, pan_depth.shape, best_candidate)
         # Append to json output

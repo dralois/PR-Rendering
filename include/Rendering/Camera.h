@@ -32,6 +32,7 @@ private:
 	int aaSamples;
 	std::string shadingOverride;
 	float exposure;
+	bool useExposure;
 
 	int imageNum;
 
@@ -65,8 +66,11 @@ private:
 		writer.Key("shadingOverride");
 		AddString(writer, shadingOverride);
 
-		writer.Key("exposure");
-		AddFloat(writer, exposure);
+		if(useExposure)
+		{
+			writer.Key("exposure");
+			AddFloat(writer, exposure);
+		}
 	}
 
 public:
@@ -79,6 +83,9 @@ public:
 	inline ModifiablePath GetSourceFile() const { return sourceFile; }
 	inline Eigen::Vector2f GetFOV() const { return Eigen::Vector2f(aspectFOV.y(), aspectFOV.z()); }
 	inline Eigen::Vector2f GetShift(Eigen::Vector2f shift) const { return lensShift; }
+
+	inline void SetExposure(float exp) { exposure = exp; }
+	inline float GetExposure() const { return exposure; }
 
 	inline void SetImageNum(int num) { imageNum = num; }
 	inline int GetImageNum() const { return imageNum; }
@@ -94,7 +101,7 @@ public:
 		int sampleCount,
 		int maxRayBounces,
 		const std::string& shading,
-		float sceneExposure
+		bool usesExp
 	)
 	{
 		resultFile = outputFile;
@@ -103,7 +110,7 @@ public:
 		aaSamples = sampleCount;
 		rayBounces = maxRayBounces;
 		shadingOverride = shading;
-		exposure = sceneExposure;
+		useExposure = usesExp;
 	}
 
 	inline void LoadIntrinsics(const Settings& settings)

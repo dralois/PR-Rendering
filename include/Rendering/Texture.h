@@ -241,11 +241,15 @@ private:
 
 	bool sceneLoaded;
 	ModifiablePath posePath;
+	std::string imageFrame;
 
 public:
 	//---------------------------------------
 	// Properties
 	//---------------------------------------
+
+	inline const std::string& GetFrame() const { return imageFrame; }
+	inline void SetFrame(const std::string& frame) { imageFrame = frame; }
 
 	inline ReferencePath GetPosePath() const { return posePath; }
 	inline void SetPosePath(ReferencePath path) { posePath = path; }
@@ -285,7 +289,8 @@ public:
 	SceneImage():
 		Texture(false, false),
 		sceneLoaded(false),
-		posePath()
+		posePath(),
+		imageFrame()
 	{
 	}
 };

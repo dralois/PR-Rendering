@@ -9,6 +9,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/prettywriter.h>
+
+#include <Helpers/PathUtils.h>
 #pragma warning(pop)
 
 #define MOVE_DOC(doc) std::move(static_cast<rapidjson::Document&>(doc.Move()))
@@ -19,7 +21,7 @@ typedef rapidjson::PrettyWriter<rapidjson::StringBuffer>& JSONWriterRef;
 //---------------------------------------
 // Fetch document from file to memory
 //---------------------------------------
-static bool CanReadJSONFile(std::string path, rapidjson::Document& doc)
+static bool CanReadJSONFile(ReferencePath path, rapidjson::Document& doc)
 {
 	// Open the file & check for problems
 	std::ifstream file(path.c_str());
