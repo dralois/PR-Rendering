@@ -4,26 +4,6 @@
 #define VEC_RELEASE(x) for(auto curr : x) { delete curr; } x.clear();
 
 //---------------------------------------
-// Load and parse json config file
-//---------------------------------------
-void SimManager::X_LoadConfig(ReferencePath configPath)
-{
-	std::cout << "Reading config file:\t" << configPath << std::endl;
-	// Open file in binary mode
-	FILE* pFile = fopen(configPath.string().c_str(), "rb");
-	// Determine size
-	size_t fileSize = boost::filesystem::file_size(configPath);
-	// Open und parse config file
-	rapidjson::Document jsonConfig;
-	char* buffer = new char[fileSize];
-	rapidjson::FileReadStream inFile(pFile, buffer, fileSize);
-	jsonConfig.ParseStream<0, rapidjson::UTF8<>, rapidjson::FileReadStream>(inFile);
-	// Create settings
-	pRenderSettings = new Settings(std::move(static_cast<rapidjson::Document&>(jsonConfig.Move())));
-	delete[] buffer;
-}
-
-//---------------------------------------
 // Creates output folder structure
 //---------------------------------------
 void SimManager::X_CreateOutputFolders()
@@ -181,7 +161,7 @@ void SimManager::X_SaveSceneFolders(ReferencePath path)
 void SimManager::RunSimulation()
 {
 	// Create mananger
-	SceneManager sceneMgr(pRenderSettings, vecpPxMesh, vecpRenderMesh);
+	SceneManager sceneMgr(*pRenderSettings, vecpPxMesh, vecpRenderMesh);
 
 	// Render all scenes
 	int currImageCount = 0;
@@ -202,17 +182,14 @@ void SimManager::RunSimulation()
 //---------------------------------------
 // Creates new simulation
 //---------------------------------------
-SimManager::SimManager(
-	ReferencePath configPath
-) :
-	vecpPxMesh(),
+SimManager::SimManager(Settings* pSettings) :
+	pRenderSettings(pSettings),
+	vecSceneFolders(),
 	vecpRenderMesh(),
-	pRenderSettings(NULL),
-	vecSceneFolders()
+	vecpPxMesh()
 {
 	// Init
 	PxManager::GetInstance().InitPhysx();
-	X_LoadConfig(configPath);
 	X_CreateOutputFolders();
 	X_LoadMeshes();
 

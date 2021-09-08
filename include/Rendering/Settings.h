@@ -119,7 +119,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriterRef writer) override
+	virtual void AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.StartObject();
 

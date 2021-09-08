@@ -25,7 +25,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) const = 0;
 
 public:
 
@@ -35,7 +35,7 @@ public:
 
 	virtual OSLShader* MakeCopy() const = 0;
 
-	virtual void AddToJSON(JSONWriterRef writer) override
+	virtual void AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.StartObject();
 		writer.Key("name");

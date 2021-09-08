@@ -39,6 +39,7 @@ protected:
 	// Properties
 	//---------------------------------------
 
+	bool X_TryGetGeometry(physx::PxGeometryHolder& out) const;
 	inline physx::PxVec3* X_GetVertices() { return (physx::PxVec3*) &vecVertices[0]; }
 	inline physx::PxU32* X_GetIndices() { return (physx::PxU32*) &vecIndices[0]; }
 
@@ -48,7 +49,7 @@ public:
 	//---------------------------------------
 
 	virtual void CreateMesh() override;
-	void AddRigidActor(physx::PxScene* scene);
+	void AddRigidActor(physx::PxScene* scene, physx::PxTransform trans);
 	void AddVelocity(physx::PxVec3 velocity);
 	void AddTorque(physx::PxVec3 torque);
 	void RemoveRigidActor(physx::PxScene* scene);
@@ -62,13 +63,13 @@ public:
 		return physx::PxBounds3::transformFast(meshTrans, bounds);
 	}
 
-	virtual const physx::PxTransform GetTransform() override;
+	virtual const physx::PxTransform GetTransform() const override;
 	virtual void SetTransform(physx::PxTransform trans) override;
-	virtual const physx::PxVec3 GetPosition() override;
+	virtual const physx::PxVec3 GetPosition() const override;
 	virtual void SetPosition(physx::PxVec3 pos) override;
-	virtual const physx::PxQuat GetRotation() override;
+	virtual const physx::PxQuat GetRotation() const override;
 	virtual void SetRotation(physx::PxQuat rot) override;
-	virtual const physx::PxVec3 GetScale() override;
+	virtual const physx::PxVec3 GetScale() const override;
 	virtual void SetScale(physx::PxVec3 scale) override;
 
 	//---------------------------------------

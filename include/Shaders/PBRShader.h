@@ -22,7 +22,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	void X_AddToJSON(JSONWriterRef writer) override
+	void X_AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.Key("diffusePath");
 		AddString(writer, diffuse.GetPath().string());

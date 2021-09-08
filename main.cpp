@@ -32,11 +32,21 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	// Create simulation manager
-	SimManager simulation(configPath);
+	// Parse config file
+	rapidjson::Document json;
+	if (CanReadJSONFile(configPath.string(), json))
+	{
+		// Create simulation manager
+		SimManager simulation(new Settings(MOVE_DOC(json)));
 
-	// Run the simulation
-	simulation.RunSimulation();
+		// Run the simulation
+		simulation.RunSimulation();
 
-	return 0;
+		return 0;
+	}
+	else
+	{
+		std::cout << "Config file broken, exiting." << std::endl;
+		return -1;
+	}
 }

@@ -26,7 +26,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer) override
+	virtual void X_AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.Key("objectID");
 		writer.Int(GetObjId());

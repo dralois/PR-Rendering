@@ -23,7 +23,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	void X_AddToJSON(JSONWriterRef writer) override
+	void X_AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.Key("maskRed");
 		writer.Int(maskRed);

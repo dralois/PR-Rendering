@@ -35,7 +35,6 @@ private:
 	//---------------------------------------
 
 	void X_SaveSceneFolders(ReferencePath path);
-	void X_LoadConfig(ReferencePath configPath);
 	void X_CreateOutputFolders();
 	void X_LoadMeshes();
 
@@ -50,6 +49,6 @@ public:
 	// Construtors
 	//---------------------------------------
 
-	SimManager(ReferencePath configPath);
+	SimManager(Settings* pSettings);
 	~SimManager();
 };

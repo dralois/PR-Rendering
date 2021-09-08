@@ -5,7 +5,7 @@ using namespace physx;
 //---------------------------------------
 // Create & add actor to scene
 //---------------------------------------
-void PxMesh::AddRigidActor(PxScene* scene)
+void PxMesh::AddRigidActor(PxScene* scene, PxTransform trans)
 {
 	// Remove existing actor
 	if (pPxActor)
@@ -23,14 +23,14 @@ void PxMesh::AddRigidActor(PxScene* scene)
 	if (X_IsStatic())
 	{
 		// Create static rigidbody
-		pPxActor = PxGetPhysics().createRigidStatic(meshTrans);
+		pPxActor = PxGetPhysics().createRigidStatic(trans);
 		pPxActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
 		pPxActor->setName(GetName().c_str());
 	}
 	else
 	{
 		// Create dynamic rigidbody
-		pPxActor = PxGetPhysics().createRigidDynamic(meshTrans);
+		pPxActor = PxGetPhysics().createRigidDynamic(trans);
 		pPxActor->setName(GetName().c_str());
 		// Setup mass & enabled continuous collision detection
 		PxRigidBodyExt::updateMassAndInertia(*((PxRigidDynamic*)pPxActor), 10.0f);
@@ -98,16 +98,9 @@ void PxMesh::CreateMesh()
 }
 
 //---------------------------------------
-// Get position of actor
+// Position property of actor
 //---------------------------------------
-const PxVec3 PxMesh::GetPosition()
-{
-	return GetTransform().p;
-}
-
-//---------------------------------------
-// Set position of actor
-//---------------------------------------
+const PxVec3 PxMesh::GetPosition() const { return GetTransform().p; }
 void PxMesh::SetPosition(PxVec3 pos)
 {
 	PxTransform trans = PxTransform(pos, GetTransform().q);
@@ -115,16 +108,9 @@ void PxMesh::SetPosition(PxVec3 pos)
 }
 
 //---------------------------------------
-// Get rotation of actor
+// Rotation property of actor
 //---------------------------------------
-const PxQuat PxMesh::GetRotation()
-{
-	return GetTransform().q;
-}
-
-//---------------------------------------
-// Set rotation of actor
-//---------------------------------------
+const PxQuat PxMesh::GetRotation() const { return GetTransform().q; }
 void PxMesh::SetRotation(PxQuat rot)
 {
 	PxTransform trans = PxTransform(GetTransform().p, rot);
@@ -132,35 +118,69 @@ void PxMesh::SetRotation(PxQuat rot)
 }
 
 //---------------------------------------
-// Get scale of physx mesh
+// Attempt to fetch internal geometry
 //---------------------------------------
-const PxVec3 PxMesh::GetScale()
+bool PxMesh::X_TryGetGeometry(PxGeometryHolder& out) const
 {
 	// Shape has to exist
 	if (!pPxShape)
-		return meshScl;
+		return false;
 
-	PxGeometryHolder geom = pPxShape->getGeometry();
-	// Update scale depending on geometry type
-	switch (geom.getType())
+	// Depending on geometry type
+	switch (pPxShape->getGeometryType())
 	{
 	case PxGeometryType::eCONVEXMESH:
 	{
-		meshScl = pPxShape->getGeometry().convexMesh().scale.scale;
-		break;
+		PxConvexMeshGeometry geom;
+		// Retrieve & output convex geometry
+		if (pPxShape->getConvexMeshGeometry(geom))
+		{
+			out.storeAny(geom);
+			return true;
+		}
 	}
 	case PxGeometryType::eTRIANGLEMESH:
 	{
-		meshScl = pPxShape->getGeometry().triangleMesh().scale.scale;
-		break;
+		PxTriangleMeshGeometry geom;
+		// Retrieve & output triangle geometry
+		if (pPxShape->getTriangleMeshGeometry(geom))
+		{
+			out.storeAny(geom);
+			return true;
+		}
 	}
 	default:
 	{
-		std::cout << "Get scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
-		break;
+		// Everything else is unsupported
+		std::cout << "Get geometry error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
+		return false;
 	}
 	}
-	// Return updated scale
+}
+
+//---------------------------------------
+// Get scale of physx mesh
+//---------------------------------------
+const PxVec3 PxMesh::GetScale() const
+{
+	PxGeometryHolder geom;
+	// Try to get the geometry holder
+	if(X_TryGetGeometry(geom))
+	{
+		// Depending on type
+		switch (geom.getType())
+		{
+		case PxGeometryType::eCONVEXMESH:
+			// Get convex geometry scale
+			return geom.convexMesh().scale.scale;
+		case PxGeometryType::eTRIANGLEMESH:
+			// Get triangle geometry scale
+			return geom.triangleMesh().scale.scale;
+		default:
+			break;
+		}
+	}
+	// If not set return internal
 	return meshScl;
 }
 
@@ -169,47 +189,45 @@ const PxVec3 PxMesh::GetScale()
 //---------------------------------------
 void PxMesh::SetScale(PxVec3 scale)
 {
-	// Update bounds & scale
-	bounds.scaleFast(1.0f / meshScl.magnitude());
-	bounds.scaleFast(scale.magnitude());
+	PxGeometryHolder geom;
+	// Try to get the geometry holder
+	if (X_TryGetGeometry(geom))
+	{
+		// Depending on type
+		switch (geom.getType())
+		{
+		case PxGeometryType::eCONVEXMESH:
+			// Set convex geometry scale
+			geom.convexMesh().scale = PxMeshScale(scale);
+			pPxShape->setGeometry(geom.convexMesh());
+			break;
+		case PxGeometryType::eTRIANGLEMESH:
+			// Set triangle geometry scale
+			geom.triangleMesh().scale = PxMeshScale(scale);
+			pPxShape->setGeometry(geom.triangleMesh());
+			break;
+		default:
+			return;
+		}
+		// Also update bounds
+		bounds.scaleFast(1.0f / meshScl.magnitude());
+		bounds.scaleFast(scale.magnitude());
+	}
+	// Always update internal
 	meshScl = scale;
+}
 
-	// Shape has to exist
-	if (!pPxShape)
-		return;
+//---------------------------------------
+// Get transform of actor
+//---------------------------------------
+const PxTransform PxMesh::GetTransform() const
+{
+	// Actor must exist
+	if (!pPxActor)
+		return meshTrans;
 
-	// Depending on geometry type
-	switch (pPxShape->getGeometryType())
-	{
-	case PxGeometryType::eCONVEXMESH:
-	{
-		PxConvexMeshGeometry geom;
-		// Retrieve convex mesh & change scale
-		if (pPxShape->getConvexMeshGeometry(geom))
-		{
-			geom.scale = PxMeshScale(meshScl);
-			pPxShape->setGeometry(geom);
-		}
-		break;
-	}
-	case PxGeometryType::eTRIANGLEMESH:
-	{
-		PxTriangleMeshGeometry geom;
-		// Retrieve triangle mesh & change scale
-		if (pPxShape->getTriangleMeshGeometry(geom))
-		{
-			geom.scale = PxMeshScale(meshScl);
-			pPxShape->setGeometry(geom);
-		}
-		break;
-	}
-	default:
-	{
-		// Everything else is unsupported
-		std::cout << "Set scale error: Unsupported geometry type:" << pPxShape->getGeometryType() << std::endl;
-		break;
-	}
-	}
+	// Fetch & return pose
+	return pPxActor->getGlobalPose();
 }
 
 //---------------------------------------
@@ -217,29 +235,16 @@ void PxMesh::SetScale(PxVec3 scale)
 //---------------------------------------
 void PxMesh::SetTransform(PxTransform trans)
 {
-	// Save
-	meshTrans = trans;
-
 	// If rigid actor attached
 	if (pPxActor)
 	{
 		// Move actor
-		pPxActor->setGlobalPose(meshTrans);
+		pPxActor->setGlobalPose(trans);
 	}
-}
-
-//---------------------------------------
-// Get transform of actor
-//---------------------------------------
-const PxTransform PxMesh::GetTransform()
-{
-	// Actor must exist
-	if (!pPxActor)
-		return meshTrans;
-
-	// Fetch & return pose
-	meshTrans = pPxActor->getGlobalPose();
-	return meshTrans;
+	// Always update internals
+	meshTrans = trans;
+	meshPos = trans.p;
+	meshRot = trans.q;
 }
 
 //---------------------------------------

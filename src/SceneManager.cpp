@@ -15,10 +15,10 @@ using namespace physx;
 //---------------------------------------
 RenderMesh SceneManager::X_CreateSceneMesh() const
 {
-	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
-	std::string sceneMesh(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scene_mesh"));
+	float toMeters = SafeGet<float>(renderSettings.GetJSONConfig(), "scene_unit");
+	std::string sceneMesh(SafeGet<const char*>(renderSettings.GetJSONConfig(), "scene_mesh"));
 	// Create mesh file path
-	ModifiablePath meshPath(pRenderSettings->GetScenePath());
+	ModifiablePath meshPath(renderSettings.GetScenePath());
 	meshPath.append(sceneMesh);
 	// Create & return mesh
 	RenderMesh meshScene(meshPath, "scene", 0, true);
@@ -31,10 +31,10 @@ RenderMesh SceneManager::X_CreateSceneMesh() const
 //---------------------------------------
 PxMeshTriangle SceneManager::X_PxCreateSceneMesh() const
 {
-	float toMeters = SafeGet<float>(pRenderSettings->GetJSONConfig(), "scene_unit");
-	std::string sceneMesh(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scene_mesh"));
+	float toMeters = SafeGet<float>(renderSettings.GetJSONConfig(), "scene_unit");
+	std::string sceneMesh(SafeGet<const char*>(renderSettings.GetJSONConfig(), "scene_mesh"));
 	// Create mesh file path
-	ModifiablePath meshPath(pRenderSettings->GetScenePath());
+	ModifiablePath meshPath(renderSettings.GetScenePath());
 	meshPath.append(sceneMesh);
 	// Create physx mesh of scan scene
 	PxMeshTriangle pxMeshScene(meshPath, "scene", 0);
@@ -81,7 +81,7 @@ physx::PxScene* SceneManager::X_PxCreateSimulation(
 
 	// Create scene & add mesh
 	PxScene* pCurrScene = PxGetPhysics().createScene(sceneDesc);
-	sceneMesh.AddRigidActor(pCurrScene);
+	sceneMesh.AddRigidActor(pCurrScene, sceneMesh.GetTransform());
 
 	// Return simulation
 	return pCurrScene;
@@ -121,18 +121,18 @@ std::vector<PxMeshConvex> SceneManager::X_PxCreateObjs(
 
 	// Simulation objects
 	std::vector<PxMeshConvex> newBodies;
-	newBodies.reserve(pRenderSettings->GetSimulationSettings().SimulationObjects);
+	newBodies.reserve(renderSettings.GetSimulationSettings().SimulationObjects);
 
 	// Setup & fetch params
 	const PxVec3 sceneCenter = sceneMesh.GetGlobalBounds().getCenter();
 	const PxVec3 sceneExtends = sceneMesh.GetGlobalBounds().getExtents();
-	const PxVec3 spawnMin = eigenToPx(pRenderSettings->GetSpawnSettings().SpawnMin);
-	const PxVec3 spawnMax = eigenToPx(pRenderSettings->GetSpawnSettings().SpawnMax);
-	const PxVec3 velMax = eigenToPx(pRenderSettings->GetSpawnSettings().VelocityMax);
-	const PxVec3 trqMax = eigenToPx(pRenderSettings->GetSpawnSettings().TorqueMax);
+	const PxVec3 spawnMin = eigenToPx(renderSettings.GetSpawnSettings().SpawnMin);
+	const PxVec3 spawnMax = eigenToPx(renderSettings.GetSpawnSettings().SpawnMax);
+	const PxVec3 velMax = eigenToPx(renderSettings.GetSpawnSettings().VelocityMax);
+	const PxVec3 trqMax = eigenToPx(renderSettings.GetSpawnSettings().TorqueMax);
 
 	// For each object
-	for (int i = 0; i < pRenderSettings->GetSimulationSettings().SimulationObjects; ++i)
+	for (int i = 0; i < renderSettings.GetSimulationSettings().SimulationObjects; ++i)
 	{
 		// Fetch random object & create instance with new id
 		int randObj = uniformRandInt(0, vecpPxMeshObjs.size() - 1);
@@ -146,11 +146,10 @@ std::vector<PxMeshConvex> SceneManager::X_PxCreateObjs(
 
 		// Set pose & actor
 		PxTransform pose(randPos, PxQuat(PxIdentity));
-		currObj.SetTransform(pose);
-		currObj.AddRigidActor(simulation);
+		currObj.AddRigidActor(simulation, pose);
 
 		// Possibly add random velocity & torque impulses
-		if (applyForce(pRenderSettings->GetSpawnSettings().ApplyProbability))
+		if (applyForce(renderSettings.GetSpawnSettings().ApplyProbability))
 		{
 			currObj.AddVelocity(uniformRandVec(-velMax, velMax));
 			currObj.AddTorque(uniformRandVec(-trqMax, trqMax));
@@ -266,7 +265,7 @@ void SceneManager::X_ConvertToRenderfile(
 
 	// Add settings
 	writer.Key("settings");
-	pRenderSettings->AddToJSON(writer);
+	renderSettings.AddToJSON(writer);
 
 	// Add provided cameras
 	writer.Key("cameras");
@@ -316,7 +315,7 @@ void SceneManager::X_BuildSceneDepth(
 
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+	renderRes *= renderSettings.GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
@@ -385,14 +384,14 @@ void SceneManager::X_BuildObjectsDepth(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+	renderRes *= renderSettings.GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create depth output texture
 		Texture currDepth(true, true);
-		currDepth.SetPath(pRenderSettings->GetImagePath("body_depth", cams[curr].GetImageNum()), true, "exr");
+		currDepth.SetPath(renderSettings.GetImagePath("body_depth", cams[curr].GetImageNum()), true, "exr");
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currDepth.GetPath(),
@@ -432,14 +431,14 @@ void SceneManager::X_BuildObjectsLabel(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+	renderRes *= renderSettings.GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create label output texture
 		Texture currLabel(true, false);
-		currLabel.SetPath(pRenderSettings->GetImagePath("body_label", cams[curr].GetImageNum()), true, "exr");
+		currLabel.SetPath(renderSettings.GetImagePath("body_label", cams[curr].GetImageNum()), true, "exr");
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currLabel.GetPath(),
@@ -468,6 +467,7 @@ void SceneManager::X_BuildObjectsLabel(
 
 //---------------------------------------
 // Build objects PBR renderfile
+// TODO
 //---------------------------------------
 void SceneManager::X_BuildObjectsPBR(
 	JSONWriterRef writer,
@@ -480,14 +480,14 @@ void SceneManager::X_BuildObjectsPBR(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+	renderRes *= renderSettings.GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create PBR output texture
 		Texture currPBR(false, false);
-		currPBR.SetPath(pRenderSettings->GetImagePath("body_rgb", cams[curr].GetImageNum()), false);
+		currPBR.SetPath(renderSettings.GetImagePath("body_rgb", cams[curr].GetImageNum()), false);
 		// Setup rendering params
 		// TODO: Exposure
 		cams[curr].SetupRendering(
@@ -516,7 +516,7 @@ void SceneManager::X_BuildObjectsPBR(
 
 	// Setup scene for indirect light & shadows
 	Texture diffuseScene;
-	diffuseScene.SetPath(pRenderSettings->GetScenePath() / "mesh.refined_0.png", false);
+	diffuseScene.SetPath(renderSettings.GetScenePath() / "mesh.refined_0.png", false);
 	PBRShader* scenePBR = new PBRShader(diffuseScene);
 	sceneMesh.SetShader(scenePBR);
 
@@ -540,14 +540,14 @@ void SceneManager::X_BuildObjectsAO(
 {
 	// Determine render resolution
 	Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-	renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+	renderRes *= renderSettings.GetEngineSettings().RenderScale;
 
 	// For every pose
 	for (int curr = 0; curr < cams.size(); ++curr)
 	{
 		// Create ambient occlusion output texture
 		Texture currAO(false, false);
-		currAO.SetPath(pRenderSettings->GetImagePath("body_ao", cams[curr].GetImageNum()), false);
+		currAO.SetPath(renderSettings.GetImagePath("body_ao", cams[curr].GetImageNum()), false);
 		// Setup rendering params
 		cams[curr].SetupRendering(
 			currAO.GetPath(),
@@ -635,7 +635,7 @@ std::vector<Mask> SceneManager::X_RenderDepthMasks(
 
 		// Create blended depth texture & coverage mask
 		maskedResults[curr].LoadBlendedDepth(ComputeDepthBlend(objectDepths[curr].GetTexture(), sceneDepths[curr].GetTexture()));
-		maskedResults[curr].SetPath(pRenderSettings->GetImagePath("body_mask", cams[curr].GetImageNum()), false);
+		maskedResults[curr].SetPath(renderSettings.GetImagePath("body_mask", cams[curr].GetImageNum()), false);
 		maskedResults[curr].SetTexture(
 			ComputeOcclusionMask(objectDepths[curr].GetTexture(), sceneDepths[curr].GetTexture(), maskedResults[curr].Occluded())
 		);
@@ -685,7 +685,7 @@ void SceneManager::X_RenderSegments(
 
 		// Create & store masked segmentation texture
 		Texture segResult(false, true);
-		segResult.SetPath(pRenderSettings->GetImagePath("segs", cams[curr].GetImageNum(), true), false);
+		segResult.SetPath(renderSettings.GetImagePath("segs", cams[curr].GetImageNum(), true), false);
 		segResult.SetTexture(ComputeSegmentMask(objectLabels[curr].GetTexture(), masks[curr].GetTexture()));
 		segResult.StoreTexture();
 
@@ -708,7 +708,6 @@ void SceneManager::X_RenderSegments(
 
 //---------------------------------------
 // Render synthetic objects & create blend
-// TODO!
 //---------------------------------------
 void SceneManager::X_RenderPBRBlend(
 	Blender::BlenderRenderer* renderer,
@@ -760,7 +759,7 @@ void SceneManager::X_RenderPBRBlend(
 
 		// Blend & store result
 		Texture blendResult(false, false);
-		blendResult.SetPath(pRenderSettings->GetImagePath("rgb", cams[curr].GetImageNum(), true), false);
+		blendResult.SetPath(renderSettings.GetImagePath("rgb", cams[curr].GetImageNum(), true), false);
 		blendResult.SetTexture(ComputeRGBBlend(
 			objectPBRs[curr].GetTexture(),
 			objectsAO[curr].GetTexture(),
@@ -773,7 +772,7 @@ void SceneManager::X_RenderPBRBlend(
 
 //---------------------------------------
 // Places lights according to scene dims
-// TODO!
+// TODO
 //---------------------------------------
 std::vector<Light> SceneManager::X_PlaceLights(
 	Eigen::Vector3f min,
@@ -781,6 +780,10 @@ std::vector<Light> SceneManager::X_PlaceLights(
 ) const
 {
 	std::vector<Light> newLights;
+
+	// TODO
+	ModifiablePath lights = renderSettings.GetScenePath();
+	lights.concat("lights.json");
 
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -822,11 +825,11 @@ void SceneManager::X_ComputeImagesToProcess(
 		filterFile >> fileEdgeThreshold >> fileEdgeWeak >> fileEdgeStrong >> fileEdgeFactor >> fileFrequencyFactor;
 
 		// If they match, the list still accurate
-		if (pRenderSettings->GetFilterSettings().EdgeThreshold == fileEdgeThreshold &&
-			pRenderSettings->GetFilterSettings().EdgeWeak == fileEdgeWeak &&
-			pRenderSettings->GetFilterSettings().EdgeStrong == fileEdgeStrong &&
-			pRenderSettings->GetFilterSettings().EdgeFactor == fileEdgeFactor &&
-			pRenderSettings->GetFilterSettings().FrequencyFactor == fileFrequencyFactor)
+		if (renderSettings.GetFilterSettings().EdgeThreshold == fileEdgeThreshold &&
+			renderSettings.GetFilterSettings().EdgeWeak == fileEdgeWeak &&
+			renderSettings.GetFilterSettings().EdgeStrong == fileEdgeStrong &&
+			renderSettings.GetFilterSettings().EdgeFactor == fileEdgeFactor &&
+			renderSettings.GetFilterSettings().FrequencyFactor == fileFrequencyFactor)
 		{
 			return;
 		}
@@ -839,11 +842,11 @@ void SceneManager::X_ComputeImagesToProcess(
 
 	// Clear file and store parameters
 	filterFile.open(dir / "filteredList.txt", std::ios_base::out | std::ios_base::trunc);
-	filterFile << pRenderSettings->GetFilterSettings().EdgeThreshold << " "
-		<< pRenderSettings->GetFilterSettings().EdgeWeak << " "
-		<< pRenderSettings->GetFilterSettings().EdgeStrong << " "
-		<< pRenderSettings->GetFilterSettings().EdgeFactor << " "
-		<< pRenderSettings->GetFilterSettings().FrequencyFactor << "\n";
+	filterFile << renderSettings.GetFilterSettings().EdgeThreshold << " "
+		<< renderSettings.GetFilterSettings().EdgeWeak << " "
+		<< renderSettings.GetFilterSettings().EdgeStrong << " "
+		<< renderSettings.GetFilterSettings().EdgeFactor << " "
+		<< renderSettings.GetFilterSettings().FrequencyFactor << "\n";
 
 	// Used to track candidates
 	struct ClearCandidate
@@ -878,9 +881,9 @@ void SceneManager::X_ComputeImagesToProcess(
 					// Compute blurriness
 					if (!ComputeIsBlurry(
 						cv::imread(curr.Path.string()),
-						pRenderSettings->GetFilterSettings().EdgeWeak,
-						pRenderSettings->GetFilterSettings().EdgeStrong,
-						pRenderSettings->GetFilterSettings().EdgeThreshold,
+						renderSettings.GetFilterSettings().EdgeWeak,
+						renderSettings.GetFilterSettings().EdgeStrong,
+						renderSettings.GetFilterSettings().EdgeThreshold,
 						curr.EdgeWeight,
 						curr.Frequency
 					))
@@ -900,8 +903,8 @@ void SceneManager::X_ComputeImagesToProcess(
 
 	// Calculate threshold values (average edge of all images, average frequency of candidates)
 	float normedEdge = ((1.0f - (static_cast<float>(candidates.size()) / totalImgs)) * avgEdge) / totalImgs;
-	float edgeThreshold = pRenderSettings->GetFilterSettings().EdgeFactor * normedEdge;
-	float freqThreshold = pRenderSettings->GetFilterSettings().FrequencyFactor * (avgFreq / candidates.size());
+	float edgeThreshold = renderSettings.GetFilterSettings().EdgeFactor * normedEdge;
+	float freqThreshold = renderSettings.GetFilterSettings().FrequencyFactor * (avgFreq / candidates.size());
 
 	// Store non-blurry candidates in the filtered list file
 	for (const auto& curr : candidates)
@@ -959,6 +962,7 @@ std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
 
 //---------------------------------------
 // Processing is done multithreaded
+// TODO
 //---------------------------------------
 void SceneManager::X_ProcessThread(
 	Blender::BlenderRenderer* renderer,
@@ -968,35 +972,35 @@ void SceneManager::X_ProcessThread(
 {
 	// Only the first thread computes non-blurry images
 	syncPoint->lock();
-	X_ComputeImagesToProcess(pRenderSettings->GetSceneRGBPath());
+	X_ComputeImagesToProcess(renderSettings.GetSceneRGBPath());
 	syncPoint->unlock();
 
 	// Get non blurry images
-	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(pRenderSettings->GetSceneRGBPath());
+	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(renderSettings.GetSceneRGBPath());
 
 	// Make sure there are any images
 	if (sceneImages.empty())
 		return;
 
 	// Create camera blueprint for scene
-	camBlueprint.LoadIntrinsics(*pRenderSettings);
+	camBlueprint.LoadIntrinsics(renderSettings);
 
 	// Control params
-	int maxIters = pRenderSettings->GetSimulationSettings().SceneIterations;
+	int maxIters = renderSettings.GetSimulationSettings().SceneIterations;
 	size_t poseCount = sceneImages.size();
-	size_t batchSize = pRenderSettings->GetSimulationSettings().BatchSize;
+	size_t batchSize = renderSettings.GetSimulationSettings().BatchSize;
 	size_t batchMax = ceil(static_cast<float>(poseCount) / static_cast<float>(batchSize));
-	ModifiablePath scenePath = boost::filesystem::relative(pRenderSettings->GetSceneRGBPath());
+	ModifiablePath scenePath = boost::filesystem::relative(renderSettings.GetSceneRGBPath());
 
 	// For each scene iteration
-	for (int iter = 0; iter < maxIters && imgCountScene < pRenderSettings->GetSimulationSettings().SceneLimit; ++iter)
+	for (int iter = 0; iter < maxIters && imgCountScene < renderSettings.GetSimulationSettings().SceneLimit; ++iter)
 	{
 		renderer->LogPerformance("Iteration " + std::to_string(iter + 1), threadID);
 
 		// Create annotations manager
-		ModifiablePath annotationPath = pRenderSettings->GetFinalPath() / "annotations";
+		ModifiablePath annotationPath = renderSettings.GetFinalPath() / "annotations";
 		Eigen::Vector2i renderRes = camBlueprint.GetIntrinsics().GetResolution();
-		renderRes *= pRenderSettings->GetEngineSettings().RenderScale;
+		renderRes *= renderSettings.GetEngineSettings().RenderScale;
 		auto annotations = new AnnotationsManager(annotationPath, renderRes);
 
 		syncPoint->lock();
@@ -1010,7 +1014,10 @@ void SceneManager::X_ProcessThread(
 		float maxDist = 0.0f;
 		auto simulation = X_PxCreateSimulation(pxMeshScene, maxDist);
 
+		// TODO load scene exposures
+
 		// Create lights according to scene size
+		// TODO
 		auto vecLights = X_PlaceLights(
 			Eigen::Vector3f(
 				pxMeshScene.GetGlobalBounds().minimum.x,
@@ -1032,13 +1039,13 @@ void SceneManager::X_ProcessThread(
 		auto vecPxObjs = X_PxCreateObjs(randGen, pxMeshScene, simulation);
 
 		// Run the simulation
-		X_PxRunSim(simulation, 1.0f / 50.0f, pRenderSettings->GetSimulationSettings().SimulationSteps);
+		X_PxRunSim(simulation, 1.0f / 50.0f, renderSettings.GetSimulationSettings().SimulationSteps);
 
 		// Save results
 		auto vecObjs = X_PxSaveSimResults(vecPxObjs);
 
 		// For every batch
-		for (size_t batch = 0; batch < batchMax && imgCountScene < pRenderSettings->GetSimulationSettings().SceneLimit; ++batch)
+		for (size_t batch = 0; batch < batchMax && imgCountScene < renderSettings.GetSimulationSettings().SceneLimit; ++batch)
 		{
 			renderer->LogPerformance("Batch " + std::to_string(batch + 1), threadID);
 			std::cout << "Scene\t" << scenePath << ":\tIteration\t" << iter + 1 << "/" << maxIters
@@ -1094,7 +1101,7 @@ void SceneManager::X_ProcessThread(
 					currCams[check].SetImageNum(++imgCountUnoccluded);
 					syncPoint->unlock();
 					// Store the blended depth
-					ModifiablePath depthPath = pRenderSettings->GetImagePath("depth", imgCountUnoccluded, true);
+					ModifiablePath depthPath = renderSettings.GetImagePath("depth", imgCountUnoccluded, true);
 #if STORE_DEBUG_TEX
 					masks[check].StoreBlendedDepth01(depthPath, FLT_EPSILON, maxDist);
 #else
@@ -1166,7 +1173,7 @@ int SceneManager::ProcessNext(
 	// Create threaded renderer (Each process needs ~4GB!)
 	auto syncPoint = new boost::mutex();
 	auto cpuCount = std::thread::hardware_concurrency() / 2U;
-	auto memCount = (SafeGet<int>(pRenderSettings->GetJSONConfig(), "mem_available") - 1U) / 4U;
+	auto memCount = (SafeGet<int>(renderSettings.GetJSONConfig(), "mem_available") - 1U) / 4U;
 	auto processCount = std::min(cpuCount, memCount);
 	auto render = new Blender::BlenderRenderer(processCount);
 
@@ -1196,14 +1203,14 @@ int SceneManager::ProcessNext(
 // Create new scene manager
 //---------------------------------------
 SceneManager::SceneManager(
-	Settings* settings,
-	const std::vector<PxMeshConvex*>& vecPhysxObjs,
-	const std::vector<RenderMesh*>& vecArnoldObjs
+	const Settings& settings,
+	const std::vector<PxMeshConvex*>& vecPxMeshObjs,
+	const std::vector<RenderMesh*>& vecRenderMeshObjs
 ) :
 	camBlueprint(),
-	vecpPxMeshObjs(vecPhysxObjs),
-	vecpRenderMeshObjs(vecArnoldObjs),
-	pRenderSettings(settings),
+	vecpPxMeshObjs(vecPxMeshObjs),
+	vecpRenderMeshObjs(vecRenderMeshObjs),
+	renderSettings(settings),
 	imgCountDepth(0),
 	imgCountUnoccluded(0),
 	imgCountScene(0)

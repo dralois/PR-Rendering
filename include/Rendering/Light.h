@@ -25,7 +25,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) const = 0;
 
 public:
 	//---------------------------------------
@@ -34,7 +34,7 @@ public:
 
 	virtual LightParamsBase* MakeCopy() const = 0;
 
-	virtual void AddToJSON(JSONWriterRef writer) override
+	virtual void AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.Key("type");
 		AddString(writer, type);
@@ -82,7 +82,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer) override
+	virtual void X_AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.Key("color");
 		AddEigenVector<Eigen::Vector3f>(writer, color);
@@ -101,6 +101,46 @@ protected:
 	}
 
 public:
+	//---------------------------------------
+	// Methods
+	//---------------------------------------
+
+	void CreateFromJSON(const rapidjson::Value& origin)
+	{
+		const rapidjson::Value* posVal;
+		const rapidjson::Value* colVal;
+		const rapidjson::Value* expVal;
+		const rapidjson::Value* intVal;
+		const rapidjson::Value* indVal;
+
+		// Fetch & store values from document if they exists
+
+		if(SafeHasMember(origin, "position", posVal))
+		{
+			SetPosition(SafeGetEigenVector<Eigen::Vector3f>(*posVal));
+		}
+
+		if (SafeHasMember(origin, "color", colVal))
+		{
+			color = SafeGetEigenVector<Eigen::Vector3f>(*colVal);
+		}
+			
+		if (SafeHasMember(origin, "exposure", expVal))
+		{
+			exposure = SafeGetValue<float>(*expVal);
+		}
+
+		if (SafeHasMember(origin, "intensity", intVal))
+		{
+			intensity = SafeGetValue<float>(*intVal);
+		}
+
+		if (SafeHasMember(origin, "castsIndirect", indVal))
+		{
+			castsIndirect = SafeGetValue<bool>(*indVal);
+		}
+	}
+
 	//---------------------------------------
 	// Constructors
 	//---------------------------------------
@@ -162,7 +202,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer)
+	virtual void X_AddToJSON(JSONWriterRef writer) const
 	{
 	}
 
@@ -202,7 +242,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer)
+	virtual void X_AddToJSON(JSONWriterRef writer) const
 	{
 		writer.Key("spotAngle");
 		AddFloat(writer, spotAngle);
@@ -241,7 +281,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer)
+	virtual void X_AddToJSON(JSONWriterRef writer) const
 	{
 	}
 
@@ -282,7 +322,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer)
+	virtual void X_AddToJSON(JSONWriterRef writer) const
 	{
 		writer.Key("shape");
 		AddString(writer, shape);

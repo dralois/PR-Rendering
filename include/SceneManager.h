@@ -49,7 +49,7 @@ private:
 	const std::vector<RenderMesh*> vecpRenderMeshObjs;
 
 	// Other
-	Settings* pRenderSettings;
+	const Settings& renderSettings;
 
 	// Multithreading
 	int imgCountDepth;
@@ -220,8 +220,8 @@ public:
 	//---------------------------------------
 
 	SceneManager(
-		Settings* settings,
-		const std::vector<PxMeshConvex*>& vecPhysxObjs,
-		const std::vector<RenderMesh*>& vecArnoldObjs
+		const Settings& settings,
+		const std::vector<PxMeshConvex*>& vecPxMeshObjs,
+		const std::vector<RenderMesh*>& vecRenderMeshObjs
 	);
 };

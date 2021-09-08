@@ -54,12 +54,12 @@ public:
 	// Properties
 	//---------------------------------------
 
-	virtual const Trans GetTransform() = 0;
+	virtual const Trans GetTransform() const = 0;
 	virtual void SetTransform(Trans trans) = 0;
-	virtual const Vec GetPosition() = 0;
+	virtual const Vec GetPosition() const = 0;
 	virtual void SetPosition(Vec pos) = 0;
-	virtual const Quat GetRotation() = 0;
+	virtual const Quat GetRotation() const = 0;
 	virtual void SetRotation(Quat rot) = 0;
-	virtual const Vec GetScale() = 0;
+	virtual const Vec GetScale() const = 0;
 	virtual void SetScale(Vec scale) = 0;
 };

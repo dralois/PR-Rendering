@@ -1,15 +1,50 @@
 #pragma once
 
 #include <string>
+#include <fstream>
+#include <iostream>
 
 #pragma warning(push, 0)
 #include <rapidjson/stream.h>
 #include <rapidjson/document.h>
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 #pragma warning(pop)
 
+#define MOVE_DOC(doc) std::move(static_cast<rapidjson::Document&>(doc.Move()))
+
 typedef rapidjson::PrettyWriter<rapidjson::StringBuffer> JSONWriter;
 typedef rapidjson::PrettyWriter<rapidjson::StringBuffer>& JSONWriterRef;
+
+//---------------------------------------
+// Fetch document from file to memory
+//---------------------------------------
+static bool CanReadJSONFile(std::string path, rapidjson::Document& doc)
+{
+	// Open the file & check for problems
+	std::ifstream file(path.c_str());
+	if (!file.is_open())
+	{
+		std::cout << "File " << path << " does not exist!" << std::endl;
+		return false;
+	}
+
+	// Parse document
+	rapidjson::Document json;
+	rapidjson::IStreamWrapper wrapped(file);
+	json.ParseStream(wrapped);
+
+	// Check for parsing problems
+	if (json.HasParseError())
+	{
+		std::cout << "Error: " << json.GetParseError() << "(Offset: " << json.GetErrorOffset() << ")" << std::endl;
+		return false;
+	}
+
+	// Return document as lhs reference
+	doc = MOVE_DOC(json);
+	return true;
+}
 
 //---------------------------------------
 // Add string to json
@@ -93,6 +128,31 @@ static T SafeGetValue(
 }
 
 //---------------------------------------
+// Fail-safe json member search
+//---------------------------------------
+static bool SafeHasMember(
+	const rapidjson::Value& val,
+	const std::string& name,
+	const rapidjson::Value*& out
+)
+{
+	// Only objects have members
+	if (val.IsObject())
+	{
+		// Try to find the member
+		auto member = val.FindMember(name.c_str());
+		// If it exists store in output variable
+		if (member != val.MemberEnd())
+		{
+			out = &member->value;
+			return true;
+		}
+	}
+	// Not an object / does not have member
+	return false;
+}
+
+//---------------------------------------
 // Fail-safe json member get
 //---------------------------------------
 template<typename T>
@@ -101,16 +161,12 @@ static T SafeGet(
 	const std::string& name
 )
 {
-	// If is json object
-	if(val.IsObject())
+	// Try to get member
+	const rapidjson::Value* member;
+	if (SafeHasMember(val, name, member))
 	{
-		// Try to find by name
-		auto member = val.FindMember(name.c_str());
-		// Return value if found
-		if (member != val.MemberEnd())
-		{
-			return SafeGetValue<T>(member->value);
-		}
+		// Return as type
+		return SafeGetValue<T>(*member);
 	}
 	// Default if not object / member not found
 	return T();
@@ -126,15 +182,14 @@ static rapidjson::Value SafeGetArray(
 {
 	rapidjson::Value out(rapidjson::kArrayType);
 	// Try to find by name
-	auto member = doc.FindMember(name.c_str());
-	// If member exists
-	if (member != doc.MemberEnd())
+	const rapidjson::Value* member;
+	if(SafeHasMember(doc, name, member))
 	{
-		// If member is array
-		if(member->value.IsArray())
+		// If member exists and is array
+		if(member->IsArray())
 		{
 			// Copy & store each value
-			for(auto& val : member->value.GetArray())
+			for(auto& val : member->GetArray())
 			{
 				rapidjson::Value cpy(val, doc.GetAllocator(), true);
 				out.PushBack(std::move(cpy.Move()), doc.GetAllocator());

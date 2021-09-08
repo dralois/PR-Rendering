@@ -40,7 +40,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriterRef writer) = 0;
+	virtual void AddToJSON(JSONWriterRef writer) const = 0;
 };
 
 //---------------------------------------
@@ -87,7 +87,7 @@ protected:
 	// Methods
 	//---------------------------------------
 
-	virtual void X_AddToJSON(JSONWriterRef writer) = 0;
+	virtual void X_AddToJSON(JSONWriterRef writer) const = 0;
 
 	RenderfileObject() :
 		Transformable(
@@ -119,8 +119,7 @@ public:
 	//---------------------------------------
 
 	// Transform
-	inline const Eigen::Matrix4f GetTransform() const { return meshTrans; }
-	virtual const Eigen::Matrix4f GetTransform() override { return meshTrans; }
+	virtual const Eigen::Matrix4f GetTransform() const override { return meshTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override
 	{
 		// Set transform
@@ -136,42 +135,21 @@ public:
 	}
 
 	// Position
-	inline const Eigen::Vector3f GetPosition() const
-	{
-		return meshPos;
-	}
-	virtual const Eigen::Vector3f GetPosition() override
-	{
-		return meshPos;
-	}
+	virtual const Eigen::Vector3f GetPosition() const override { return meshPos; }
 	virtual void SetPosition(Eigen::Vector3f pos) override
 	{
 		X_SetPosRotScale(&pos, NULL, NULL);
 	}
 
 	// Rotation
-	inline const Eigen::Quaternionf GetRotation() const
-	{
-		return meshRot;
-	}
-	virtual const Eigen::Quaternionf GetRotation() override
-	{
-		return meshRot;
-	}
+	virtual const Eigen::Quaternionf GetRotation() const override { return meshRot; }
 	virtual void SetRotation(Eigen::Quaternionf rot) override
 	{
 		X_SetPosRotScale(NULL, &rot, NULL);
 	}
 
 	// Scale
-	inline const Eigen::Vector3f GetScale() const
-	{
-		return meshScl;
-	}
-	virtual const Eigen::Vector3f GetScale() override
-	{
-		return meshScl;
-	}
+	virtual const Eigen::Vector3f GetScale() const override { return meshScl; }
 	virtual void SetScale(Eigen::Vector3f scale) override
 	{
 		X_SetPosRotScale(NULL, NULL, &scale);
@@ -181,7 +159,7 @@ public:
 	// Methods
 	//---------------------------------------
 
-	virtual void AddToJSON(JSONWriterRef writer) override
+	virtual void AddToJSON(JSONWriterRef writer) const override
 	{
 		writer.StartObject();
 
