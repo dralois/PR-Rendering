@@ -114,8 +114,25 @@ private:
 	double vertex_b;
 };
 
+class OptionsWithCallback
+{
+public:
+	//---------------------------------------
+	// Creates solver options with iteration callback
+	// callback: Needs to be of type PyCeres.IterationCallback
+	//---------------------------------------
+	static ceres::Solver::Options Create(ceres::IterationCallback *&&callback)
+	{
+		ceres::Solver::Options opts;
+		opts.callbacks.push_back(callback);
+		return opts;
+	}
+};
+
 void add_custom_cost_functions(py::module &m)
 {
 	// Add the custom cost function
 	m.def("CreateExposureCostFunction", &ExposureFunctor::Create);
+	// Add custom options creator
+	m.def("OptionsWithCallback", &OptionsWithCallback::Create);
 }
