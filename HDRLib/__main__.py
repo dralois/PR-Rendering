@@ -9,8 +9,9 @@ from plotoptix.materials import m_flat
 from plotoptix.enums import ChannelDepth, ChannelOrder, Camera
 
 import numpy as np
-
+np.seterr(invalid='ignore')
 import cv2
+
 import math
 import os
 import threading
@@ -20,10 +21,11 @@ import json
 
 # 1) Import all images, inverse gamma correct them (y = 2.2)
 
-# Original, RGB, depth, gradients, extrinsics matrix, eye pos
+# Original RGB, gamma corrected RGB, masked RGB, gradients, extrinsics matrix, eye pos
 frames = {}
 mesh = None
-intr = (0, 0, 0, 0, 0, 0)
+intr_c = (0, 0, 0, 0, 0, 0)
+intr_o = (0, 0, 0, 0, 0, 0)
 
 gamma_correct = True
 store_debug_mesh = False
@@ -51,9 +53,11 @@ with os.scandir(test_path) as dir:
             intr_loaded = load_intr(info["m_calibrationColorIntrinsic"])[:3, :3]
             w, h = int(info["m_colorWidth"]), int(info["m_colorHeight"])
             fx, fy = intr_loaded[0][0], intr_loaded[1][1]
-            cx = ((intr_loaded[0][2] - (w / 2)) / max(w, h))
-            cy = ((intr_loaded[1][2] - (h / 2)) / max(w, h))
-            intr = (fx, fy, cx, cy, w, h)
+            ox, oy = intr_loaded[0][2], intr_loaded[1][2]
+            cx = ((ox - (w / 2)) / max(w, h))
+            cy = ((oy - (h / 2)) / max(w, h))
+            intr_c = (fx, fy, cx, cy, w, h)
+            intr_o = (fx, fy, ox, oy, w, h)
             # Loop frames
             for i in range(0, max(1, int("".join(filter(str.isdigit, os.listdir(direntry.path)[-2]))))):
                 # Read frame, depth, pose
@@ -62,7 +66,17 @@ with os.scandir(test_path) as dir:
                         cv2.imread(os.path.join(direntry.path, base + ".color.jpg"), cv2.IMREAD_COLOR),
                         cv2.COLOR_BGR2RGB)
                 rgb = org if not gamma_correct else adjust_gamma(org, 2.2)
-                depth = cv2.imread(os.path.join(direntry.path, base + ".depth.pgm"), cv2.IMREAD_ANYDEPTH)
+                depth = cv2.resize(
+                            cv2.imread(os.path.join(direntry.path, base + ".depth.pgm"), cv2.IMREAD_ANYDEPTH),
+                            (org.shape[1], org.shape[0]))
+                # Create a mask where the depth is unknown
+                mask = np.repeat(depth != 0, 3, 1).reshape(rgb.shape[0], rgb.shape[1], 3)
+                # Create the corresponding masked rgb image
+                rgbmask = np.dstack((np.ma.array(rgb, mask=mask).filled(0), depth == 0))
+                # The left and right side never has depth -> Remove it
+                rgbmask[:,:92] = 0
+                rgbmask[:,-90:] = 0
+                # Read the pose & build a gradient map (masking edges)
                 extr = load_extr(os.path.join(direntry.path, base + ".pose.txt"))
                 grads = gradient_map(rgb)
                 # Extract camera position
@@ -74,7 +88,7 @@ with os.scandir(test_path) as dir:
                                 [ 0,  0,  0,  1]])
                 extr = np.linalg.inv(np.matmul(extr, flip))
                 # Store
-                frames[base] = (org, rgb, depth, grads, extr, eye)
+                frames[base] = (org, rgb, rgbmask, grads, extr, eye)
         # Load mesh
         elif direntry.is_file() and direntry.name == "mesh.refined.v2.obj":
             mesh = load_mesh(direntry.path, "obj")
@@ -153,7 +167,7 @@ except OSError:
             compute.SetData(1, hitData)
 
             # Camera variables: mat4, vec2, vec2, vec2
-            camVars = np.concatenate((np.float32(extr.transpose().flatten()), np.array(intr, dtype=np.float32)))
+            camVars = np.concatenate((np.float32(extr.transpose().flatten()), np.array(intr_c, dtype=np.float32)))
             compute.SetData(4, camVars)
 
             # Image data: uvec4 - RGB + gradient (0/1)
@@ -249,7 +263,7 @@ except OSError:
 
             # Camera variables: mat4, vec2, vec2, vec2, padding, vec4, vec4, vec4
             camVars = np.concatenate((np.float32(extr.transpose().flatten()),
-                np.array(intr, dtype=np.float32), np.zeros((2), dtype=np.float32), eye, oj, ex))
+                np.array(intr_c, dtype=np.float32), np.zeros((2), dtype=np.float32), eye, oj, ex))
             compute.SetData(4, camVars)
 
             # Original image data: uvec4
@@ -311,6 +325,12 @@ renderDone.wait()
 pan_hdr = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
 pan_depth = np.ma.array(rt._hit_pos[:,:,3:4], mask=rt._hit_pos[:,:,3:4]>1e+9)
 
+# Done raytracing
+rt.close()
+
+# 5) Detect light sources
+# 5.1) Compute illuminance
+
 # Calculate raw luminance
 lum = raw_luminance(pan_hdr)
 
@@ -329,15 +349,65 @@ with ShaderManager(".\\HDRLib\\Shader\\Luminance.comp") as compute:
 maxPeak = 0.0
 mask = np.zeros((illum.shape[0] + 2, illum.shape[1] + 2), dtype=np.uint8)
 rng = np.random.default_rng(0)
-lightMap = np.copy(pan_hdr)
-lightInfo = []
+light_map = np.copy(pan_hdr)
+lightsJson = []
+lights = []
 
-# Number of lights is unknown
+# 5.2) Find directional light source, based on pixels without depth
+
+# Create compute shader
+with ShaderManager(".\\HDRLib\\Shader\\SunReproject.comp") as compute:
+    # Arbitrary, but small panoramic size
+    imgSize = (100, 50)
+    # Create output buffers (updated every frame)
+    outputRGB = np.zeros((imgSize[1], imgSize[0], 4), dtype=np.float32)
+    outputIllum = np.zeros((imgSize[1], imgSize[0], 2), dtype=np.float32)
+    # For each frame (masked)
+    for frame, vals in frames.items():
+        # Load current frame values
+        _, _, rgbmask, _, extr, _ = vals
+        # Invert the camera matrix
+        extrInv = np.linalg.inv(extr)
+        # Load exposure
+        ex = np.array(exposure[int("".join(filter(str.isdigit, frame)))], dtype=np.float32)
+        # Masked RGB: uvec4
+        compute.SetData(1, np.int32(rgbmask))
+        # Vars: mat4, vec2, vec2, vec2, vec2, float
+        camVars = np.concatenate((np.float32(extrInv.transpose().flatten()),
+            np.array(intr_o, dtype=np.float32), np.float32(imgSize), ex))
+        compute.SetData(2, camVars)
+        # Output rgb buffer: vec4
+        compute.SetData(3, outputRGB)
+        # Output illum buffer: vec4
+        compute.SetData(4, outputIllum)
+        # Run compute shader
+        compute.StartCompute(math.ceil((rgbmask.shape[1] * rgbmask.shape[0]) / 128))
+        # Load & update the result
+        outputRGB = compute.GetData(3).reshape(imgSize[1], imgSize[0], 4)
+        outputIllum = compute.GetData(4).reshape(imgSize[1], imgSize[0], 2)
+
+    # Calculate the average rgb & illumination (multiple samples / pixel)
+    dirRGB = outputRGB[:,:,:3] / outputRGB[:,:,3:4]
+    dirIllum = outputIllum[:,:,:1] / outputIllum[:,:,1:2]
+    # Find brightest spot & corresponding light source
+    dirMask = np.zeros((dirIllum.shape[0] + 2, dirIllum.shape[1] + 2), dtype=np.uint8)
+    dirFiltered, dirPeak, dirPeakIdx = find_brightest_spot(dirIllum, dirMask[1:-1, 1:-1], 3)
+    dirMask, _, dirParams = find_light_source(dirFiltered, dirMask, dirPeakIdx, 0.3, dirRGB)
+    # The first (brightest) light source is the main directional light
+    dirPeakRGB = np.average(dirRGB[dirPeakIdx[1], dirPeakIdx[0]])
+    dirLng, dirLat = (dirPeakIdx[0] / imgSize[1]) * math.pi, (dirPeakIdx[1] / imgSize[0]) * 2.0 * math.pi
+    _, dirLightJson = build_directional_light(dirRGB, dirLat, dirLng, dirPeakRGB, dirParams)
+    # Append this light as json to output file
+    lightsJson.append(dirLightJson)
+
+# 5.3) Detect point light sources, based on reprojected radiance
+
+# Number of point lights is unknown
 while True:
     # Find the brightest spot
     filtered, peak, peakIdx = find_brightest_spot(illum, mask[1:-1, 1:-1], 21)
     # Find the corresponding light source & parameters
-    mask, lightPixels, lightIntensity, lightEllipse = find_light_source(filtered, mask, peakIdx)
+    mask, lightEllipse, lightParams = find_light_source(filtered, mask, peakIdx, 0.4, pan_hdr)
     # Update peak
     maxPeak = (maxPeak, peak)[peak > maxPeak]
     # Stop if not at least as bright as 80% of the peak
@@ -345,34 +415,47 @@ while True:
         break
     else:
         # Mark light source in panorama
-        lightMap = cv2.ellipse(lightMap, lightEllipse, rng.random(3).tolist(), -1)
-        # Calculate center of mass of light source pixels
-        lightPixel = np.uint32(np.mean(lightPixels, axis=0))
-        # Calculate mean depth & color
-        meanDepth = np.mean(pan_depth[lightPixels[:,1], lightPixels[:,0]])
-        meanColor = np.mean(np.ma.array(pan_hdr, mask=pan_depth.mask * [1,1,1])[lightPixels[:,1], lightPixels[:,0]], axis=0)
-        # Backproject to find its position
-        lightPos = pan_depth_to_point(meanDepth, lightPixel, pan_depth.shape, best_candidate)
-        # Append to json output
-        lightInfo.append({
-            "position" : lightPos.tolist(),
-            "color" : meanColor.tolist(),
-            "exposure" : illuminance_to_ev(lightIntensity)
-        })
+        light_map = cv2.ellipse(light_map, lightEllipse, rng.random(3).tolist(), -1)
+        # Load peak rgb value
+        peakRGB = np.average(pan_hdr[peakIdx[1], peakIdx[0]])
+        # Optimize light & build for output
+        light, lightJson = build_point_light(pan_hdr, pan_depth, best_candidate, peakRGB, lightParams)
+        # Append light as json to output file
+        lightsJson.append(lightJson)
+        # For rendering
+        lights.append(light)
 
 # Store light source information as json
 with open(os.path.join(temp_path, os.pardir, "lights.json"), mode="w") as stream:
-    json.dump(lightInfo, stream, indent=1)
+    json.dump(lightsJson, stream, indent=1)
+
+# 5.4) Render detected point light sources (as spherical gaussians)
+
+# Create compute shader
+with ShaderManager(".\\HDRLib\\Shader\\SGRender.comp") as compute:
+    imgSize = (pan_depth.shape[1], pan_depth.shape[0])
+    # Build input data
+    vars = np.concatenate((
+        np.array(imgSize, dtype=np.int32).view("float32"),
+        np.array([len(lights), 0.0], dtype=np.int32).view("float32"),
+        np.array(lights, dtype=np.float32).flatten()
+    ))
+    # Set input data: uvec2, int, int, [vec4, vec4, vec4]
+    compute.SetData(1, vars)
+    results = np.zeros((imgSize[0], imgSize[1], 4), dtype=np.float32)
+    compute.SetData(2, results.flatten())
+    # Compute spherical gaussian lighting with predicted lights
+    compute.StartCompute(math.ceil((imgSize[0] * imgSize[1]) / 128))
+    results = compute.GetData(2).reshape((imgSize[0], imgSize[1], 4))
+    sg_render = results[:,:,:3].reshape((imgSize[1], imgSize[0], 3))
 
 # Possibly store debug info
 if store_debug_panorama:
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_hdr.hdr"), pan_hdr)
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_depth.hdr"), pan_depth)
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lum.hdr"), illum)
-    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lights.hdr"), lightMap)
-
-# Done raytracing
-rt.close()
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lights.hdr"), light_map)
+    cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_sg.hdr"), sg_render)
 
 # Cleanup
 rmtree(temp_path)

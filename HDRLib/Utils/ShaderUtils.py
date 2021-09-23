@@ -64,7 +64,7 @@ class ShaderManager(object):
                 ssbo, shape, format, size = self.__SSBOs[binding]
                 return np.ndarray(shape, dtype=format, buffer=CS.ReadSSBO(ssbo, size))
 
-    def StartCompute(self, worksize):
+    def StartCompute(self, x, y = 1, z = 1):
         # Shader must have been created
         if self.__shader is not None:
-            CS.UseCS(self.__shader, worksize)
+            CS.UseCS(self.__shader, x, y, z)

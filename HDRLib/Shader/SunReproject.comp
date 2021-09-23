@@ -1,0 +1,87 @@
+#version 430
+#define PI 3.1415926535897932384626433832795
+
+layout(binding = 1) buffer RGB
+{
+    uvec4 rgb[];
+};
+
+layout(binding = 2) buffer CAM
+{
+    mat4 extr;
+    vec2 f;
+    vec2 o;
+    vec2 dims;
+    vec2 pan;
+    float ex;
+};
+
+layout(binding = 3) buffer OUTRGB
+{
+    vec4 rgbOut[];
+};
+
+layout(binding = 4) buffer OUTILLUM
+{
+    vec2 illumOut[];
+};
+
+vec3 pixel_to_dir(vec2 pixel)
+{
+    // Pixel to camera space direction
+    return normalize(vec3((pixel - o) / f, 1.0));
+}
+
+uvec2 dir_to_pixel(vec3 vec, vec2 size)
+{
+    // UV coords from direction vector
+    float u = (atan(vec.y, vec.x) / (2.0 * PI)) + 0.5;
+    float v = (acos(vec.z) / PI);
+    // Return pixel index
+    return uvec2(u * size.x, v * size.y);
+}
+
+float raw_illuminance(vec3 lum)
+{
+    // See https://en.wikipedia.org/wiki/Relative_luminance
+    return (lum.r * 0.2126 + lum.g * 0.7152 + lum.b * 0.0722) * 179.0;
+}
+
+float solid_angle_pixel(vec2 pixel, vec2 size)
+{
+    // Calculate pixel longitude / latitude rectangle
+    float temp = 0.5 + pixel.y - (size.y / 2.0);
+    vec2 lat = vec2(temp - 0.5, temp + 0.5) * PI / size.y;
+    vec2 lng = vec2(pixel.x, pixel.x + 1.0)  * 2.0 * PI / size.x;
+    // See https://en.wikipedia.org/wiki/Solid_angle#Latitude-longitude_rectangle
+    return (sin(lat.y) - sin(lat.x)) * (lng.y - lng.x);
+}
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+// Actual compute shader
+void main()
+{
+    // Fetch buffer index & calculate pixel
+    uint idx_rgb = gl_GlobalInvocationID.x;
+    vec2 px = vec2(mod(idx_rgb, dims.x), int(dims.y) - uint(idx_rgb / dims.x));
+
+    // Find direction in camera space
+    vec3 dirCam = pixel_to_dir(px);
+    // Convert to world space
+    vec3 dirWorld = normalize((extr * vec4(dirCam, 0.0)).xyz);
+    // Calculate corresponding pixel in panorama & index into buffer
+    uvec2 px_pan = dir_to_pixel(dirWorld, pan);
+    uint idx_pan = px_pan.x + (px_pan.y * uint(pan.x));
+
+    // If pixel is marked (had no depth)
+    if(rgb[idx_rgb].a != 0)
+    {
+        // Calculate & add exposure corrected color
+        vec3 exCorr = rgb[idx_rgb].rgb / (255.0 * ex);
+        rgbOut[idx_pan] += vec4(exCorr, 1.0);
+        // Calculate & add corresponding illuminance
+        float omega = solid_angle_pixel(px_pan, pan);
+        illumOut[idx_pan] += vec2(raw_illuminance(exCorr) * omega, 1.0);
+    }
+}

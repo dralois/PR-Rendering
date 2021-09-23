@@ -1,0 +1,57 @@
+#version 430
+#define PI 3.1415926535897932384626433832795
+
+struct SG
+{
+    vec4 Amplitude;
+    vec4 Axis;
+    vec4 Sharpness;
+};
+
+layout(binding = 1) buffer VARS
+{
+    uvec2 size;
+    int lightCount;
+    int alignment;
+    SG lights[];
+};
+
+layout(binding = 2) buffer OUT
+{
+    vec4 result[];
+};
+
+// Calculates SG lighting for given direction
+vec3 evaluate_SG(SG sg, vec3 dir)
+{
+    // I_i * u
+    float cosAngle = dot(dir, sg.Axis.xyz);
+    // c_i * exp(((I_i * dot) - 1) / ((1 / (4 * pi)) * s_i))
+    return sg.Amplitude.xyz * exp(sg.Sharpness.x * (cosAngle - 1.0));
+}
+
+vec3 pixel_to_vec(vec2 pixel, vec2 size)
+{
+    // Calculate pixel longitude / latitude
+    float lng = ((pixel.x + 0.5) / size.x)  * 2.0 * PI;
+    float lat = (1.0 - ((pixel.y + 0.5) / size.y)) * PI;
+    // Return direction to pixel on sphere, according to lng / lat
+    return vec3(-sin(lng) * sin(lat), cos(lng) * sin(lat), -cos(lat));
+}
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+// Actual compute shader
+void main()
+{
+    // Determine compute idx
+    uint idx = gl_GlobalInvocationID.x;
+    // Calculate pixel index
+    vec2 px = vec2(mod(idx, size.x), idx / size.x);
+    // For each light source
+    for(int i = 0; i < lightCount; i++)
+    {
+        // Calculate and store corresponding SG radiance
+        result[idx] += vec4(evaluate_SG(lights[i], pixel_to_vec(px, vec2(size))), 0.0);
+    }
+}
