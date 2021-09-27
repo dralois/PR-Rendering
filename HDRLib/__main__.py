@@ -396,9 +396,11 @@ with ShaderManager(".\\HDRLib\\Shader\\SunReproject.comp") as compute:
     # The first (brightest) light source is the main directional light
     dirPeakRGB = np.average(dirRGB[dirPeakIdx[1], dirPeakIdx[0]])
     dirLng, dirLat = (dirPeakIdx[0] / imgSize[1]) * math.pi, (dirPeakIdx[1] / imgSize[0]) * 2.0 * math.pi
-    _, dirLightJson = build_directional_light(dirRGB, dirLat, dirLng, dirPeakRGB, dirParams)
-    # Append this light as json to output file
-    lightsJson.append(dirLightJson)
+    dirShouldAdd, _, dirLightJson = build_directional_light(dirRGB, dirLat, dirLng, dirPeakRGB, dirParams)
+    # If light is bright enough to be relevant
+    if dirShouldAdd:
+        # Append this light as json to output file
+        lightsJson.append(dirLightJson)
 
 # 5.3) Detect point light sources, based on reprojected radiance
 
@@ -419,11 +421,13 @@ while True:
         # Load peak rgb value
         peakRGB = np.average(pan_hdr[peakIdx[1], peakIdx[0]])
         # Optimize light & build for output
-        light, lightJson = build_point_light(pan_hdr, pan_depth, best_candidate, peakRGB, lightParams)
-        # Append light as json to output file
-        lightsJson.append(lightJson)
-        # For rendering
-        lights.append(light)
+        shouldAdd, light, lightJson = build_point_light(pan_hdr, pan_depth, best_candidate, peakRGB, lightParams)
+        # If light is bright enough to be relevant
+        if shouldAdd:
+            # Append light as json to output file
+            lightsJson.append(lightJson)
+            # For rendering
+            lights.append(light)
 
 # Store light source information as json
 with open(os.path.join(temp_path, os.pardir, "lights.json"), mode="w") as stream:

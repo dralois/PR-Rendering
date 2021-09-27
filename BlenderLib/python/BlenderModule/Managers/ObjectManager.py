@@ -324,7 +324,7 @@ class LightFactory(InstanceStorage[Lights.GenericLightInstance, Lights.GenericLi
             lightInstance = Lights.AreaLightInstance(blueprint)
         elif isinstance(blueprint, Lights.SpotLightData):
             lightInstance = Lights.SpotLightInstance(blueprint)
-        elif isinstance(blueprint, Lights.SpotLightData):
+        elif isinstance(blueprint, Lights.SunLightData):
             lightInstance = Lights.SunLightInstance(blueprint)
         elif isinstance(blueprint, Lights.PointLightData):
             lightInstance = Lights.PointLightInstance(blueprint)

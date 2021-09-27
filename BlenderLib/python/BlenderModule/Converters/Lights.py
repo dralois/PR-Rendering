@@ -167,8 +167,8 @@ class SunLightData(GenericLightData):
         else:
             raise TypeError
 
-        # Directional light is not supported
-        self.__light.appleseed.sun_mode = "sun"
+        # Sun light is not supported
+        self.__light.appleseed.sun_mode = "distant"
         super().__init__(self.__light)
 
     # Override: Create from json data

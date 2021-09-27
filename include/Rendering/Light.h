@@ -131,6 +131,7 @@ public:
 		castsIndirect(true)
 	{
 		const rapidjson::Value* posVal;
+		const rapidjson::Value* rotVal;
 		const rapidjson::Value* colVal;
 		const rapidjson::Value* expVal;
 		const rapidjson::Value* intVal;
@@ -143,19 +144,25 @@ public:
 			SetPosition(SafeGetEigenVector<Eigen::Vector3f>(*posVal));
 		}
 
+		if (SafeHasMember(origin, "rotation", rotVal))
+		{
+			Eigen::Quaternionf quatRot(SafeGetEigenVector<Eigen::Vector4f>(*rotVal));
+			SetRotation(quatRot);
+		}
+
 		if (SafeHasMember(origin, "color", colVal))
 		{
 			color = SafeGetEigenVector<Eigen::Vector3f>(*colVal);
 		}
 
-		if (SafeHasMember(origin, "exposure", expVal))
-		{
-			exposure = SafeGetValue<float>(*expVal);
-		}
-
 		if (SafeHasMember(origin, "intensity", intVal))
 		{
 			intensity = SafeGetValue<float>(*intVal);
+		}
+
+		if (SafeHasMember(origin, "exposure", expVal))
+		{
+			exposure = SafeGetValue<float>(*expVal);
 		}
 
 		if (SafeHasMember(origin, "castsIndirect", indVal))

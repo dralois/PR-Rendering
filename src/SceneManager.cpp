@@ -791,8 +791,29 @@ std::vector<Light> SceneManager::X_PlaceLights(
 			// For each light json object
 			for (auto& currLight : lights.GetArray())
 			{
-				// Create a point light
-				PointLightParams* params = new PointLightParams();
+				LightParamsBase* params = NULL;
+				const rapidjson::Value* typeVal;
+				// If has type
+				if (SafeHasMember(currLight, "type", typeVal))
+				{
+					// Parse as string
+					std::string typeStr(SafeGetValue<const char*>(*typeVal));
+					// If it isn't a sun light the default is point light
+					if (typeStr == "SUN")
+					{
+						params = new SunLightParams();
+					}
+					else
+					{
+						params = new PointLightParams();
+					}
+				}
+				else
+				{
+					// No type given: Create a point light
+					params = new PointLightParams();
+				}
+				// Create and add to vector
 				Light addLight(params, currLight);
 				newLights.push_back(std::move(addLight));
 			}

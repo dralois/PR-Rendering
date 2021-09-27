@@ -103,7 +103,7 @@ def build_point_light(rgb, depth, camPos, peak, lightParams):
     }
 
     # Return light & json entry
-    return light, lightJson
+    return evSolve > 0.0, light, lightJson
 
 def build_directional_light(rgb, lat, lng, peak, lightParams):
     from .SolverUtils import SolveIntensity
@@ -122,7 +122,7 @@ def build_directional_light(rgb, lat, lng, peak, lightParams):
     u = np.cross(r, f)
     # Calculate the quaternion from the rotation matrix
     # See https://www.3dgep.com/understanding-the-view-matrix/#look-at-camera
-    dirQuat = quaternion.from_rotation_matrix(np.dstack((r, u, -f)))
+    dirQuat = quaternion.from_rotation_matrix(np.stack((r, u, -f), axis=1))
 
     # Extract light params
     _, lightColor, lightEV, lightSolidAngle, lightMask = lightParams
@@ -143,13 +143,13 @@ def build_directional_light(rgb, lat, lng, peak, lightParams):
     # Build json entry for light
     lightJson = {
         "type" : "SUN",
-        "rotation" : dirQuat[0].components.tolist(),
+        "rotation" : np.append(dirQuat.imag, dirQuat.real).tolist(),
         "color" : lightColor.tolist(),
         "exposure" : evSolve
     }
 
     # Return light & json entry
-    return light, lightJson
+    return evSolve > 0.0, light, lightJson
 
 def pixel_to_vec(pixel, size):
     # Calculate longitude & latitude
