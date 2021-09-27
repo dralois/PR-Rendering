@@ -325,9 +325,6 @@ renderDone.wait()
 pan_hdr = rt.get_rt_output(ChannelDepth.Bps32, ChannelOrder.BGR)
 pan_depth = np.ma.array(rt._hit_pos[:,:,3:4], mask=rt._hit_pos[:,:,3:4]>1e+9)
 
-# Done raytracing
-rt.close()
-
 # 5) Detect light sources
 # 5.1) Compute illuminance
 
@@ -460,6 +457,9 @@ if store_debug_panorama:
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lum.hdr"), illum)
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_lights.hdr"), light_map)
     cv2.imwrite(os.path.join(temp_path, os.pardir, "panorama_sg.hdr"), sg_render)
+
+# Done raytracing
+rt.close()
 
 # Cleanup
 rmtree(temp_path)
