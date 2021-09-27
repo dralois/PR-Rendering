@@ -66,7 +66,8 @@ appleseed.tilt_angle | Float | Light tilt angle (deg)
 ### Sun + Directional Light:
 Variable | Type | Description
 --- | --- | ---
-appleseed.size_multiplier | Float | Controls shadow softness
+appleseed.turbidity | Float | Controls sun turbidity
+appleseed.size_multiplier | Float | Controls sun shadow softness
 appleseed.distance | Float | Sun distance (mio. km)
 appleseed.sun_mode | String | Either "sun" or "distant"
 
