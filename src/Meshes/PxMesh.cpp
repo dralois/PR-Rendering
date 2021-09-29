@@ -181,7 +181,7 @@ const PxVec3 PxMesh::GetScale() const
 		}
 	}
 	// If not set return internal
-	return meshScl;
+	return objScl;
 }
 
 //---------------------------------------
@@ -210,11 +210,11 @@ void PxMesh::SetScale(PxVec3 scale)
 			return;
 		}
 		// Also update bounds
-		bounds.scaleFast(1.0f / meshScl.magnitude());
+		bounds.scaleFast(1.0f / objScl.magnitude());
 		bounds.scaleFast(scale.magnitude());
 	}
 	// Always update internal
-	meshScl = scale;
+	objScl = scale;
 }
 
 //---------------------------------------
@@ -224,7 +224,7 @@ const PxTransform PxMesh::GetTransform() const
 {
 	// Actor must exist
 	if (!pPxActor)
-		return meshTrans;
+		return objTrans;
 
 	// Fetch & return pose
 	return pPxActor->getGlobalPose();
@@ -242,9 +242,9 @@ void PxMesh::SetTransform(PxTransform trans)
 		pPxActor->setGlobalPose(trans);
 	}
 	// Always update internals
-	meshTrans = trans;
-	meshPos = trans.p;
-	meshRot = trans.q;
+	objTrans = trans;
+	objPos = trans.p;
+	objRot = trans.q;
 }
 
 //---------------------------------------
@@ -277,10 +277,10 @@ PxMesh::PxMesh(const PxMesh& copy) :
 	bounds(copy.bounds),
 	MeshBase(copy),
 	Transformable(
-		copy.meshTrans,
-		copy.meshPos,
-		copy.meshRot,
-		copy.meshScl
+		copy.objTrans,
+		copy.objPos,
+		copy.objRot,
+		copy.objScl
 	)
 {
 }

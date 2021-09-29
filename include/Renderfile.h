@@ -62,16 +62,16 @@ private:
 		Eigen::Matrix4f mat;
 
 		// Update internals
-		meshPos = pos ? *pos : meshPos;
-		meshRot = rot ? *rot : meshRot;
-		meshScl = scl ? *scl : meshScl;
+		objPos = pos ? *pos : objPos;
+		objRot = rot ? *rot : objRot;
+		objScl = scl ? *scl : objScl;
 
 		// Convert to matrices
-		Eigen::Matrix3f rotMat = meshRot.normalized().toRotationMatrix();
-		Eigen::Matrix3f sclMat = meshScl.asDiagonal();
+		Eigen::Matrix3f rotMat = objRot.normalized().toRotationMatrix();
+		Eigen::Matrix3f sclMat = objScl.asDiagonal();
 
 		// Set position
-		mat.block<3, 1>(0, 3) = meshPos;
+		mat.block<3, 1>(0, 3) = objPos;
 		// Set rotation & scale
 		mat.block<3, 3>(0, 0) = rotMat * sclMat;
 		// Make affine
@@ -79,7 +79,7 @@ private:
 		mat.coeffRef(3, 3) = 1.0f;
 
 		// Update transform
-		meshTrans = mat;
+		objTrans = mat;
 	}
 
 protected:
@@ -119,37 +119,37 @@ public:
 	//---------------------------------------
 
 	// Transform
-	virtual const Eigen::Matrix4f GetTransform() const override { return meshTrans; }
+	virtual const Eigen::Matrix4f GetTransform() const override { return objTrans; }
 	virtual void SetTransform(Eigen::Matrix4f trans) override
 	{
 		// Set transform
-		meshTrans = trans;
+		objTrans = trans;
 		Eigen::Affine3f affine(trans);
 		// Compute current values
 		Eigen::Affine3f::LinearMatrixType rotation, scale;
 		affine.computeRotationScaling(&rotation, &scale);
 		// Update internals
-		meshPos = affine.translation().eval();
-		meshRot = Eigen::Quaternionf(rotation);
-		meshScl = scale.diagonal();
+		objPos = affine.translation().eval();
+		objRot = Eigen::Quaternionf(rotation);
+		objScl = scale.diagonal();
 	}
 
 	// Position
-	virtual const Eigen::Vector3f GetPosition() const override { return meshPos; }
+	virtual const Eigen::Vector3f GetPosition() const override { return objPos; }
 	virtual void SetPosition(Eigen::Vector3f pos) override
 	{
 		X_SetPosRotScale(&pos, NULL, NULL);
 	}
 
 	// Rotation
-	virtual const Eigen::Quaternionf GetRotation() const override { return meshRot; }
+	virtual const Eigen::Quaternionf GetRotation() const override { return objRot; }
 	virtual void SetRotation(Eigen::Quaternionf rot) override
 	{
 		X_SetPosRotScale(NULL, &rot, NULL);
 	}
 
 	// Scale
-	virtual const Eigen::Vector3f GetScale() const override { return meshScl; }
+	virtual const Eigen::Vector3f GetScale() const override { return objScl; }
 	virtual void SetScale(Eigen::Vector3f scale) override
 	{
 		X_SetPosRotScale(NULL, NULL, &scale);

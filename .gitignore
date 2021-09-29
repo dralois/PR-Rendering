@@ -99,7 +99,7 @@ __pycache__/*
 **/[Oo]utput/*
 [Ss]cenes/*
 **/[Ss]cenes/*
-**/HDRLib/Test/*
+**/HDRLib/**/Test/*
 
 # Special files
 !**/module_test.obj

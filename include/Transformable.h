@@ -11,10 +11,10 @@ protected:
 	// Fields
 	//---------------------------------------
 
-	Trans meshTrans;
-	Vec meshPos;
-	Quat meshRot;
-	Vec meshScl;
+	Trans objTrans;
+	Vec objPos;
+	Quat objRot;
+	Vec objScl;
 
 	Transformable(
 		Trans initTrans,
@@ -22,27 +22,27 @@ protected:
 		Quat initRot,
 		Vec initScale
 	) :
-		meshTrans(initTrans),
-		meshPos(initPos),
-		meshRot(initRot),
-		meshScl(initScale)
+		objTrans(initTrans),
+		objPos(initPos),
+		objRot(initRot),
+		objScl(initScale)
 	{
 	}
 
 	Transformable(const Transformable& copy):
-		meshTrans(copy.meshTrans),
-		meshPos(copy.meshPos),
-		meshRot(copy.meshRot),
-		meshScl(copy.meshScl)
+		objTrans(copy.objTrans),
+		objPos(copy.objPos),
+		objRot(copy.objRot),
+		objScl(copy.objScl)
 	{
 	}
 
 	Transformable(Transformable&& other)
 	{
-		std::swap(meshTrans, other.meshTrans);
-		std::swap(meshPos, other.meshPos);
-		std::swap(meshRot, other.meshRot);
-		std::swap(meshScl, other.meshScl);
+		std::swap(objTrans, other.objTrans);
+		std::swap(objPos, other.objPos);
+		std::swap(objRot, other.objRot);
+		std::swap(objScl, other.objScl);
 	}
 
 	virtual ~Transformable()

@@ -90,21 +90,21 @@ void SimManager::X_LoadMeshes()
 				}
 
 				// Extract other infos
-				float meshScl = SafeGet<float>(currVal, "mesh_unit");
+				float objScl = SafeGet<float>(currVal, "mesh_unit");
 				std::string meshClass(SafeGet<const char*>(currVal, "mesh_class"));
 
 				// Create and save physx mesh
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, meshClass, i);
 				pxCurr->SetObjId(0);
 				pxCurr->CreateMesh();
-				pxCurr->SetScale(physx::PxVec3(meshScl));
+				pxCurr->SetScale(physx::PxVec3(objScl));
 				vecpPxMesh.push_back(pxCurr);
 
 				// Create and save render mesh
 				RenderMesh* renderCurr = new RenderMesh(meshPath, texturePath, meshClass, i);
 				renderCurr->SetObjId(0);
 				renderCurr->CreateMesh();
-				renderCurr->SetScale(Eigen::Vector3f().setConstant(meshScl));
+				renderCurr->SetScale(Eigen::Vector3f().setConstant(objScl));
 				vecpRenderMesh.push_back(renderCurr);
 
 				// Copy the mesh to final folder

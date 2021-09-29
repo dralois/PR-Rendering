@@ -60,7 +60,7 @@ public:
 
 	inline const physx::PxBounds3 GetGlobalBounds() const
 	{
-		return physx::PxBounds3::transformFast(meshTrans, bounds);
+		return physx::PxBounds3::transformFast(objTrans, bounds);
 	}
 
 	virtual const physx::PxTransform GetTransform() const override;

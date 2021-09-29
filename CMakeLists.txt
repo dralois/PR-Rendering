@@ -1,5 +1,5 @@
 # Check cmake version
-cmake_minimum_required(VERSION 3.15...3.19)
+cmake_minimum_required(VERSION 3.15...3.21)
 
 ###########################################################################################
 # Setup project
@@ -88,3 +88,6 @@ AddRapidJSON(PRRendering ${PROJECT_EXTERNAL_DIR}/rapidjson)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/BlenderLib)
 target_link_libraries(PRRendering PRIVATE BlenderLib)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/HDRLib)
+target_link_libraries(PRRendering PRIVATE HDRLib)
