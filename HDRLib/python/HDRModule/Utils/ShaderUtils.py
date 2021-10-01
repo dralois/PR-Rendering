@@ -13,8 +13,9 @@ def GetGroupSizes():
 
 class ShaderManager(object):
 
-    def __init__(self, path):
-        self.__path = path
+    def __init__(self, shader):
+        shaderFolder = os.path.join(os.path.dirname(__file__), '..\\Shader')
+        self.__path = os.path.join(shaderFolder, shader)
         self.__shader = None
         self.__SSBOs = {}
 

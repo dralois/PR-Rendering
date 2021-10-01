@@ -17,6 +17,8 @@
 
 #include <BlenderLib/BlenderRenderer.h>
 
+#include <HDRLib/LightEstimator.h>
+
 #include <Meshes/RenderMesh.h>
 #include <Meshes/PxMeshConvex.h>
 #include <Meshes/PxMeshTriangle.h>
@@ -195,6 +197,10 @@ private:
 	) const;
 
 	void X_ComputeImagesToProcess(
+		ReferencePath dir
+	) const;
+
+	void X_EstimateLighting(
 		ReferencePath dir
 	) const;
 

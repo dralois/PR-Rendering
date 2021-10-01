@@ -73,7 +73,7 @@ def find_light_source(illum, mask, peakIdx, diff, rgb):
     return updatedMask, lightEllipse, (lightPoints, lightColor, lightEV, lightSolidAngle, lightMask)
 
 def build_point_light(rgb, depth, camPos, peak, lightParams):
-    from .SolverUtils import SolveIntensity
+    from .SolverUtils import solve_intensity
 
     # Extract params
     lightPoints, lightColor, lightEV, lightSolidAngle, lightMask = lightParams
@@ -92,7 +92,7 @@ def build_point_light(rgb, depth, camPos, peak, lightParams):
     minMask = ~lightMask.repeat(2, axis=1).reshape(lightMask.shape[0],-1,2)
 
     # Perform minimization to get more accurate intensity (exposure)
-    evSolve = np.average(SolveIntensity(rgb, minMask, light, peak) / lightColor)
+    evSolve = np.average(solve_intensity(rgb, minMask, light, peak) / lightColor)
 
     # Build json entry for light
     lightJson = {
@@ -106,7 +106,7 @@ def build_point_light(rgb, depth, camPos, peak, lightParams):
     return evSolve > 0.0, light, lightJson
 
 def build_directional_light(rgb, lat, lng, peak, lightParams):
-    from .SolverUtils import SolveIntensity
+    from .SolverUtils import solve_intensity
     from .OutputMuter import StdMute
 
     # Numba warning is irrelevant
@@ -138,7 +138,7 @@ def build_directional_light(rgb, lat, lng, peak, lightParams):
     minMask = ~lightMask.repeat(2, axis=1).reshape(lightMask.shape[0],-1,2)
 
     # Perform minimization to get more accurate intensity (exposure)
-    evSolve = np.average(SolveIntensity(rgb, minMask, light, peak) / lightColor)
+    evSolve = np.average(solve_intensity(rgb, minMask, light, peak) / lightColor)
 
     # Build json entry for light
     lightJson = {

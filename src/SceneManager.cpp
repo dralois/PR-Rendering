@@ -5,6 +5,7 @@
 #endif //_DEBUG || DEBUG
 
 #define USE_AO 1
+#define USE_ESTIMATOR 1
 
 #define PTR_RELEASE(x) if(x != NULL) { delete x; x = NULL; }
 
@@ -488,7 +489,6 @@ void SceneManager::X_BuildObjectsPBR(
 		Texture currPBR(false, false);
 		currPBR.SetPath(renderSettings.GetImagePath("body_rgb", cams[curr].GetImageNum()), false);
 		// Setup rendering params
-		// TODO: Exposure
 		cams[curr].SetupRendering(
 			currPBR.GetPath(),
 			renderRes,
@@ -496,7 +496,11 @@ void SceneManager::X_BuildObjectsPBR(
 			4,
 			-1,
 			"",
+#if USE_ESTIMATOR
 			true
+#else
+			false
+#endif
 		);
 		// Place in output vector
 		results.emplace_back(std::move(currPBR));
@@ -779,6 +783,7 @@ std::vector<Light> SceneManager::X_PlaceLights(
 {
 	std::vector<Light> newLights;
 
+#if USE_ESTIMATOR
 	// Try to read estimated lights
 	rapidjson::Document lights;
 	bool hasLights = CanReadJSONFile(renderSettings.GetScenePath() / "lights.json", lights);
@@ -824,6 +829,7 @@ std::vector<Light> SceneManager::X_PlaceLights(
 			}
 		}
 	}
+#endif
 
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -964,6 +970,24 @@ void SceneManager::X_ComputeImagesToProcess(
 }
 
 //---------------------------------------
+// Generates lighting information for scene
+//---------------------------------------
+void SceneManager::X_EstimateLighting(
+	ReferencePath dir
+) const
+{
+#if USE_ESTIMATOR
+	// If estimation enabled and not yet performed
+	if(!boost::filesystem::exists(dir / "lights.json"))
+	{
+		// Call estimator
+		HDR::LightEstimator estimator;
+		estimator.Estimate(dir.string());
+	}
+#endif
+}
+
+//---------------------------------------
 // Loads real images from prefiltered list
 //---------------------------------------
 std::vector<SceneImage> SceneManager::X_GetImagesToProcess(
@@ -1013,9 +1037,10 @@ void SceneManager::X_ProcessThread(
 	int threadID
 )
 {
-	// Only the first thread computes non-blurry images
+	// Only the first thread computes non-blurry images and generates lighting information
 	syncPoint->lock();
 	X_ComputeImagesToProcess(renderSettings.GetSceneRGBPath());
+	X_EstimateLighting(renderSettings.GetScenePath());
 	syncPoint->unlock();
 
 	// Get non blurry images

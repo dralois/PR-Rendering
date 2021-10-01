@@ -6,7 +6,7 @@ import PyCeres
 from multiprocessing import cpu_count
 import sys
 
-def SolveIntensity(pan_hdr : np.generic, mask : np.generic, light : np.generic, peak):
+def solve_intensity(pan_hdr : np.generic, mask : np.generic, light : np.generic, peak):
     from .ImgProcUtils import pixel_to_vec
     # Seperate light into constant and variable blocks
     lightIntensity = light[0:3]
@@ -53,7 +53,7 @@ def SolveIntensity(pan_hdr : np.generic, mask : np.generic, light : np.generic, 
     # Return new intensity / EV
     return lightIntensity
 
-def SolveExposure(vertRadiancePerFrame : np.generic):
+def solve_exposure(vertRadiancePerFrame : np.generic):
     # Input is matrix of vertices / frames -> radiance
     vertexCount = vertRadiancePerFrame.shape[0]
     frameCount = vertRadiancePerFrame.shape[1]
@@ -69,18 +69,25 @@ def SolveExposure(vertRadiancePerFrame : np.generic):
     indices = np.indices((mask.shape[0], mask.shape[1])).transpose(1, 2, 0)
     lightPixels = np.extract(mask, indices).reshape(-1, 2)
 
+    # Tracks how often each frame was referenced
+    refCounter = [0 for i in range(0, frameCount)]
+
     # For each vertex / frame pair with value
     for i in range(0, lightPixels.shape[0]):
         # Fetch index
         idx = (lightPixels[i][0], lightPixels[i][1])
+        refCounter[idx[1]] += 1
         # Create the cost function
         cost_function = PyCeres.CreateExposureCostFunction(vertRadiancePerFrame[idx])
         # Add residual block
         problem.AddResidualBlock(cost_function, None, exposures[idx[1]], radiance[idx[0]])
         problem.SetParameterLowerBound(exposures[idx[1]], 0, 0.0)
 
-    # First frame is constant to resolve ambiguity
-    problem.SetParameterBlockConstant(exposures[0])
+    # First referenced frame is constant to resolve ambiguity
+    for i in range(0, len(refCounter)):
+        if refCounter[i] > 0:
+            problem.SetParameterBlockConstant(exposures[i])
+            break
 
     # Sparse schur solver
     options = PyCeres.SolverOptions()
