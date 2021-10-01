@@ -1,8 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
-#include <iostream>
 
 #ifdef WIN32
 #define EXPORT_THIS __declspec(dllexport)

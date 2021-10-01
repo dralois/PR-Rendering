@@ -6,12 +6,9 @@
 #define BOOST_PYTHON_STATIC_LIB
 #include <boost/python/detail/wrap_python.hpp>
 #include <boost/python.hpp>
-
-#include <boost/filesystem.hpp>
 #pragma warning(pop)
 
 using namespace boost::python;
-using namespace boost::filesystem;
 
 namespace Blender
 {
@@ -48,7 +45,6 @@ namespace Blender
 		//---------------------------------------
 
 		object blenderModule;
-		object blenderNamespace;
 		object renderManager;
 		object logger;
 
@@ -111,9 +107,8 @@ namespace Blender
 		{
 			try
 			{
-				// Store main and globals
+				// Store main module
 				blenderModule = import("BlenderModule");
-				blenderNamespace = blenderModule.attr("__dict__");
 
 				// Setup embedded python for multiprocessing
 				object utils = import("BlenderModule.Utils");
