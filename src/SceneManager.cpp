@@ -817,9 +817,6 @@ std::vector<Light> SceneManager::X_PlaceLights(
 		Light addLight(params, currLight);
 		newLights.push_back(std::move(addLight));
 	}
-
-	// Return lights
-	return newLights;
 #else
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
@@ -837,10 +834,10 @@ std::vector<Light> SceneManager::X_PlaceLights(
 		);
 		newLights.push_back(std::move(addLight));
 	}
+#endif
 
 	// Return predicted / default lights
 	return newLights;
-#endif
 }
 
 //---------------------------------------
