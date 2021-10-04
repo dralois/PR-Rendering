@@ -72,7 +72,7 @@ private:
 	Spawning spawnSettings;
 
 	// Paths
-	ModifiablePath meshesPath, tempPath, finalPath, scenePath;
+	ModifiablePath basePath, meshesPath, tempPath, finalPath, scenePath;
 
 	// Config file
 	rapidjson::Document jsonConfig;
@@ -92,6 +92,7 @@ public:
 	inline ModifiablePath GetMeshesPath() const { return meshesPath; }
 	inline ModifiablePath GetTemporaryPath() const { return tempPath; }
 	inline ModifiablePath GetFinalPath() const { return finalPath; }
+	inline ModifiablePath GetBasePath() const { return basePath; }
 
 	inline ModifiablePath GetImagePath(
 		const std::string& category,
@@ -148,20 +149,33 @@ public:
 	//---------------------------------------
 
 	Settings(
-		rapidjson::Document&& json
+		rapidjson::Document&& json,
+		ReferencePath base
 	) :
 		engineSettings(),
 		filterSettings(),
 		simSettings(),
-		spawnSettings()
+		spawnSettings(),
+		basePath(base)
 	{
+		using namespace boost::filesystem;
+
 		// Steal json document
 		json.Swap(jsonConfig);
 
-		// Init paths
-		meshesPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path")));
-		finalPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path")));
-		tempPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path")));
+		// Meshes path must exist
+		try
+		{
+			meshesPath = canonical(ModifiablePath(SafeGet<const char*>(jsonConfig, "meshes_path")), basePath);
+		}
+		catch (const boost::filesystem::filesystem_error&)
+		{
+			std::cout << "Meshes folder does not exist." << std::endl;
+		}
+
+		// Init output paths
+		finalPath = weakly_canonical(absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "final_path")), basePath));
+		tempPath = weakly_canonical(absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "temp_path")), basePath));
 
 		// Init blur detection settings
 		filterSettings.EdgeThreshold = SafeGet<float>(jsonConfig, "edge_threshold");
@@ -192,9 +206,10 @@ public:
 		// Init render settings
 		engineSettings.LogLevel = SafeGet<const char*>(jsonConfig, "log_level");
 		engineSettings.StoreBlend = SafeGet<bool>(jsonConfig, "store_blend");
-		engineSettings.PluginPath = boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "blenderseed_path")));
-		engineSettings.ShaderDirs.push_back(boost::filesystem::absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_path"))));
-		engineSettings.RenderScale = MAX(SafeGet<float>(jsonConfig, "render_scale"), 0.1);
+		engineSettings.PluginPath = weakly_canonical(absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "blenderseed_path"))));
+		engineSettings.ShaderDirs.push_back(weakly_canonical(absolute(ModifiablePath(SafeGet<const char*>(jsonConfig, "shaders_path")))));
+		float scale = SafeGet<float>(jsonConfig, "render_scale");
+		engineSettings.RenderScale = scale > 0.1f ? scale : 0.1f;
 
 		// Init custom intrinsics
 		rapidjson::Value intrf = SafeGetArray(jsonConfig, "intrinsics_f");

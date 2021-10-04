@@ -3,6 +3,11 @@
 #pragma warning(push, 0)
 #include <boost/filesystem.hpp>
 
+#include <Helpers/JSONUtils.h>
+#include <Helpers/PathUtils.h>
+
+#include <Rendering/Settings.h>
+
 #include <SimManager.h>
 #pragma warning(pop)
 
@@ -23,7 +28,7 @@ int main(int argc, char** argv)
 	}
 
 	// Config file path in args
-	ModifiablePath configPath = boost::filesystem::absolute(argv[1]);
+	ModifiablePath configPath = boost::filesystem::weakly_canonical(argv[1]);
 
 	// Config file must exist of course
 	if (!boost::filesystem::exists(configPath))
@@ -37,7 +42,7 @@ int main(int argc, char** argv)
 	if (CanReadJSONFile(configPath.string(), json))
 	{
 		// Create simulation manager
-		SimManager simulation(new Settings(MOVE_DOC(json)));
+		SimManager simulation(new Settings(MOVE_DOC(json), configPath.parent_path()));
 
 		// Run the simulation
 		simulation.RunSimulation();

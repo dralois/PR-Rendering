@@ -200,7 +200,7 @@ private:
 		ReferencePath dir
 	) const;
 
-	void X_EstimateLighting(
+	bool X_EstimateLighting(
 		ReferencePath dir
 	) const;
 

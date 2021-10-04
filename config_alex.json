@@ -3,12 +3,12 @@
     "store_blend": false,
     "mem_available": 16,
 
-    "blenderseed_path": "../BlenderLib/python/blenderseed.zip",
-    "shaders_path": "../BlenderLib/python/BlenderModule/shaders",
-    "meshes_path": "../../Objects",
-    "scenes_path": "../../3RScan",
-    "final_path": "../../Output/final",
-    "temp_path": "../../Output/temp",
+    "blenderseed_path": "./BlenderLib/python/blenderseed.zip",
+    "shaders_path": "./BlenderLib/python/BlenderModule/shaders",
+    "meshes_path": "../Objects",
+    "scenes_path": "../3RScan",
+    "final_path": "../Output/final",
+    "temp_path": "../Output/temp",
 
     "edge_threshold": 0.5,
     "edge_weak": 150.0,

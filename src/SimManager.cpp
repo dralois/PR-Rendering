@@ -193,9 +193,16 @@ SimManager::SimManager(Settings* pSettings) :
 	X_CreateOutputFolders();
 	X_LoadMeshes();
 
-	// Setup scenes
-	ModifiablePath scenesPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scenes_path"));
-	X_SaveSceneFolders(boost::filesystem::absolute(scenesPath));
+	try
+	{
+		// Setup scenes
+		ModifiablePath scenesPath(SafeGet<const char*>(pRenderSettings->GetJSONConfig(), "scenes_path"));
+		X_SaveSceneFolders(boost::filesystem::canonical(scenesPath, pSettings->GetBasePath()));
+	}
+	catch (const boost::filesystem::filesystem_error&)
+	{
+		std::cout << "Scenes folder does not exist." << std::endl;
+	}
 }
 
 //---------------------------------------

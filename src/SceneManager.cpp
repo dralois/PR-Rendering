@@ -972,7 +972,7 @@ void SceneManager::X_ComputeImagesToProcess(
 //---------------------------------------
 // Generates lighting information for scene
 //---------------------------------------
-void SceneManager::X_EstimateLighting(
+bool SceneManager::X_EstimateLighting(
 	ReferencePath dir
 ) const
 {
@@ -984,6 +984,19 @@ void SceneManager::X_EstimateLighting(
 		HDR::LightEstimator estimator;
 		estimator.Estimate(dir.string());
 	}
+	// Return if lights were detected
+	rapidjson::Document lights;
+	if (CanReadJSONFile(renderSettings.GetScenePath() / "lights.json", lights))
+	{
+		if (lights.IsArray())
+		{
+			return lights.GetArray().Size() > 0;
+		}
+	}
+	// If not, scene is probably not good
+	return false;
+#else
+	return true;
 #endif
 }
 
@@ -1040,14 +1053,14 @@ void SceneManager::X_ProcessThread(
 	// Only the first thread computes non-blurry images and generates lighting information
 	syncPoint->lock();
 	X_ComputeImagesToProcess(renderSettings.GetSceneRGBPath());
-	X_EstimateLighting(renderSettings.GetScenePath());
+	bool hasLights = X_EstimateLighting(renderSettings.GetScenePath());
 	syncPoint->unlock();
 
 	// Get non blurry images
 	std::vector<SceneImage> sceneImages = X_GetImagesToProcess(renderSettings.GetSceneRGBPath());
 
 	// Make sure there are any images
-	if (sceneImages.empty())
+	if (sceneImages.empty() || !hasLights)
 		return;
 
 	// Create camera blueprint for scene
