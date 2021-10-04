@@ -59,9 +59,13 @@ def find_light_source(illum, mask, peakIdx, diff, rgb):
     lightIntensity = np.sum(np.ma.array(illum, mask=lightMask))
     lightEV = illuminance_to_ev(lightIntensity)
 
-    # Find corresponding pixels and fit ellipse
+    # Find corresponding pixels
     lightPoints = np.roll(np.stack(np.nonzero(updatedMask[1:-1, 1:-1] - mask[1:-1, 1:-1]), axis=1), 1, axis=1)
-    lightEllipse = cv2.fitEllipse(lightPoints)
+    # At least 5 points are needed to fit an ellipse
+    if lightPoints.shape[0] <= 5:
+        return False, updatedMask, None, None
+    else:
+        lightEllipse = cv2.fitEllipse(lightPoints)
 
     # Calculate solid angle of light
     lightSolidAngle = ellipse_solid_angle(lightEllipse, rgb.shape)
@@ -70,7 +74,7 @@ def find_light_source(illum, mask, peakIdx, diff, rgb):
     lightColor = np.mean(np.ma.array(rgb, mask=colMask)[lightPoints[:,1], lightPoints[:,0]], axis=0) / lightEV
 
     # Return mask with new light, fitted ellipse & light params
-    return updatedMask, lightEllipse, (lightPoints, lightColor, lightEV, lightSolidAngle, lightMask)
+    return True, updatedMask, lightEllipse, (lightPoints, lightColor, lightEV, lightSolidAngle, lightMask)
 
 def build_point_light(rgb, depth, camPos, peak, lightParams):
     from .SolverUtils import solve_intensity

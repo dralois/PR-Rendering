@@ -66,15 +66,17 @@ def detect_sun(frames, exposure, intr_o):
         # Find brightest spot & corresponding light source
         dirMask = np.zeros((dirIllum.shape[0] + 2, dirIllum.shape[1] + 2), dtype=np.uint8)
         dirFiltered, _, dirPeakIdx = find_brightest_spot(dirIllum, dirMask[1:-1, 1:-1], 3)
-        dirMask, _, dirParams = find_light_source(dirFiltered, dirMask, dirPeakIdx, 0.3, dirRGB)
-        # The first (brightest) light source is the main directional light
-        dirPeakRGB = np.average(dirRGB[dirPeakIdx[1], dirPeakIdx[0]])
-        dirLng, dirLat = (dirPeakIdx[0] / imgSize[1]) * math.pi, (dirPeakIdx[1] / imgSize[0]) * 2.0 * math.pi
-        dirShouldAdd, _, dirLightJson = build_directional_light(dirRGB, dirLat, dirLng, dirPeakRGB, dirParams)
-        # If light is bright enough to be relevant
-        if dirShouldAdd:
-            # Append this light as json to output file
-            lightsJson.append(dirLightJson)
+        dirSuccess, dirMask, _, dirParams = find_light_source(dirFiltered, dirMask, dirPeakIdx, 0.3, dirRGB)
+        # If a light was detected
+        if dirSuccess:
+            # The first (brightest) light source is the main directional light
+            dirPeakRGB = np.average(dirRGB[dirPeakIdx[1], dirPeakIdx[0]])
+            dirLng, dirLat = (dirPeakIdx[0] / imgSize[1]) * math.pi, (dirPeakIdx[1] / imgSize[0]) * 2.0 * math.pi
+            dirShouldAdd, _, dirLightJson = build_directional_light(dirRGB, dirLat, dirLng, dirPeakRGB, dirParams)
+            # If light is bright enough to be relevant
+            if dirShouldAdd:
+                # Append this light as json to output file
+                lightsJson.append(dirLightJson)
 
     # Return detected light as json
     return lightsJson
@@ -95,12 +97,14 @@ def detect_lights(pan_hdr, pan_depth, illum, best_candidate):
         # Find the brightest spot
         filtered, peak, peakIdx = find_brightest_spot(illum, mask[1:-1, 1:-1], 21)
         # Find the corresponding light source & parameters
-        mask, lightEllipse, lightParams = find_light_source(filtered, mask, peakIdx, 0.4, pan_hdr)
+        success, mask, lightEllipse, lightParams = find_light_source(filtered, mask, peakIdx, 0.4, pan_hdr)
         # Update peak
         maxPeak = (maxPeak, peak)[peak > maxPeak]
         # Stop if not at least as bright as 80% of the peak
         if peak < 0.8  * maxPeak:
             break
+        elif not success:
+            continue
         else:
             # Mark light source in panorama
             light_map = cv2.ellipse(light_map, lightEllipse, rng.random(3).tolist(), -1)
