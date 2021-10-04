@@ -784,53 +784,43 @@ std::vector<Light> SceneManager::X_PlaceLights(
 	std::vector<Light> newLights;
 
 #if USE_ESTIMATOR
-	// Try to read estimated lights
+	// Read estimated lights
 	rapidjson::Document lights;
-	bool hasLights = CanReadJSONFile(renderSettings.GetScenePath() / "lights.json", lights);
+	CanReadJSONFile(renderSettings.GetScenePath() / "lights.json", lights);
 
-	// If light source estimation exists
-	if (hasLights)
+	// For each light json object
+	for (auto& currLight : lights.GetArray())
 	{
-		if (lights.IsArray())
+		LightParamsBase* params = NULL;
+		const rapidjson::Value* typeVal;
+		// If has type
+		if (SafeHasMember(currLight, "type", typeVal))
 		{
-			// For each light json object
-			for (auto& currLight : lights.GetArray())
+			// Parse as string
+			std::string typeStr(SafeGetValue<const char*>(*typeVal));
+			// If it isn't a sun light the default is point light
+			if (typeStr == "SUN")
 			{
-				LightParamsBase* params = NULL;
-				const rapidjson::Value* typeVal;
-				// If has type
-				if (SafeHasMember(currLight, "type", typeVal))
-				{
-					// Parse as string
-					std::string typeStr(SafeGetValue<const char*>(*typeVal));
-					// If it isn't a sun light the default is point light
-					if (typeStr == "SUN")
-					{
-						params = new SunLightParams();
-					}
-					else
-					{
-						params = new PointLightParams();
-					}
-				}
-				else
-				{
-					// No type given: Create a point light
-					params = new PointLightParams();
-				}
-				// Create and add to vector
-				Light addLight(params, currLight);
-				newLights.push_back(std::move(addLight));
+				params = new SunLightParams();
 			}
-			// Return lights if any were created
-			if (newLights.size() > 0)
+			else
 			{
-				return newLights;
+				params = new PointLightParams();
 			}
 		}
+		else
+		{
+			// No type given: Create a point light
+			params = new PointLightParams();
+		}
+		// Create and add to vector
+		Light addLight(params, currLight);
+		newLights.push_back(std::move(addLight));
 	}
-#endif
 
+	// Return lights
+	return newLights;
+#else
 	// Adjust light intensity to scene dims
 	float intensity = 5.0f * (max - min).norm();
 
@@ -850,6 +840,7 @@ std::vector<Light> SceneManager::X_PlaceLights(
 
 	// Return predicted / default lights
 	return newLights;
+#endif
 }
 
 //---------------------------------------
