@@ -19,6 +19,7 @@ def RunGenerator(exe, config, out, maxtime, repeat):
         except subprocess.TimeoutExpired:
             # Timeouts are acceptable
             print(sys.exc_info())
+            MergeSets(out, finalDir)
             continue
         except subprocess.CalledProcessError:
             # Errors during generation may be problematic
