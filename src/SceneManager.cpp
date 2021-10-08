@@ -22,7 +22,7 @@ RenderMesh SceneManager::X_CreateSceneMesh() const
 	ModifiablePath meshPath(renderSettings.GetScenePath());
 	meshPath.append(sceneMesh);
 	// Create & return mesh
-	RenderMesh meshScene(meshPath, "scene", 0, true);
+	RenderMesh meshScene(meshPath, "scene", "pbr", 0, true);
 	meshScene.SetScale(Eigen::Vector3f().setConstant(toMeters));
 	return meshScene;
 }
@@ -509,12 +509,28 @@ void SceneManager::X_BuildObjectsPBR(
 	// Set shaders
 	for (auto& currMesh : meshes)
 	{
-		// Create diffuse texture
-		Texture currDiffuse;
-		currDiffuse.SetPath(currMesh.GetTexturePath(), false);
-		// Set PBR shader
-		PBRShader* currShader = new PBRShader(currDiffuse);
-		currMesh.SetShader(currShader);
+		// Test metal shader?
+		if(currMesh.GetShaderType() == "metal")
+		{
+			MetalShader* currShader = new MetalShader();
+			currMesh.SetShader(currShader);
+		}
+		// Test glass shader?
+		else if (currMesh.GetShaderType() == "glass")
+		{
+			GlassShader* currShader = new GlassShader();
+			currMesh.SetShader(currShader);
+		}
+		// Otherwise PBR
+		else
+		{
+			// Create diffuse texture
+			Texture currDiffuse;
+			currDiffuse.SetPath(currMesh.GetTexturePath(), false);
+			// Set PBR shader
+			PBRShader* currShader = new PBRShader(currDiffuse);
+			currMesh.SetShader(currShader);
+		}
 	}
 
 	// Setup scene for indirect light & shadows

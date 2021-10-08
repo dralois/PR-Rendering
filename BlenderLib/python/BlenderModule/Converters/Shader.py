@@ -153,6 +153,28 @@ class PBRObject(ShaderBase):
         tree.links.new(pbrNode.inputs[1], texNode.outputs[0])
         return pbrNode
 
+# Generator for test metal shading
+class MetalObject(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree: bpy.types.NodeTree, data: dict) -> bpy.types.Node:
+        metalNode = tree.nodes.new("AppleseedasMetalNode")
+        metalNode.in_face_reflectance = (0.806952, 0.783538, 0.871367)
+        metalNode.in_roughness = 0.522
+        return metalNode
+
+# Generator for test glass shading
+class GlassObject(ShaderBase):
+
+    @classmethod
+    def BuildShader(self, tree: bpy.types.NodeTree, data: dict) -> bpy.types.Node:
+        glassNode = tree.nodes.new("AppleseedasGlassNode")
+        glassNode.in_surface_transmittance = (0.558341, 0.577581, 0.871367)
+        glassNode.in_transmittance_amount = 0.95
+        glassNode.in_roughness = 0.076
+        glassNode.in_ior = 1.45
+        return glassNode
+
 # Get appropriate shader generator
 def GetShader(shaderID) -> ShaderBase:
     # Build mapping
@@ -162,7 +184,9 @@ def GetShader(shaderID) -> ShaderBase:
                 "uv_to_color" : UV2Color,
                 "depth_obj" : DepthObject,
                 "label_obj" : LabelObject,
-                "pbr_obj" : PBRObject
+                "pbr_obj" : PBRObject,
+                "metal_obj" : MetalObject,
+                "glass_obj" : GlassObject
     }
     # Return appropriate class
     return mapping.get(shaderID, DefaultShader)
