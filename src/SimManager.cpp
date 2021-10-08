@@ -92,7 +92,14 @@ void SimManager::X_LoadMeshes()
 				// Extract other infos
 				float objScl = SafeGet<float>(currVal, "mesh_unit");
 				std::string meshClass(SafeGet<const char*>(currVal, "mesh_class"));
-				std::string meshShader(SafeGet<const char*>(currVal, "mesh_shader"));
+				std::string meshShader = "";
+
+				// Shader property does not need to exist
+				const rapidjson::Value* shaderVal;
+				if(SafeHasMember(currVal, "mesh_shader", shaderVal))
+				{
+					meshShader = std::string(SafeGetValue<const char*>(*shaderVal));
+				}
 
 				// Create and save physx mesh
 				PxMeshConvex* pxCurr = new PxMeshConvex(meshPath, meshClass, i);
