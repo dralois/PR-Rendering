@@ -169,10 +169,10 @@ class GlassObject(ShaderBase):
     @classmethod
     def BuildShader(self, tree: bpy.types.NodeTree, data: dict) -> bpy.types.Node:
         glassNode = tree.nodes.new("AppleseedasGlassNode")
-        glassNode.in_surface_transmittance = (0.558341, 0.577581, 0.871367)
+        glassNode.in_surface_transmittance = (0.746604, 0.762878, 1.0)
         glassNode.in_transmittance_amount = 0.95
         glassNode.in_roughness = 0.076
-        glassNode.in_ior = 1.45
+        glassNode.in_ior = 1.045
         return glassNode
 
 # Get appropriate shader generator

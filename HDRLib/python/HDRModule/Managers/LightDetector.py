@@ -63,10 +63,12 @@ def detect_sun(frames, exposure, intr_o):
         # Calculate the average rgb & illumination (multiple samples / pixel)
         dirRGB = outputRGB[:,:,:3] / outputRGB[:,:,3:4]
         dirIllum = outputIllum[:,:,:1] / outputIllum[:,:,1:2]
+
         # Find brightest spot & corresponding light source
         dirMask = np.zeros((dirIllum.shape[0] + 2, dirIllum.shape[1] + 2), dtype=np.uint8)
         dirFiltered, _, dirPeakIdx = find_brightest_spot(dirIllum, dirMask[1:-1, 1:-1], 3)
         dirSuccess, dirMask, _, dirParams = find_light_source(dirFiltered, dirMask, dirPeakIdx, 0.3, dirRGB)
+
         # If a light was detected
         if dirSuccess:
             # The first (brightest) light source is the main directional light

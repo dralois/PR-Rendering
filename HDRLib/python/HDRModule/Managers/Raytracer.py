@@ -17,7 +17,7 @@ class Raytracer(object):
         # Necessary to only process one frame at a time
         self.renderDone = threading.Event()
         # Create framework & start raytracing
-        self.rt = NpOptiX(on_rt_accum_done=self.render_done, start_now=False)
+        self.rt = NpOptiX(on_rt_accum_done=self.render_done, start_now=True)
 
     def render_done(self, framework):
         self.renderDone.set()
@@ -45,10 +45,6 @@ class Raytracer(object):
         self.rt.setup_camera("cam", cam_type=Camera.CustomProjXYZ, textures=["target"])
         self.rt.set_current_camera("cam")
         self.rt.set_mesh("mesh", mesh.vertices, mesh.faces, mat="flat")
-
-        # TODO: Find better solution / Wait for bugfix
-        if not self.rt.is_started():
-            self.rt.start()
 
         # Stores unobstructed pixels
         vertexPixels = {fr : np.full((len(mesh.vertices), 3), np.NaN) for fr in frames}
